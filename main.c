@@ -65,6 +65,13 @@ buffer_header;
 
 #define debug_breakpoint {int x = 0;}
 
+// do debugowania - w watch window makra nie działają...
+buffer_header* __get_buf_header(void* ptr)
+{
+   buffer_header* header = (buffer_header*)((char*)ptr - offsetof(buffer_header, buf));
+   return header;
+}
+
 void* __buf_grow(const void* buf, size_t new_len, size_t elem_size)
 {
     size_t new_cap = max(1 + 2 * buf_cap(buf), new_len);
@@ -83,7 +90,6 @@ void* __buf_grow(const void* buf, size_t new_len, size_t elem_size)
     new_hdr->cap = new_cap;
     return new_hdr->buf;
 }
-
 
 typedef struct intern_str
 {
@@ -298,12 +304,91 @@ void init_stream(const char* str)
     next_token();
 }
 
+typedef enum instruction_type
+{
+    ADD,
+    POP,
+    PUSH
+} 
+instruction_type;
+
+typedef struct instruction
+{
+    instruction_type type;
+    int arg;
+} 
+instruction;
+
+int* stack; 
+instruction* instructions;
+
+int pop_stack(int* stack)
+{
+    int value = 0;
+    buffer_header* hdr = __buf_header(stack);
+    if (hdr->len > 0)
+    {
+        value = stack[hdr->len - 1];
+        stack[hdr->len - 1] = 0;
+        hdr->len--;
+    }
+    return value;
+}
+
+void stack_vm_test()
+{
+    buf_push(instructions, ((instruction) { PUSH, 1 }));
+    buf_push(instructions, ((instruction) { PUSH, 2 }));
+    buf_push(instructions, ((instruction) { ADD }));
+    buf_push(instructions, ((instruction) { POP }));
+
+    for (int index = 0; index < buf_len(instructions); index++)
+    {
+        instruction ins = instructions[index]; 
+        switch (ins.type)
+        {
+            case ADD:
+            {
+                if (buf_len(stack) >= 2)
+                {
+                    int val_1 = stack[buf_len(stack) - 1];
+                    int val_2 = stack[buf_len(stack) - 2];
+                    int result = val_1 + val_2;
+                    buf_push(stack, result);
+                }             
+            }
+            break;
+            case PUSH:
+            {
+                buf_push(stack, ins.arg);
+            }
+            break;
+            case POP:
+            {
+                int value = pop_stack(stack);
+                printf("%d", value);
+            }
+            break;
+            default:
+            {
+                fatal("unknown instruction type: ", ins.type);
+            }
+            break;
+
+        }
+    }
+
+    debug_breakpoint;
+}
+
 int main(int argc, char** argv)
 {
     stretchy_buffers_test();
     intern_str_test();
 
-    const char* parsing_test = "AA 12A BB A21 CC";
+    stack_vm_test();
+
+    const char* parsing_test = "AA 12 BB A21 CC";
 
     init_stream(parsing_test);
     while (token.kind)
