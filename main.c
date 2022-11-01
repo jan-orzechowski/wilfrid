@@ -304,79 +304,75 @@ void init_stream(const char* str)
     next_token();
 }
 
-typedef enum instruction_type
+typedef enum instruction
 {
+    HALT = 0,
     ADD,
     POP,
-    PUSH
-} 
-instruction_type;
-
-typedef struct instruction
-{
-    instruction_type type;
-    int arg;
+    PUSH 
 } 
 instruction;
 
-int* stack; 
-instruction* instructions;
+int* code;
+int code_size;
+int* stack;
+int stack_size;
+int ip;
+int sp;
 
-int pop_stack(int* stack)
+void run_vm(int* code)
 {
-    int value = 0;
-    buffer_header* hdr = __buf_header(stack);
-    if (hdr->len > 0)
+    instruction opcode = (instruction)code[0];
+    sp = -1;
+    while (opcode && ip < code_size)
     {
-        value = stack[hdr->len - 1];
-        stack[hdr->len - 1] = 0;
-        hdr->len--;
-    }
-    return value;
-}
-
-void stack_vm_test()
-{
-    buf_push(instructions, ((instruction) { PUSH, 1 }));
-    buf_push(instructions, ((instruction) { PUSH, 2 }));
-    buf_push(instructions, ((instruction) { ADD }));
-    buf_push(instructions, ((instruction) { POP }));
-
-    for (int index = 0; index < buf_len(instructions); index++)
-    {
-        instruction ins = instructions[index]; 
-        switch (ins.type)
+        switch (opcode)
         {
-            case ADD:
-            {
-                if (buf_len(stack) >= 2)
-                {
-                    int val_1 = stack[buf_len(stack) - 1];
-                    int val_2 = stack[buf_len(stack) - 2];
-                    int result = val_1 + val_2;
-                    buf_push(stack, result);
-                }             
-            }
-            break;
             case PUSH:
             {
-                buf_push(stack, ins.arg);
+                stack[++sp] = code[++ip];
             }
             break;
             case POP:
             {
-                int value = pop_stack(stack);
+                int value = stack[sp--];
                 printf("%d", value);
             }
             break;
-            default:
+            case ADD:
             {
-                fatal("unknown instruction type: ", ins.type);
+                int a = stack[sp--];
+                int b = stack[sp--];
+                stack[++sp] = a + b;
             }
             break;
-
+            case HALT:
+            {
+                return;
+            }
+            break;
         }
+
+        opcode = code[++ip];
     }
+
+    debug_breakpoint;
+}
+
+void stack_vm_test()
+{    
+    buf_push(code, PUSH);
+    buf_push(code, 1);
+    buf_push(code, PUSH);
+    buf_push(code, 2);
+    buf_push(code, ADD);
+    buf_push(code, POP);
+    code_size = buf_len(code);
+
+    stack_size = 1024;
+    stack = xmalloc(sizeof(int) * stack_size);
+
+    run_vm(code);
 
     debug_breakpoint;
 }
