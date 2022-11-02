@@ -309,7 +309,12 @@ typedef enum instruction
     HALT = 0,
     ADD,
     POP,
-    PUSH 
+    PUSH,
+    SUB,
+    DIV,
+    MUL,
+    PRINT,
+    BRANCH,
 } 
 instruction;
 
@@ -328,6 +333,12 @@ void run_vm(int* code)
     {
         switch (opcode)
         {
+            case BRANCH:
+            {
+                // argumentem jest miejsce, do którego mamy przeskoczyć
+                ip = code[++ip] - 1;
+            }
+            break;
             case PUSH:
             {
                 stack[++sp] = code[++ip];
@@ -344,6 +355,27 @@ void run_vm(int* code)
                 int a = stack[sp--];
                 int b = stack[sp--];
                 stack[++sp] = a + b;
+            }
+            break;
+            case SUB:
+            {
+                int a = stack[sp--];
+                int b = stack[sp--];
+                stack[++sp] = a - b;
+            }
+            break;
+            case MUL:
+            {
+                int a = stack[sp--];
+                int b = stack[sp--];
+                stack[++sp] = a * b;
+            }
+            break;
+            case DIV:
+            {
+                int a = stack[sp--];
+                int b = stack[sp--];
+                stack[++sp] = a / b;
             }
             break;
             case HALT:
@@ -366,7 +398,13 @@ void stack_vm_test()
     buf_push(code, PUSH);
     buf_push(code, 2);
     buf_push(code, ADD);
+    buf_push(code, BRANCH);
+    buf_push(code, 9);
+    buf_push(code, ADD);
+    buf_push(code, 4);
     buf_push(code, POP);
+
+   
     code_size = buf_len(code);
 
     stack_size = 1024;
