@@ -168,10 +168,17 @@ void stretchy_buffers_test()
 
 typedef enum token_kind
 {
+    TOKEN_EOF = 0,
     // pierwsze 128 wartości jest dla characters
     TOKEN_LAST_CHAR = 127,
     TOKEN_INT,
     TOKEN_NAME,
+    TOKEN_LEFT_PAREN,
+    TOKEN_RIGHT_PAREN,
+    TOKEN_ADD,
+    TOKEN_SUB,
+    TOKEN_MUL,
+    TOKEN_DIV
     // ...
 } 
 token_kind;
@@ -195,19 +202,12 @@ tok** all_tokens;
 
 void next_token()
 {
+    bool discard_token = false;
     token.start = stream;
     switch (*stream)
     {
-        case '0':
-        case '1':
-        case '2':
-        case '3':
-        case '4':
-        case '5':
-        case '6':
-        case '7':
-        case '8':
-        case '9':
+        case '0': case '1': case '2': case '3': case '4': case '5': 
+        case '6': case '7': case '8': case '9':
         {
             // idziemy po następnych
             int val = 0;
@@ -216,62 +216,21 @@ void next_token()
                 val *= 10; // dotychczasową wartość traktujemy jako 10 razy większą - bo znaleźliśmy kolejne miejsce dziesiętne
                 val += *stream++ - '0'; // przerabiamy char na integer
             }
+            stream--; // w ostatnim przejściu pętli posunęliśmy się o 1 za daleko
             token.kind = TOKEN_INT;
             token.val = val;
         }
         break;
-        case 'a':
-        case 'b':
-        case 'c':
-        case 'd':
-        case 'e':
-        case 'f':
-        case 'g':
-        case 'h':
-        case 'i':
-        case 'j':
-        case 'k':
-        case 'l':
-        case 'm':
-        case 'n':
-        case 'o':
-        case 'p':
-        case 'q':
-        case 'r':
-        case 's':
-        case 't':
-        case 'u':
-        case 'v':
-        case 'w':
-        case 'x':
-        case 'y':
-        case 'z':
-        case 'A':
-        case 'B':
-        case 'C':
-        case 'D':
-        case 'E':
-        case 'F':
-        case 'G':
-        case 'H':
-        case 'I':
-        case 'J':
-        case 'K':
-        case 'L':
-        case 'M':
-        case 'N':
-        case 'O':
-        case 'P':
-        case 'Q':
-        case 'R':
-        case 'S':
-        case 'T':
-        case 'U':
-        case 'V':
-        case 'W':
-        case 'X':
-        case 'Y':
-        case 'Z':
+        case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': 
+        case 'g': case 'h': case 'i': case 'j': case 'k': case 'l': 
+        case 'm': case 'n': case 'o': case 'p': case 'q': case 'r': 
+        case 's': case 't': case 'u': case 'v': case 'w': case 'x': 
+        case 'y': case 'z':
+        case 'A': case 'B': case 'C': case 'D': case 'E': case 'F':
+        case 'G': case 'H': case 'I': case 'J': case 'K': case 'L': 
+        case 'M': case 'N': case 'O': case 'P': case 'Q': case 'R':
+        case 'S': case 'T': case 'U': case 'V': case 'W': case 'X': 
+        case 'Y': case 'Z':
         case '_':
         {
             // zaczęliśmy od litery - dalej idziemy po cyfrach, literach i _
@@ -281,6 +240,41 @@ void next_token()
             }
             token.kind = TOKEN_NAME;
             token.name = str_intern_range(token.start, stream);
+        }
+        break;
+        case '+':
+        {
+            token.kind = TOKEN_ADD;
+        }
+        break;
+        case '-':
+        {
+            token.kind = TOKEN_SUB;
+        }
+        break;
+        case '*':
+        {
+            token.kind = TOKEN_MUL;
+        }
+        break;
+        case '/':
+        {
+            token.kind = TOKEN_DIV;
+        }
+        break;
+        case '(': 
+        {
+            token.kind = TOKEN_LEFT_PAREN;
+        }
+        break;
+        case ')':
+        {
+            token.kind = TOKEN_RIGHT_PAREN;
+        }
+        break;
+        case ' ':
+        {
+            discard_token = true;
         }
         break;
         default:
@@ -293,9 +287,12 @@ void next_token()
     token.end = stream;
     stream++; 
 
-    tok* new_tok = xmalloc(sizeof(token));
-    memcpy(new_tok, &token, sizeof(token));
-    buf_push(all_tokens, new_tok); 
+    if (false == discard_token)
+    {
+        tok* new_tok = xmalloc(sizeof(token));
+        memcpy(new_tok, &token, sizeof(token));
+        buf_push(all_tokens, new_tok);
+    }
 }
 
 void init_stream(const char* str)
@@ -422,8 +419,7 @@ int main(int argc, char** argv)
 
     stack_vm_test();
 
-    const char* parsing_test = "AA 12 BB A21 CC";
-
+    const char* parsing_test = "(12    + 4) + 28 - 14 + (8 - 4) / 2 + (2 * 2 - 1 * 4)";
     init_stream(parsing_test);
     while (token.kind)
     {
