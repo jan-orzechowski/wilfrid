@@ -300,7 +300,31 @@ void next_token()
 void init_stream(const char* str)
 {
     stream = str;
+    buf_free(all_tokens);    
     next_token();
+}
+
+typedef enum instruction
+{
+    HALT = 0,
+    ADD,
+    POP,
+    PUSH,
+    SUB,
+    DIV,
+    MUL,
+    PRINT,
+    BRANCH,
+}
+instruction;
+
+int* code;
+int code_size;
+
+void get_first_lexed_token()
+{
+    token = *all_tokens[0];
+    lexed_token_index = 1;
 }
 
 void next_lexed_token()
@@ -361,20 +385,19 @@ void parse_expr3()
     if (is_token_kind(TOKEN_INT))
     {
         int value = token.val;
-        printf("(VALUE %d) ", value);
         next_lexed_token();
+        buf_push(code, PUSH);
+        buf_push(code, value);
     }
     else
     {
         if (is_token_kind(TOKEN_LEFT_PAREN))
         {
-            printf("LEFT PAREN ");
             next_lexed_token();
             parse_expr();
             if (expect_token_kind(TOKEN_RIGHT_PAREN))
             {
                 // skończyliśmy
-                printf("RIGHT PAREN ");
             }
         }
     }
@@ -385,15 +408,14 @@ void parse_expr2()
     if (is_token_kind(TOKEN_ADD) || is_token_kind(TOKEN_SUB))
     {
         token_kind operation = token.kind;
-        if (operation == TOKEN_ADD)
-        {
-            printf("UNARY PLUS ");
-        }
-        else
-        {
-            printf("UNARY MINUS ");
-        }
+        next_lexed_token();
         parse_expr2();
+        if (operation == TOKEN_SUB)
+        {
+            buf_push(code, PUSH);
+            buf_push(code, -1);
+            buf_push(code, MUL);
+        }           
     }
     else
     {
@@ -408,15 +430,15 @@ void parse_expr1()
     {
         token_kind operation = token.kind;
         next_lexed_token();
+        parse_expr2();
         if (operation == TOKEN_MUL)
         {
-            printf("MUL ");
+            buf_push(code, MUL);
         }
         else
         {
-            printf("DIV ");
+            buf_push(code, DIV);
         }
-        parse_expr2();
     }
 }
 
@@ -427,15 +449,15 @@ void parse_expr0()
     {
         token_kind operation = token.kind;
         next_lexed_token();
+        parse_expr1(); 
         if (operation == TOKEN_ADD)
         {
-            printf("ADD ");
+            buf_push(code, ADD);
         }
         else
         {
-            printf("SUB ");
+            buf_push(code, SUB);
         }
-        parse_expr1(); 
     }
 }
 
@@ -444,30 +466,17 @@ void parse_expr()
     parse_expr0();
 }
 
-typedef enum instruction
-{
-    HALT = 0,
-    ADD,
-    POP,
-    PUSH,
-    SUB,
-    DIV,
-    MUL,
-    PRINT,
-    BRANCH,
-} 
-instruction;
-
-int* code;
-int code_size;
 int* stack;
 int stack_size;
 int ip;
 int sp;
 
+int* vm_output;
+
 void run_vm(int* code)
 {
     instruction opcode = (instruction)code[0];
+    ip = 0;
     sp = -1;
     while (opcode && ip < code_size)
     {
@@ -487,35 +496,35 @@ void run_vm(int* code)
             case POP:
             {
                 int value = stack[sp--];
-                printf("%d", value);
+                buf_push(vm_output, value);
             }
             break;
             case ADD:
             {
                 int a = stack[sp--];
                 int b = stack[sp--];
-                stack[++sp] = a + b;
+                stack[++sp] = b + a;
             }
             break;
             case SUB:
             {
                 int a = stack[sp--];
                 int b = stack[sp--];
-                stack[++sp] = a - b;
+                stack[++sp] = b - a;
             }
             break;
             case MUL:
             {
                 int a = stack[sp--];
                 int b = stack[sp--];
-                stack[++sp] = a * b;
+                stack[++sp] = b * a;
             }
             break;
             case DIV:
             {
                 int a = stack[sp--];
                 int b = stack[sp--];
-                stack[++sp] = a / b;
+                stack[++sp] = b / a;
             }
             break;
             case HALT:
@@ -543,7 +552,6 @@ void stack_vm_test()
     buf_push(code, ADD);
     buf_push(code, 4);
     buf_push(code, POP);
-
    
     code_size = buf_len(code);
 
@@ -553,7 +561,39 @@ void stack_vm_test()
     run_vm(code);
 
     debug_breakpoint;
+
+    buf_free(code);
+    free(stack);
 }
+
+int parsing_test(char* expr, int value)
+{
+    init_stream(expr);
+    while (token.kind)
+    {
+        next_token();
+    }
+
+    get_first_lexed_token();
+    parse_expr();
+    buf_push(code, POP);
+    code_size = buf_len(code);
+
+    stack_size = 1024;
+    stack = xmalloc(sizeof(int) * stack_size);
+
+    buf_free(vm_output);
+
+    run_vm(code);
+
+    assert(vm_output[0] == value);
+
+    buf_free(code);
+    buf_free(vm_output);
+    free(stack);
+}
+
+#define PARSING_TEST(expr) { int val = (expr); parsing_test(#expr, val); } 
 
 int main(int argc, char** argv)
 {
@@ -561,16 +601,10 @@ int main(int argc, char** argv)
     intern_str_test();
 
     stack_vm_test();
-
-    const char* parsing_test = "(12    + 4) + 28 - 14 + (8 - 4) / 2 + (2 * 2 - 1 * 4)";
-    init_stream(parsing_test);
-    while (token.kind)
-    {
-        next_token();
-    }
-
-    next_lexed_token();
-    parse_expr();
+    
+    PARSING_TEST(2 + 2);
+    PARSING_TEST((12    + 4) + 28 - 14 + (8 - 4) / 2 + (2 * 2 - 1 * 4));
+    PARSING_TEST(2 +-2 / -2);
 
     return 0;
 }
