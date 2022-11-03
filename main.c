@@ -6,6 +6,7 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <string.h>
+#include <stdbool.h>
 
 void* xrealloc(void* ptr, size_t num_bytes)
 {
@@ -199,6 +200,7 @@ tok;
 char* stream;
 tok token;
 tok** all_tokens;
+int lexed_token_index;
 
 void next_token()
 {
@@ -299,6 +301,147 @@ void init_stream(const char* str)
 {
     stream = str;
     next_token();
+}
+
+void next_lexed_token()
+{
+    if (lexed_token_index + 1 < buf_len(all_tokens))
+    {
+        tok* next_token = all_tokens[lexed_token_index];
+        if (next_token)
+        {
+            token = *next_token;
+            lexed_token_index++;
+        }
+    }
+    else
+    {
+        token.kind = TOKEN_EOF;
+    }
+}
+
+bool is_token_kind(token_kind kind)
+{
+    bool result = (token.kind == kind);
+    return result;
+}
+
+bool match_token_kind(token_kind kind)
+{
+    bool result = (token.kind == kind);
+    if (result)
+    {
+        next_lexed_token();
+    }
+    return result;
+}
+
+bool expect_token_kind(token_kind kind)
+{
+    bool result = match_token_kind(kind);
+    if (false == result)
+    {
+        fatal("expected token of different kind: %d", kind);
+    }
+    return result;
+}
+
+/*
+    expr3 = INT | '(' expr ')'
+    expr2 = { [+-] } expr2 | expr3
+    expr1 = expr2 { [/*] expr2 }
+    expr0 = expr1 { [+-] expr1 }
+    expr = expr0
+*/
+
+void parse_expr();
+
+void parse_expr3()
+{
+    if (is_token_kind(TOKEN_INT))
+    {
+        int value = token.val;
+        printf("(VALUE %d) ", value);
+        next_lexed_token();
+    }
+    else
+    {
+        if (is_token_kind(TOKEN_LEFT_PAREN))
+        {
+            printf("LEFT PAREN ");
+            next_lexed_token();
+            parse_expr();
+            if (expect_token_kind(TOKEN_RIGHT_PAREN))
+            {
+                // skończyliśmy
+                printf("RIGHT PAREN ");
+            }
+        }
+    }
+}
+
+void parse_expr2()
+{
+    if (is_token_kind(TOKEN_ADD) || is_token_kind(TOKEN_SUB))
+    {
+        token_kind operation = token.kind;
+        if (operation == TOKEN_ADD)
+        {
+            printf("UNARY PLUS ");
+        }
+        else
+        {
+            printf("UNARY MINUS ");
+        }
+        parse_expr2();
+    }
+    else
+    {
+        parse_expr3();
+    }
+}
+
+void parse_expr1()
+{
+    parse_expr2();
+    while (is_token_kind(TOKEN_MUL) || is_token_kind(TOKEN_DIV))
+    {
+        token_kind operation = token.kind;
+        next_lexed_token();
+        if (operation == TOKEN_MUL)
+        {
+            printf("MUL ");
+        }
+        else
+        {
+            printf("DIV ");
+        }
+        parse_expr2();
+    }
+}
+
+void parse_expr0()
+{
+    parse_expr1();
+    while (is_token_kind(TOKEN_ADD) || is_token_kind(TOKEN_SUB))
+    {
+        token_kind operation = token.kind;
+        next_lexed_token();
+        if (operation == TOKEN_ADD)
+        {
+            printf("ADD ");
+        }
+        else
+        {
+            printf("SUB ");
+        }
+        parse_expr1(); 
+    }
+}
+
+void parse_expr()
+{
+    parse_expr0();
 }
 
 typedef enum instruction
@@ -425,6 +568,9 @@ int main(int argc, char** argv)
     {
         next_token();
     }
+
+    next_lexed_token();
+    parse_expr();
 
     return 0;
 }
