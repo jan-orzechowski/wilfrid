@@ -51,31 +51,43 @@ void next_token()
         case '+':
         {
             token.kind = TOKEN_ADD;
+            stream++;
+            token.name = str_intern_range(token.start, stream);
         }
         break;
         case '-':
         {
             token.kind = TOKEN_SUB;
+            stream++;
+            token.name = str_intern_range(token.start, stream);
         }
         break;
         case '*':
         {
             token.kind = TOKEN_MUL;
+            stream++;
+            token.name = str_intern_range(token.start, stream);
         }
         break;
         case '/':
         {
             token.kind = TOKEN_DIV;
+            stream++;
+            token.name = str_intern_range(token.start, stream);
         }
         break;
         case '(':
         {
             token.kind = TOKEN_LEFT_PAREN;
+            stream++;
+            token.name = str_intern_range(token.start, stream);
         }
         break;
         case ')':
         {
             token.kind = TOKEN_RIGHT_PAREN;
+            stream++;
+            token.name = str_intern_range(token.start, stream);
         }
         break;
         case ' ':
@@ -101,7 +113,7 @@ void next_token()
     }
 }
 
-void init_stream(const char* str)
+void init_stream(char* str)
 {
     stream = str;
     buf_free(all_tokens);
