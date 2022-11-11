@@ -1,6 +1,25 @@
 ﻿#include "utils.h"
 #include "lexing.h"
 
+void print_token_kind(token_kind kind)
+{
+    switch (kind)
+    {
+        case TOKEN_EOF: { printf("EOF"); }; break;
+        case TOKEN_INT: { printf("INT"); }; break;
+        case TOKEN_NAME: { printf("NAME"); }; break;
+        case TOKEN_GT: { printf(">"); }; break;
+        case TOKEN_LT: { printf("<"); }; break;
+        case TOKEN_GEQ: { printf(">="); }; break;
+        case TOKEN_LEQ: { printf("<="); }; break; 
+        case TOKEN_EQ: { printf("=="); }; break;
+        case TOKEN_NEQ: { printf("!="); }; break;
+        case TOKEN_AND: { printf("AND"); }; break;
+        case TOKEN_OR: { printf("OR"); }; break;
+        default:{ printf("%.1s", &(char)kind); }; break;
+    }
+}
+
 char* stream;
 tok token;
 tok** all_tokens;
@@ -89,6 +108,102 @@ void next_token()
             token.kind = ')';
             stream++;
             token.name = str_intern_range(token.start, stream);
+        }
+        break;
+        case '<':
+        {
+            if (*(stream + 1) == '=')
+            {
+                stream += 2;
+                token.kind = TOKEN_LEQ;
+                token.name = str_intern_range(token.start, stream);
+            }
+            else
+            {
+                stream++;
+                token.kind = TOKEN_LT;
+                token.name = str_intern_range(token.start, stream);
+            }            
+        }
+        break;
+        case '>':
+        {
+            if (*(stream + 1) == '=')
+            {
+                stream += 2;
+                token.kind = TOKEN_GEQ;
+                token.name = str_intern_range(token.start, stream);
+            }
+            else
+            {
+                stream++;
+                token.kind = TOKEN_GT;
+                token.name = str_intern_range(token.start, stream);
+            }
+        }
+        break;
+        case '|':
+        {
+            if (*(stream + 1) == '|')
+            {
+                stream += 2;
+                token.kind = TOKEN_OR;
+                token.name = str_intern_range(token.start, stream);
+            }
+            else
+            {
+                stream++;
+                token.kind = '|';
+                token.name = str_intern_range(token.start, stream);
+            }
+        }
+        break;
+        case '&':
+        {
+            if (*(stream + 1) == '&')
+            {
+                stream += 2;
+                token.kind = TOKEN_AND;
+                token.name = str_intern_range(token.start, stream);
+            }
+            else
+            {
+                stream++;
+                token.kind = '&';
+                token.name = str_intern_range(token.start, stream);
+            }
+        }
+        break;
+        case '!':
+        {
+            if (*(stream + 1) == '=')
+            {
+                stream += 2;
+                token.kind = TOKEN_NEQ;
+                token.name = str_intern_range(token.start, stream);
+            }
+            else
+            {
+                stream++;
+                token.kind = '!';
+                token.name = str_intern_range(token.start, stream);
+            }
+        }
+        break;
+        case '=':
+        {
+            if (*(stream + 1) == '==')
+            {
+                stream += 2;
+                token.kind = TOKEN_EQ;
+                token.name = str_intern_range(token.start, stream);
+            }
+            else
+            {
+                stream++;
+                token.kind = '=';
+                token.name = str_intern_range(token.start, stream);
+            }
         }
         break;
         case ' ':

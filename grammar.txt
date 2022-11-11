@@ -54,7 +54,7 @@ statement = 'return' expression
      | 'for' '(' statement_list ';' expression ';' statement_list ')' statement_block
      | 'do' statement_block 'while' '(' expression ')'
      | switch '(' expression ')' switch_block
-     | expression (assign_operator expression)
+     | expression ('++' | '--' | assign_operator expression)
 
 statement_block = {statement}
 

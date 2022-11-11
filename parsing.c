@@ -52,14 +52,14 @@ void print_expression(expr* e)
         case EXPR_UNARY:
         {
             printf("(");
-            printf(&(char)e->binary_expr_value.operator);
+            print_token_kind(e->binary_expr_value.operator);
             print_expression(e->unary_expr_value.operand);
             printf(")");
         } break;
         case EXPR_BINARY:
         {
             printf("(");
-            printf(&(char)e->binary_expr_value.operator);
+            print_token_kind(e->binary_expr_value.operator);
             print_expression(e->binary_expr_value.left_operand);
             print_expression(e->binary_expr_value.right_operand);
             printf(")");
@@ -181,21 +181,50 @@ expr* parse_additive_expression()
     return e;
 }
 
-expr* parse_comparision_expression()
+expr* parse_comparison_expression()
 {
     expr* e = parse_additive_expression();
+    while (is_token_kind(TOKEN_EQ) || is_token_kind(TOKEN_NEQ)
+        || is_token_kind(TOKEN_GT) || is_token_kind(TOKEN_GEQ) 
+        || is_token_kind(TOKEN_LT) || is_token_kind(TOKEN_LEQ))
+    {
+        expr* left_expr = e;
+        token_kind op = token.kind;
+        next_lexed_token();
+        expr* right_expr = parse_additive_expression();
+
+        e = push_binary_expr(op, left_expr, right_expr);
+    }
     return e;
 }
 
 expr* parse_and_expression()
 {
-    expr* e = parse_comparision_expression();
+    expr* e = parse_comparison_expression();
+    while (is_token_kind(TOKEN_AND))
+    {
+        expr* left_expr = e;
+        token_kind op = token.kind;
+        next_lexed_token();
+        expr* right_expr = parse_comparison_expression();
+
+        e = push_binary_expr(op, left_expr, right_expr);
+    }
     return e;
 }
 
 expr* parse_or_expr()
 {
     expr* e = parse_and_expression();
+    while (is_token_kind(TOKEN_OR))
+    {
+        expr* left_expr = e;
+        token_kind op = token.kind;
+        next_lexed_token();
+        expr* right_expr = parse_and_expression();
+
+        e = push_binary_expr(op, left_expr, right_expr);
+    }
     return e;
 }
 
@@ -240,6 +269,9 @@ void test_parsing()
     parse_text_and_print_s_expressions(test_str);
        
     test_str = "a * b + -c * d + e * -f";
+    parse_text_and_print_s_expressions(test_str);
+
+    test_str = "a >= b || -c * d < e && -f";
     parse_text_and_print_s_expressions(test_str);
 
     debug_breakpoint;
