@@ -22,7 +22,7 @@ void next_token()
                 val *= 10; // dotychczasową wartość traktujemy jako 10 razy większą - bo znaleźliśmy kolejne miejsce dziesiętne
                 val += *stream++ - '0'; // przerabiamy char na integer
             }
-            stream--; // w ostatnim przejściu pętli posunęliśmy się o 1 za daleko
+            //stream--; // w ostatnim przejściu pętli posunęliśmy się o 1 za daleko
             token.kind = TOKEN_INT;
             token.val = val;
         }
@@ -46,46 +46,47 @@ void next_token()
             }
             token.kind = TOKEN_NAME;
             token.name = str_intern_range(token.start, stream);
+            stream++;
         }
         break;
         case '+':
         {
-            token.kind = TOKEN_ADD;
+            token.kind = '+';
             stream++;
             token.name = str_intern_range(token.start, stream);
         }
         break;
         case '-':
         {
-            token.kind = TOKEN_SUB;
+            token.kind = '-';
             stream++;
             token.name = str_intern_range(token.start, stream);
         }
         break;
         case '*':
         {
-            token.kind = TOKEN_MUL;
+            token.kind = '*';
             stream++;
             token.name = str_intern_range(token.start, stream);
         }
         break;
         case '/':
         {
-            token.kind = TOKEN_DIV;
+            token.kind = '/';
             stream++;
             token.name = str_intern_range(token.start, stream);
         }
         break;
         case '(':
         {
-            token.kind = TOKEN_LEFT_PAREN;
+            token.kind = '(';
             stream++;
             token.name = str_intern_range(token.start, stream);
         }
         break;
         case ')':
         {
-            token.kind = TOKEN_RIGHT_PAREN;
+            token.kind = ')';
             stream++;
             token.name = str_intern_range(token.start, stream);
         }
@@ -93,6 +94,7 @@ void next_token()
         case ' ':
         {
             discard_token = true;
+            stream++;
         }
         break;
         default:
@@ -102,8 +104,7 @@ void next_token()
         break;
     }
 
-    token.end = stream;
-    stream++;
+    token.end = stream;    
 
     if (false == discard_token)
     {

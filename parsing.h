@@ -9,11 +9,7 @@ typedef enum expr_kind
     EXPR_INT,
     EXPR_NAME,
     EXPR_UNARY,
-    EXPR_ADD,
-    EXPR_MUL,
-    EXPR_CMP,
-    EXPR_AND,
-    EXPR_OR,
+    EXPR_BINARY,
     EXPR_TERNARY
 } expr_kind;
 
