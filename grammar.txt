@@ -1,0 +1,61 @@
+EBNF grammar
+
+letter = [a-zA-Z_]*
+digit = [0-9]
+number = [1-9][0-9]*
+string = '"' (letter)* '"'
+identifier = letter {letter | digit | '_' }
+
+identifier_list = identifier {',' identifier }
+
+declaration = 'let' identifier ( '='  expression)
+            | 'struct' '{' identifier_list '}'
+
+expression = number | string | '(' expression ')'
+
+precedence:
+unary -
+* / 
++ - 
+comparison (==, >=, > etc.)
+?:
+
+example:
+2 + -3 / 5 == 1 ? 1 : 0 
+
+2 + -3/5
+
+
+2 * x == y ? 1 : 0
+
+x == 2 and y == 3 and (z > 1 and z < 2)
+
+base_expr = number | identifier | '(' expression ')'
+unary_expr = base_expr | [+-~!&*] base_expr
+mul_expr = unary_expr { [*/%] unary_expr }
+add_expr = mul_expr { [+-] mul_expr }
+cmp_expr = add_expr { [cmp operators] add_expr }
+and_expr = cmp_expr { 'and' cmp_expr }
+or_expr = and_expr { 'or' and_expr }
+ternary_expr = or_expr | ternary_expr '?' ternary_expr ':' ternary_expr
+expression = ternary_expr;
+
+print = 'print' identifier
+
+statement = 'return' expression
+     | 'break'
+     | 'continue'
+     | 'print' expression
+     | '{' {statement} '}'
+     | 'if' '(' expression ')' statement_block 
+        { 'else' 'if' '(' expression ')' statement_block) } 
+        ('else' statement_block)
+     | 'while' '(' expression ')' statement_block
+     | 'for' '(' statement_list ';' expression ';' statement_list ')' statement_block
+     | 'do' statement_block 'while' '(' expression ')'
+     | switch '(' expression ')' switch_block
+     | expression (assign_operator expression)
+
+statement_block = {statement}
+
+statement_list = {statement ','}
