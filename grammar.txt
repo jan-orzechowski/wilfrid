@@ -46,6 +46,7 @@ statement = 'return' expression
      | 'break'
      | 'continue'
      | 'print' expression
+     | declaration
      | '{' {statement} '}'
      | 'if' '(' expression ')' statement_block 
         { 'else' 'if' '(' expression ')' statement_block) } 
@@ -59,3 +60,10 @@ statement = 'return' expression
 statement_block = {statement}
 
 statement_list = {statement ','}
+
+f(x)
+fn f(i: int): int {  kod  }
+
+declaration = 'struct' '{' types_list '}'
+    | 'let' name (':' type) ('=' expression)
+    | 'fn' name '(' types_list ')' ':' type '{' statement_block '}'

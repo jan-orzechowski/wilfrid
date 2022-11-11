@@ -6,10 +6,15 @@ typedef enum token_kind
     TOKEN_STAR = 42,
     TOKEN_PLUS = 43,
     TOKEN_MINUS = 45,
+    TOKEN_ASSIGN = 61,
+    TOKEN_LEFT_PAREN = 40,
+    TOKEN_RIGHT_PAREN = 41,
+    TOKEN_BACKSLASH = 47,
     // pierwsze 128 wartości jest dla one-character tokens
     TOKEN_LAST_CHAR = 127,
     TOKEN_INT,
     TOKEN_NAME,
+    TOKEN_KEYWORD,
     TOKEN_GT, // >
     TOKEN_LT, // <
     TOKEN_GEQ, // >=
@@ -34,3 +39,25 @@ typedef struct tok
     };
 }
 tok;
+
+typedef enum keywords
+{
+    KEYWORD_RETURN,
+    KEYWORD_BREAK,
+    KEYWORD_CONTINUE,
+    KEYWORD_PRINT,
+    KEYWORD_IF,
+    KEYWORD_ELSE,
+    KEYWORD_FOR,
+    KEYWORD_WHILE,
+    KEYWORD_DO,
+    KEYWORD_SIZEOF,
+    KEYWORD_SWITCH,
+    KEYWORD_CASE,
+    KEYWORD_DEFAULT,
+    KEYWORD_ENUM,
+    KEYWORD_STRUCT,
+    KEYWORD_UNION,
+    KEYWORD_LET,
+    KEYWORD_FN,
+} keywords;

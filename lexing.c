@@ -20,6 +20,64 @@ void print_token_kind(token_kind kind)
     }
 }
 
+const char* struct_keyword;
+const char* enum_keyword;
+const char* union_keyword;
+const char* let_keyword;
+const char* fn_keyword;
+const char* sizeof_keyword;
+const char* break_keyword;
+const char* continue_keyword;
+const char* return_keyword;
+const char* if_keyword;
+const char* else_keyword;
+const char* while_keyword;
+const char* do_keyword;
+const char* for_keyword;
+const char* switch_keyword;
+const char* case_keyword;
+const char* default_keyword;
+
+const char* first_keyword;
+const char* last_keyword;
+char** keywords_list;
+
+#define KEYWORD(name) name##_keyword = str_intern(#name); buf_push(keywords_list, name##_keyword)
+
+void init_keywords()
+{
+    static bool initialized = false;
+    if (false == initialized)
+    {        
+        KEYWORD(struct);
+        KEYWORD(enum);
+        KEYWORD(union);
+        KEYWORD(let);
+        KEYWORD(fn);
+        KEYWORD(sizeof);
+        KEYWORD(break);
+        KEYWORD(continue);
+        KEYWORD(return);
+        KEYWORD(if);
+        KEYWORD(else);
+        KEYWORD(while);
+        KEYWORD(do);
+        KEYWORD(for);
+        KEYWORD(switch);
+        KEYWORD(case);
+        KEYWORD(default);
+    }
+    first_keyword = struct_keyword;
+    last_keyword = default_keyword;
+    initialized = true;
+}
+
+bool is_name_keyword(const char* name)
+{
+    bool result = (name >= first_keyword && name <= last_keyword);
+    return result;
+}
+
 char* stream;
 tok token;
 tok** all_tokens;
@@ -63,9 +121,15 @@ void next_token()
             {
                 stream++;
             }
-            token.kind = TOKEN_NAME;
             token.name = str_intern_range(token.start, stream);
-            stream++;
+            if (is_name_keyword(token.name))
+            {
+                token.kind = TOKEN_KEYWORD;
+            }
+            else
+            {
+                token.kind = TOKEN_NAME;
+            }
         }
         break;
         case '+':
@@ -231,6 +295,8 @@ void next_token()
 
 void init_stream(char* str)
 {
+    init_keywords();
+
     stream = str;
     buf_free(all_tokens);
     next_token();

@@ -47,6 +47,8 @@ void parsing_and_vm_test(char* expr, int value)
 
 int main(int argc, char** argv)
 {
+    string_arena = allocate_memory_arena(megabytes(10));
+
     stretchy_buffers_test();
     intern_str_test();
 

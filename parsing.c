@@ -236,13 +236,114 @@ expr* parse_ternary_expression()
 
 expr* parse_expression()
 {
-    expr* result = parse_ternary_expression();
-    print_expression(result);
-    printf("\n\n");
+    expr* result = parse_ternary_expression(); 
     return result;
 }
 
-void parse_text_and_print_s_expressions(char* test)
+//stmt* parse_statement()
+//{
+//    // return
+//    // break
+//    // continue
+//    // print
+//    // 
+//
+//    if ()
+//    {
+//
+//    }
+//    else
+//    {
+//        parse_expression();
+//        if () //inc dec assign
+//        {
+//
+//        }
+//    }
+//}
+
+decl* parse_declaration()
+{
+    decl* declaration = NULL;
+    if (is_token_kind(TOKEN_KEYWORD))
+    {
+        if (str_intern(token.name) == str_intern("let"))
+        {
+            declaration = push_struct(arena, decl);
+            declaration->kind = DECL_VARIABLE;
+
+            next_lexed_token();
+            if (is_token_kind(TOKEN_NAME))
+            {
+                declaration->variable_declaration.identifier = token.name;
+                next_lexed_token();
+            }
+            else
+            {
+                // błąd
+            }
+            
+            if (match_token_kind(':'))
+            {
+                if (is_token_kind(TOKEN_NAME))
+                {
+                    declaration->variable_declaration.type = token.name;
+                    next_lexed_token();
+                }               
+            } 
+            
+            if (match_token_kind('='))
+            {
+                expr* expression = parse_expression();
+                declaration->variable_declaration.expression = expression;
+            }
+        }
+        else if (str_intern(token.name) == str_intern("struct"))
+        {
+            declaration = push_struct(arena, decl);
+            declaration->kind = DECL_STRUCT;
+
+            next_lexed_token();
+        }
+        else if (str_intern(token.name) == str_intern("fn"))
+        {
+            declaration = push_struct(arena, decl);
+            declaration->kind = DECL_FUNCTION;
+
+            next_lexed_token();
+        }
+    }
+    return declaration;
+}
+
+
+void print_declaration(decl* declaration)
+{
+    switch (declaration->kind)
+    {
+        case DECL_FUNCTION: {}; break;
+        case DECL_VARIABLE: {
+            printf("declaration");
+            if (declaration->variable_declaration.identifier)
+            {
+                printf(" name: %s", declaration->variable_declaration.identifier);
+            }
+            if (declaration->variable_declaration.type)
+            {
+                printf(" type: %s", declaration->variable_declaration.type);
+            }
+            if (declaration->variable_declaration.expression)
+            {
+                printf(" exp: ");
+                print_expression(declaration->variable_declaration.expression);
+            }
+        
+        }; break;
+        case DECL_STRUCT: {}; break;
+    }
+}
+
+void parse_text_and_print_s_expressions(char* test, bool parse_as_declaration)
 {
     arena = allocate_memory_arena(megabytes(50));
 
@@ -255,9 +356,19 @@ void parse_text_and_print_s_expressions(char* test)
 
     get_first_lexed_token();
 
-    // teraz parsowanie
-    expr* result = parse_expression();
-
+    if (parse_as_declaration)
+    {
+        decl* result = parse_declaration();
+        print_declaration(result);
+        printf("\n\n");
+    }
+    else
+    {
+        decl* result = parse_expression();
+        print_expression(result);
+        printf("\n\n");
+    }
+  
     debug_breakpoint;
 
     free_memory_arena(arena);
@@ -266,18 +377,20 @@ void parse_text_and_print_s_expressions(char* test)
 void test_parsing()
 {
     char* test_str = "a + -b + c + -d + e + f";
-    parse_text_and_print_s_expressions(test_str);
+    parse_text_and_print_s_expressions(test_str, false);
        
     test_str = "a * b + -c * d + e * -f";
-    parse_text_and_print_s_expressions(test_str);
+    parse_text_and_print_s_expressions(test_str, false);
 
     test_str = "a >= b || -c * d < e && -f";
-    parse_text_and_print_s_expressions(test_str);
+    parse_text_and_print_s_expressions(test_str, false);
+
+    test_str = "let variable = (a - b) + (c / d)";
+    parse_text_and_print_s_expressions(test_str, true);
 
     debug_breakpoint;
 
- /*   test_str = "let x = 1";
-    parse_text_and_print_s_expressions(test_str);
+ /* 
 
     test_str = "y + (x - y)";
     parse_text_and_print_s_expressions(test_str);

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 typedef struct expr expr;
 typedef struct stmt stmt;
@@ -124,3 +124,43 @@ struct stmt
     };
 
 };
+
+typedef enum decl_kind
+{
+    DECL_STRUCT,
+    DECL_VARIABLE,
+    DECL_FUNCTION
+} decl_kind;
+
+typedef struct struct_decl
+{
+    int x; // tu powinna być lista typów
+} struct_decl;
+
+typedef struct variable_decl
+{
+    char* identifier;
+    char* type; 
+    expr* expression;
+} variable_decl;
+
+typedef struct function_decl
+{
+    char* name;
+    // types list
+    // return type
+    stmt_block statements;
+
+} function_decl;
+
+typedef struct decl
+{
+    decl_kind kind;
+    union
+    {
+        function_decl function_declaration;
+        variable_decl variable_declaration;
+        struct_decl struct_declaration;
+    };
+} decl;
+
