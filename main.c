@@ -52,6 +52,8 @@ int main(int argc, char** argv)
     stretchy_buffers_test();
     intern_str_test();
 
+    copy_test();
+
     stack_vm_test(code);
     
     test_parsing();

@@ -256,7 +256,7 @@ void next_token()
         break;
         case '=':
         {
-            if (*(stream + 1) == '==')
+            if (*(stream + 1) == '=')
             {
                 stream += 2;
                 token.kind = TOKEN_EQ;
@@ -266,6 +266,22 @@ void next_token()
             {
                 stream++;
                 token.kind = '=';
+                token.name = str_intern_range(token.start, stream);
+            }
+        }
+        break;
+        case ':':
+        {
+            if (*(stream + 1) == '=')
+            {
+                stream += 2;
+                token.kind = TOKEN_SHORT_ASSIGNMENT;
+                token.name = str_intern_range(token.start, stream);
+            }
+            else
+            {
+                stream++;
+                token.kind = TOKEN_COLON;
                 token.name = str_intern_range(token.start, stream);
             }
         }

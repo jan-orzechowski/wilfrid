@@ -57,13 +57,20 @@ statement = 'return' expression
      | switch '(' expression ')' switch_block
      | expression ('++' | '--' | assign_operator expression)
 
-statement_block = {statement}
+statement_block = '{' {statement} '}'
 
 statement_list = {statement ','}
 
 f(x)
 fn f(i: int): int {  kod  }
 
+let x = 3;
+let x: int
+x := y // short version
+
 declaration = 'struct' '{' types_list '}'
-    | 'let' name (':' type) ('=' expression)
-    | 'fn' name '(' types_list ')' ':' type '{' statement_block '}'
+    | 'let' identifier (':' type) ('=' expression)
+    | 'fn' identifier '(' function_parameter_list ')' ':' type statement_block
+
+function_parameter = identifier ':' type
+function_parameter_list = function_parameter {',' function_parameter}

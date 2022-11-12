@@ -240,27 +240,121 @@ expr* parse_expression()
     return result;
 }
 
-//stmt* parse_statement()
-//{
-//    // return
-//    // break
-//    // continue
-//    // print
-//    // 
-//
-//    if ()
-//    {
-//
-//    }
-//    else
-//    {
-//        parse_expression();
-//        if () //inc dec assign
-//        {
-//
-//        }
-//    }
-//}
+stmt* parse_statement()
+{
+    stmt* s = 0;
+
+    if (is_token_kind(TOKEN_KEYWORD))
+    {
+        const char* keyword = str_intern(token.name);
+        if (keyword == return_keyword)
+        {
+            s = push_struct(arena, stmt);
+            s->kind = STMT_RETURN;
+            next_lexed_token();
+            s->return_statement.expression = parse_expression();            
+        }
+        else if (keyword == break_keyword)
+        {
+            s = push_struct(arena, stmt);
+            s->kind = STMT_BREAK;
+            next_lexed_token();
+        }
+        else if (keyword == continue_keyword)
+        {
+            s = push_struct(arena, stmt);
+            s->kind = STMT_CONTINUE;
+            next_lexed_token();
+        }
+    }
+    else
+    {
+        //parse_expression();
+        //if () //inc dec assign
+        //{
+        //
+        //}
+    }
+
+    return s;
+}
+
+stmt_block parse_statement_block()
+{
+    stmt_block result = {0};
+    stmt** buf = 0;
+
+    stmt* s = parse_statement();
+    while (s)
+    {
+        buf_push(buf, s);
+        s = parse_statement();
+    }
+
+    int s_count = (int)buf_len(buf);
+    if (s_count > 0)
+    {
+        result.statements = copy_buf_to_arena(arena, buf);
+        result.statements_count = s_count;
+    }
+    return result;
+}
+
+function_param parse_function_parameter()
+{
+    function_param p = {0};
+    if (is_token_kind(TOKEN_NAME))
+    {
+        p.identifier = token.name;
+
+        next_lexed_token();
+        expect_token_kind(TOKEN_COLON);
+
+        if (is_token_kind(TOKEN_NAME))
+        {
+            p.type = token.name;
+            next_lexed_token();
+        }
+    }
+    return p;
+}
+
+function_param_list parse_function_parameter_list()
+{
+    function_param* params = NULL;
+
+    while (is_token_kind(TOKEN_NAME))
+    {
+        function_param p = parse_function_parameter();
+        if (p.identifier != NULL)
+        {
+            buf_push(params, p);
+
+            if (is_token_kind(TOKEN_COMMA))
+            {
+                next_lexed_token();
+            }
+            else
+            {
+                break;
+            }
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    function_param_list result = { 0 };
+    result.param_count = (int)buf_len(params);
+    if (result.param_count > 0)
+    {
+        result.params = copy_buf_to_arena(arena, params);
+        buf_free(params);
+    }
+
+    return result;
+}
 
 decl* parse_declaration()
 {
@@ -311,19 +405,119 @@ decl* parse_declaration()
             declaration->kind = DECL_FUNCTION;
 
             next_lexed_token();
+
+            if (is_token_kind(TOKEN_NAME))
+            {
+                declaration->function_declaration.name = token.name;
+                next_lexed_token();
+            }
+
+            expect_token_kind('(');
+
+            declaration->function_declaration.parameters
+                = parse_function_parameter_list();
+
+            expect_token_kind(')');
+
+            if (is_token_kind(':'))
+            {
+                next_lexed_token();
+                if (is_token_kind(TOKEN_NAME))
+                {
+                    declaration->function_declaration.return_type = token.name;
+                    next_lexed_token();
+                }
+            }
+
+            expect_token_kind('{');
+            
+            declaration->function_declaration.statements = parse_statement_block();
+
+            expect_token_kind('}');
+
         }
     }
     return declaration;
 }
 
+void print_statement(stmt* statement)
+{
+    if (statement == NULL)
+    {
+        return;
+    }
+
+    switch (statement->kind)
+    {
+        case STMT_RETURN: {
+            printf("return: (");
+            print_expression(statement->return_statement.expression);
+            printf(")");
+        }; break;
+        case STMT_BREAK: { printf("break "); }; break;
+        case STMT_CONTINUE: { printf("continue "); }; break;
+        case STMT_PRINT: {}; break;
+        case STMT_LIST: {}; break;
+        case STMT_IF_ELSE: {}; break;
+        case STMT_WHILE: {}; break;
+        case STMT_FOR: {}; break;
+        case STMT_SWITCH: {}; break;
+        case STMT_EXPRESSION: {
+            print_expression(statement->return_statement.expression);
+        }; break;
+    }
+}
+
+void print_statement_block(stmt_block block)
+{
+    for (int index = 0; index < block.statements_count; index++)
+    {
+        print_statement(block.statements[index]);
+    }
+}
+
+void print_function_param(function_param param)
+{
+    printf("(param name: %s", param.identifier);
+    printf(" type: %s)", param.type);
+}
 
 void print_declaration(decl* declaration)
 {
+    if (declaration == NULL)
+    {
+        return;
+    }
+
     switch (declaration->kind)
     {
-        case DECL_FUNCTION: {}; break;
+        case DECL_FUNCTION: {
+            printf("(fn decl");
+            if (declaration->function_declaration.name)
+            {
+                printf(" name: %s", declaration->function_declaration.name);
+            }
+
+            if (declaration->function_declaration.parameters.param_count > 0)
+            {
+                printf(" params: ");
+                for (int index = 0; index < declaration->function_declaration.parameters.param_count; index++)
+                {
+                    print_function_param(declaration->function_declaration.parameters.params[index]);
+                }
+            }
+
+            if (declaration->function_declaration.return_type)
+            {
+                printf(" return type: %s", declaration->function_declaration.return_type);
+            }
+            printf(" body: (");
+            print_statement_block(declaration->function_declaration.statements);
+            printf("))");
+        }; 
+        break;
         case DECL_VARIABLE: {
-            printf("declaration");
+            printf("(var decl");
             if (declaration->variable_declaration.identifier)
             {
                 printf(" name: %s", declaration->variable_declaration.identifier);
@@ -337,8 +531,9 @@ void print_declaration(decl* declaration)
                 printf(" exp: ");
                 print_expression(declaration->variable_declaration.expression);
             }
-        
-        }; break;
+            printf(")");
+        }; 
+        break;
         case DECL_STRUCT: {}; break;
     }
 }
@@ -364,7 +559,7 @@ void parse_text_and_print_s_expressions(char* test, bool parse_as_declaration)
     }
     else
     {
-        decl* result = parse_expression();
+        expr* result = parse_expression();
         print_expression(result);
         printf("\n\n");
     }
@@ -381,11 +576,17 @@ void test_parsing()
        
     test_str = "a * b + -c * d + e * -f";
     parse_text_and_print_s_expressions(test_str, false);
-
+    
     test_str = "a >= b || -c * d < e && -f";
     parse_text_and_print_s_expressions(test_str, false);
+    
+    test_str = "let some_variable = (a - b) + (c / d)";
+    parse_text_and_print_s_expressions(test_str, true);
 
-    test_str = "let variable = (a - b) + (c / d)";
+    test_str = "let some_variable : float = (a == -b)";
+    parse_text_and_print_s_expressions(test_str, true);
+
+    test_str = "fn some_function (a: int, b: float, c : int ) : float { return a + b }";
     parse_text_and_print_s_expressions(test_str, true);
 
     debug_breakpoint;

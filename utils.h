@@ -6,6 +6,8 @@
 #include <assert.h>
 #include <string.h>
 
+#define debug_breakpoint {int x = 0;}
+
 void* xrealloc(void* ptr, size_t num_bytes)
 {
     ptr = realloc(ptr, num_bytes);
@@ -87,6 +89,9 @@ void fatal(const char* fmt, ...)
     printf("\n");
 
     va_end(args);
+
+    debug_breakpoint;
+
     exit(1);
 }
 
@@ -104,14 +109,14 @@ buffer_header;
 #define __buf_header(b) ((buffer_header*)((char*)(b) - offsetof(buffer_header, buf)))
 #define buf_len(b) ((b) ? __buf_header(b)->len : 0)
 #define buf_cap(b) ((b) ? __buf_header(b)->cap : 0)
+#define buf_end(b) ((b) + buf_len(b))
+#define buf_sizeof(b) ((b) ? buf_len(b) * sizeof(*b) : 0)
 
 #define __buf_fits(b, n) (buf_len(b) + (n) <= buf_cap(b))
 #define __buf_fit(b, n) (__buf_fits((b), (n)) ? 0 : ((b) = __buf_grow((b), buf_len(b) + (n), sizeof(*(b)))))
 
 #define buf_push(b, x) (__buf_fit((b), 1), (b)[__buf_header(b)->len++] = (x))
 #define buf_free(b) ((b) ? (free(__buf_header(b)), (b) = NULL) : 0)
-
-#define debug_breakpoint {int x = 0;}
 
 // do debugowania - w watch window makra nie działają...
 buffer_header* __get_buf_header(void* ptr)
@@ -128,7 +133,8 @@ void* __buf_grow(const void* buf, size_t new_len, size_t elem_size)
     buffer_header* new_hdr;
     if (buf)
     {
-        new_hdr = (buffer_header*)xrealloc(__buf_header(buf), new_size);
+        new_hdr = __buf_header(buf);
+        new_hdr = (buffer_header*)xrealloc(new_hdr, new_size);
     }
     else
     {
@@ -137,6 +143,47 @@ void* __buf_grow(const void* buf, size_t new_len, size_t elem_size)
     }
     new_hdr->cap = new_cap;
     return new_hdr->buf;
+}
+
+#define copy_buf_to_arena(arena, buf) __copy_buf_to_arena((arena), (buf), sizeof(*(buf)))
+
+void copy_test();
+
+void* __copy_buf_to_arena(memory_arena* arena, const void* buf, size_t elem_size)
+{
+    void* dest = NULL;    
+    if (buf)
+    {
+        buffer_header* hdr = __buf_header(buf);
+        dest = push_size(arena, hdr->len * elem_size);
+        memcpy(dest, buf, hdr->len * elem_size);
+    }
+
+    return dest;
+}
+
+void copy_test()
+{
+    memory_arena* test = allocate_memory_arena(kilobytes(1));
+
+    int* buffer = 0;
+    for (int i = 0; i < 128; i++)
+    {
+        buf_push(buffer, i);
+    }
+
+    int* new_array = (int*)copy_buf_to_arena(test, buffer);
+
+    for (int i = 0; i < 128; i++)
+    {
+        if (new_array[i] != i)
+        {
+            debug_breakpoint;
+        }
+    }
+
+    free(test);
+    buf_free(buffer);
 }
 
 typedef struct intern_str

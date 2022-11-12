@@ -53,8 +53,7 @@ struct expr
 
 typedef struct stmt_block
 {
-    // list of statements
-    stmt* statements;
+    stmt** statements;
     size_t statements_count;
 } stmt_block;
 
@@ -144,11 +143,23 @@ typedef struct variable_decl
     expr* expression;
 } variable_decl;
 
+typedef struct function_param
+{
+    char* identifier;
+    char* type;
+} function_param;
+
+typedef struct function_param_list
+{
+    function_param* params;
+    int param_count;
+} function_param_list;
+
 typedef struct function_decl
 {
     char* name;
-    // types list
-    // return type
+    function_param_list parameters;
+    char* return_type;
     stmt_block statements;
 
 } function_decl;

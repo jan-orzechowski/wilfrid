@@ -5,7 +5,9 @@ typedef enum token_kind
     TOKEN_EOF = 0,
     TOKEN_STAR = 42,
     TOKEN_PLUS = 43,
+    TOKEN_COMMA = 44,
     TOKEN_MINUS = 45,
+    TOKEN_COLON = 58,
     TOKEN_ASSIGN = 61,
     TOKEN_LEFT_PAREN = 40,
     TOKEN_RIGHT_PAREN = 41,
@@ -15,6 +17,7 @@ typedef enum token_kind
     TOKEN_INT,
     TOKEN_NAME,
     TOKEN_KEYWORD,
+    TOKEN_SHORT_ASSIGNMENT, // :=
     TOKEN_GT, // >
     TOKEN_LT, // <
     TOKEN_GEQ, // >=
