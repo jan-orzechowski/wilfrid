@@ -44,7 +44,7 @@ char** keywords_list;
 
 #define KEYWORD(name) name##_keyword = str_intern(#name); buf_push(keywords_list, name##_keyword)
 
-void init_keywords()
+void init_keywords(void)
 {
     static bool initialized = false;
     if (false == initialized)
@@ -83,7 +83,7 @@ tok token;
 tok** all_tokens;
 int lexed_token_index;
 
-void next_token()
+void next_token(void)
 {
     bool discard_token = false;
     token.start = stream;
@@ -318,13 +318,13 @@ void init_stream(char* str)
     next_token();
 }
 
-void get_first_lexed_token()
+void get_first_lexed_token(void)
 {
     token = *all_tokens[0];
     lexed_token_index = 1;
 }
 
-void next_lexed_token()
+void next_lexed_token(void)
 {
     if (lexed_token_index + 1 < buf_len(all_tokens))
     {

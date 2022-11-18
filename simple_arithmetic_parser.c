@@ -30,9 +30,9 @@ bool expect_token_kind(token_kind kind)
     return result;
 }
 
-void parse_expr();
+void parse_expr(void);
 
-void parse_expr3()
+void parse_expr3(void)
 {
     if (is_token_kind(TOKEN_INT))
     {
@@ -55,7 +55,7 @@ void parse_expr3()
     }
 }
 
-void parse_expr2()
+void parse_expr2(void)
 {
     if (is_token_kind(TOKEN_ADD) || is_token_kind(TOKEN_SUB))
     {
@@ -75,7 +75,7 @@ void parse_expr2()
     }
 }
 
-void parse_expr1()
+void parse_expr1(void)
 {
     parse_expr2();
     while (is_token_kind(TOKEN_MUL) || is_token_kind(TOKEN_DIV))
@@ -94,7 +94,7 @@ void parse_expr1()
     }
 }
 
-void parse_expr0()
+void parse_expr0(void)
 {
     parse_expr1();
     while (is_token_kind(TOKEN_ADD) || is_token_kind(TOKEN_SUB))
@@ -113,7 +113,7 @@ void parse_expr0()
     }
 }
 
-void parse_expression()
+void parse_expression(void)
 {
     parse_expr0();
 }

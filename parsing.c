@@ -105,9 +105,9 @@ expr* push_binary_expr(token_kind operator, expr* left_operand, expr* right_oper
     return result;
 }
 
-expr* parse_expression();
+expr* parse_expression(void);
 
-expr* parse_base_expression()
+expr* parse_base_expression(void)
 {
     expr* result = NULL;
     if (is_token_kind(TOKEN_INT))
@@ -129,7 +129,7 @@ expr* parse_base_expression()
     return result;
 }
 
-expr* parse_unary_expression()
+expr* parse_unary_expression(void)
 {
     expr* e = parse_base_expression();
     if (e == NULL)
@@ -147,7 +147,7 @@ expr* parse_unary_expression()
 }
 
 
-expr* parse_multiplicative_expression()
+expr* parse_multiplicative_expression(void)
 {
     expr* e = parse_unary_expression();
     while (is_token_kind('*') || is_token_kind('/'))
@@ -166,7 +166,7 @@ expr* parse_multiplicative_expression()
 // parsujemy jako
 // (((((a + b) + c) + d) + e) + f)
 
-expr* parse_additive_expression()
+expr* parse_additive_expression(void)
 {
     expr* e = parse_multiplicative_expression();
     while (is_token_kind('+') || is_token_kind('-'))
@@ -181,7 +181,7 @@ expr* parse_additive_expression()
     return e;
 }
 
-expr* parse_comparison_expression()
+expr* parse_comparison_expression(void)
 {
     expr* e = parse_additive_expression();
     while (is_token_kind(TOKEN_EQ) || is_token_kind(TOKEN_NEQ)
@@ -198,7 +198,7 @@ expr* parse_comparison_expression()
     return e;
 }
 
-expr* parse_and_expression()
+expr* parse_and_expression(void)
 {
     expr* e = parse_comparison_expression();
     while (is_token_kind(TOKEN_AND))
@@ -213,7 +213,7 @@ expr* parse_and_expression()
     return e;
 }
 
-expr* parse_or_expr()
+expr* parse_or_expr(void)
 {
     expr* e = parse_and_expression();
     while (is_token_kind(TOKEN_OR))
@@ -228,19 +228,19 @@ expr* parse_or_expr()
     return e;
 }
 
-expr* parse_ternary_expression()
+expr* parse_ternary_expression(void)
 {
     expr* e = parse_or_expr();
     return e;
 }
 
-expr* parse_expression()
+expr* parse_expression(void)
 {
     expr* result = parse_ternary_expression(); 
     return result;
 }
 
-stmt* parse_statement()
+stmt* parse_statement(void)
 {
     stmt* s = 0;
 
@@ -279,7 +279,7 @@ stmt* parse_statement()
     return s;
 }
 
-stmt_block parse_statement_block()
+stmt_block parse_statement_block(void)
 {
     stmt_block result = {0};
     stmt** buf = 0;
@@ -300,7 +300,7 @@ stmt_block parse_statement_block()
     return result;
 }
 
-function_param parse_function_parameter()
+function_param parse_function_parameter(void)
 {
     function_param p = {0};
     if (is_token_kind(TOKEN_NAME))
@@ -319,7 +319,7 @@ function_param parse_function_parameter()
     return p;
 }
 
-function_param_list parse_function_parameter_list()
+function_param_list parse_function_parameter_list(void)
 {
     function_param* params = NULL;
 
@@ -356,7 +356,7 @@ function_param_list parse_function_parameter_list()
     return result;
 }
 
-decl* parse_declaration()
+decl* parse_declaration(void)
 {
     decl* declaration = NULL;
     if (is_token_kind(TOKEN_KEYWORD))
@@ -569,7 +569,7 @@ void parse_text_and_print_s_expressions(char* test, bool parse_as_declaration)
     free_memory_arena(arena);
 }
 
-void test_parsing()
+void test_parsing(void)
 {
     char* test_str = "a + -b + c + -d + e + f";
     parse_text_and_print_s_expressions(test_str, false);
