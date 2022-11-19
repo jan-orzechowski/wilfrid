@@ -240,6 +240,8 @@ expr* parse_expression(void)
     return result;
 }
 
+decl* parse_declaration(void);
+
 stmt* parse_statement(void)
 {
     stmt* s = 0;
@@ -266,9 +268,18 @@ stmt* parse_statement(void)
             s->kind = STMT_CONTINUE;
             next_lexed_token();
         }
+        else if (keyword == let_keyword)
+        {
+            decl* d = parse_declaration();
+            s = push_struct(arena, stmt);
+            s->decl_statement.decl = d;
+            s->kind = STMT_DECL;
+        }
     }
     else
     {
+
+        debug_breakpoint;
         //parse_expression();
         //if () //inc dec assign
         //{
@@ -361,7 +372,7 @@ decl* parse_declaration(void)
     decl* declaration = NULL;
     if (is_token_kind(TOKEN_KEYWORD))
     {
-        if (str_intern(token.name) == str_intern("let"))
+        if (str_intern(token.name) == let_keyword)
         {
             declaration = push_struct(arena, decl);
             declaration->kind = DECL_VARIABLE;
@@ -392,14 +403,14 @@ decl* parse_declaration(void)
                 declaration->variable_declaration.expression = expression;
             }
         }
-        else if (str_intern(token.name) == str_intern("struct"))
+        else if (str_intern(token.name) == struct_keyword)
         {
             declaration = push_struct(arena, decl);
             declaration->kind = DECL_STRUCT;
 
             next_lexed_token();
         }
-        else if (str_intern(token.name) == str_intern("fn"))
+        else if (str_intern(token.name) == fn_keyword)
         {
             declaration = push_struct(arena, decl);
             declaration->kind = DECL_FUNCTION;
@@ -440,6 +451,8 @@ decl* parse_declaration(void)
     return declaration;
 }
 
+void print_declaration(decl* declaration);
+
 void print_statement(stmt* statement)
 {
     if (statement == NULL)
@@ -462,6 +475,11 @@ void print_statement(stmt* statement)
         case STMT_WHILE: {}; break;
         case STMT_FOR: {}; break;
         case STMT_SWITCH: {}; break;
+        case STMT_DECL:
+        {
+            print_declaration(statement->decl_statement.decl);
+        }
+        break;
         case STMT_EXPRESSION: {
             print_expression(statement->return_statement.expression);
         }; break;
@@ -571,7 +589,9 @@ void parse_text_and_print_s_expressions(char* test, bool parse_as_declaration)
 
 void test_parsing(void)
 {
-    char* test_str = "a + -b + c + -d + e + f";
+    char* test_str = 0;
+    
+    test_str = "a + -b + c + -d + e + f";
     parse_text_and_print_s_expressions(test_str, false);
        
     test_str = "a * b + -c * d + e * -f";
@@ -589,21 +609,30 @@ void test_parsing(void)
     test_str = "fn some_function (a: int, b: float, c : int ) : float { return a + b }";
     parse_text_and_print_s_expressions(test_str, true);
 
+    test_str = "fn some_function () {\
+        let x = 1\
+        let y = 2\
+        return x + y }";
+    parse_text_and_print_s_expressions(test_str, true);
+
     debug_breakpoint;
 
- /* 
 
-    test_str = "y + (x - y)";
-    parse_text_and_print_s_expressions(test_str);
+    /*
+        co zostało:
+        * deklaracje: structs, unions, enums
+        * statements: pętle, switche, wywołania funkcji
+        * inne: ifs, else ifs, sizeof
+        * decrement, increment
+    */
 
-    test_str = "if (x == y) { x = y - 1 } ";
-    parse_text_and_print_s_expressions(test_str);
-
-    test_str = 
-"for(int i = 0; i < length; i++)\
-{\
-    print i\
-}";
-    parse_text_and_print_s_expressions(test_str);*/
+    /*
+    test_str = "struct x { a: int, b: float, c: y* }"
+    test_str = "union some_union { struct x { a: int }, struct y { b: uint } }"
+    test_str = "enum some_enum { A = 1, B, C }"
+    test_str = " fn some_function() { let x = 100\
+        for (i = 0; i < x; i++) { x-- } x = x + 1 }"
+    test_str = "fn some_function() { let x = 1 x++ ==x if (x == 1) { return true } }"
+    */
 
 }

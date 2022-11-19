@@ -2,6 +2,7 @@
 
 typedef struct expr expr;
 typedef struct stmt stmt;
+typedef struct decl decl;
 
 typedef enum expr_kind
 {
@@ -63,6 +64,7 @@ typedef enum stmt_kind
     STMT_RETURN,
     STMT_BREAK,
     STMT_CONTINUE,
+    STMT_DECL,
     STMT_PRINT,
     STMT_LIST,
     STMT_IF_ELSE,
@@ -105,6 +107,11 @@ typedef struct return_stmt
     expr* expression;
 } return_stmt;
 
+typedef struct decl_stmt
+{
+    decl* decl;
+} decl_stmt;
+
 struct stmt
 {
     // brakuje:
@@ -118,10 +125,9 @@ struct stmt
         stmt* statement_list;
         if_else if_else_statement;
         switch_stmt switch_statement;
-        
+        decl_stmt decl_statement;
         expr* expression;
     };
-
 };
 
 typedef enum decl_kind
@@ -164,7 +170,7 @@ typedef struct function_decl
 
 } function_decl;
 
-typedef struct decl
+struct decl
 {
     decl_kind kind;
     union
@@ -173,5 +179,5 @@ typedef struct decl
         variable_decl variable_declaration;
         struct_decl struct_declaration;
     };
-} decl;
+};
 
