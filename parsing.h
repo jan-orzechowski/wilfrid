@@ -133,13 +133,22 @@ struct stmt
 typedef enum decl_kind
 {
     DECL_STRUCT,
+    DECL_UNION,
     DECL_VARIABLE,
     DECL_FUNCTION
 } decl_kind;
 
+typedef struct struct_field
+{
+    char* identifier;
+    char* type;
+} struct_field;
+
 typedef struct struct_decl
 {
-    int x; // tu powinna być lista typów
+    char* identifier;
+    struct_field* fields;
+    size_t fields_count;
 } struct_decl;
 
 typedef struct variable_decl
@@ -148,6 +157,13 @@ typedef struct variable_decl
     char* type; 
     expr* expression;
 } variable_decl;
+
+typedef struct union_decl
+{
+    char* identifier;
+    struct_decl* structs;
+    size_t structs_count;
+} union_decl;
 
 typedef struct function_param
 {
@@ -178,6 +194,7 @@ struct decl
         function_decl function_declaration;
         variable_decl variable_declaration;
         struct_decl struct_declaration;
+
     };
 };
 

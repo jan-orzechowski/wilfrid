@@ -367,6 +367,49 @@ function_param_list parse_function_parameter_list(void)
     return result;
 }
 
+struct_field parse_struct_field()
+{
+    struct_field result = {0};
+    if (is_token_kind(TOKEN_NAME))
+    {        
+        result.identifier = token.name;
+
+        next_lexed_token();
+        expect_token_kind(TOKEN_COLON);
+
+        if (is_token_kind(TOKEN_NAME))
+        {
+            result.type = token.name;
+            next_lexed_token();
+        }
+
+        if (is_token_kind(','))
+        {
+            next_lexed_token();
+        }
+    }
+    return result;
+}
+
+void parse_struct_fields(struct_decl* struct_decl)
+{
+    struct_field* fields = 0;
+
+    struct_field new_field = parse_struct_field();
+    while (new_field.type)
+    {
+        buf_push(fields, new_field);
+        new_field = parse_struct_field();
+    }
+
+    struct_decl->fields_count = (int)buf_len(fields);
+    if (struct_decl->fields_count > 0)
+    {
+        struct_decl->fields = copy_buf_to_arena(arena, fields);
+        buf_free(fields);
+    }
+}
+
 decl* parse_declaration(void)
 {
     decl* declaration = NULL;
@@ -409,6 +452,17 @@ decl* parse_declaration(void)
             declaration->kind = DECL_STRUCT;
 
             next_lexed_token();
+            if (is_token_kind(TOKEN_NAME))
+            {
+                declaration->struct_declaration.identifier = token.name;
+                next_lexed_token();
+            }
+
+            expect_token_kind('{');
+
+            parse_struct_fields(&declaration->struct_declaration);
+
+            expect_token_kind('}');
         }
         else if (str_intern(token.name) == fn_keyword)
         {
@@ -445,7 +499,6 @@ decl* parse_declaration(void)
             declaration->function_declaration.statements = parse_statement_block();
 
             expect_token_kind('}');
-
         }
     }
     return declaration;
@@ -552,7 +605,23 @@ void print_declaration(decl* declaration)
             printf(")");
         }; 
         break;
-        case DECL_STRUCT: {}; break;
+        case DECL_STRUCT: {
+            printf("(struct decl");
+            if (declaration->struct_declaration.identifier)
+            {
+                printf(" name: %s", declaration->struct_declaration.identifier);
+            }
+            
+            for (size_t index = 0; 
+                index < declaration->struct_declaration.fields_count; 
+                index++)
+            {
+                printf("(name: %s", declaration->struct_declaration.fields[index].identifier);
+                printf(" type: %s)", declaration->struct_declaration.fields[index].type);
+            }
+        
+            printf(")");
+        }; break;
     }
 }
 
@@ -590,7 +659,7 @@ void parse_text_and_print_s_expressions(char* test, bool parse_as_declaration)
 void test_parsing(void)
 {
     char* test_str = 0;
-    
+
     test_str = "a + -b + c + -d + e + f";
     parse_text_and_print_s_expressions(test_str, false);
        
@@ -615,6 +684,9 @@ void test_parsing(void)
         return x + y }";
     parse_text_and_print_s_expressions(test_str, true);
 
+    test_str = "struct x { a: int, b: float, c: y }";
+    parse_text_and_print_s_expressions(test_str, true);
+
     debug_breakpoint;
 
 
@@ -627,12 +699,10 @@ void test_parsing(void)
     */
 
     /*
-    test_str = "struct x { a: int, b: float, c: y* }"
     test_str = "union some_union { struct x { a: int }, struct y { b: uint } }"
     test_str = "enum some_enum { A = 1, B, C }"
     test_str = " fn some_function() { let x = 100\
         for (i = 0; i < x; i++) { x-- } x = x + 1 }"
     test_str = "fn some_function() { let x = 1 x++ ==x if (x == 1) { return true } }"
-    */
-
+    */    
 }
