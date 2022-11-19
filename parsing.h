@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include <stdint.h>
+
 typedef struct expr expr;
 typedef struct stmt stmt;
 typedef struct decl decl;
@@ -114,10 +116,6 @@ typedef struct decl_stmt
 
 struct stmt
 {
-    // brakuje:
-    // break, continue
-    // while, for, do while
-    // assign
     stmt_kind kind;
     union
     {
@@ -135,7 +133,8 @@ typedef enum decl_kind
     DECL_STRUCT,
     DECL_UNION,
     DECL_VARIABLE,
-    DECL_FUNCTION
+    DECL_FUNCTION,
+    DECL_ENUM
 } decl_kind;
 
 typedef struct aggregate_field
@@ -146,14 +145,12 @@ typedef struct aggregate_field
 
 typedef struct aggregate_decl
 {
-    char* identifier;
     aggregate_field* fields;
     size_t fields_count;
 } aggregate_decl;
 
 typedef struct variable_decl
 {
-    char* identifier;
     char* type; 
     expr* expression;
 } variable_decl;
@@ -172,21 +169,34 @@ typedef struct function_param_list
 
 typedef struct function_decl
 {
-    char* name;
     function_param_list parameters;
     char* return_type;
     stmt_block statements;
-
 } function_decl;
+
+typedef struct enum_value
+{
+    char* identifier;
+    bool value_set;
+    int64_t value;
+} enum_value;
+
+typedef struct enum_decl
+{
+    enum_value* values;
+    size_t values_count;
+} enum_decl;
 
 struct decl
 {
     decl_kind kind;
+    char* identifier;
     union
     {
         function_decl function_declaration;
         variable_decl variable_declaration;
         aggregate_decl aggregate_declaration;
+        enum_decl enum_declaration;
     };
 };
 

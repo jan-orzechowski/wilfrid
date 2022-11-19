@@ -363,7 +363,7 @@ function_param_list parse_function_parameter_list(void)
     return result;
 }
 
-aggregate_field parse_aggregate_field()
+aggregate_field parse_aggregate_field(void)
 {
     aggregate_field result = {0};
     if (is_token_kind(TOKEN_NAME))
@@ -406,6 +406,52 @@ void parse_aggregate_fields(aggregate_decl* decl)
     }
 }
 
+enum_value parse_enum_value(void)
+{
+    enum_value result = { 0 };
+    if (is_token_kind(TOKEN_NAME))
+    {
+        result.identifier = token.name;
+        next_lexed_token();
+
+        if (is_token_kind(TOKEN_ASSIGN))
+        {
+            next_lexed_token();
+            if (is_token_kind(TOKEN_INT))
+            {
+                result.value_set = true;
+                result.value = token.val;
+                next_lexed_token();
+            }
+        }
+
+        if (is_token_kind(','))
+        {
+            next_lexed_token();
+        }
+    }
+    return result;
+}
+
+void parse_enum(enum_decl* decl)
+{
+    enum_value* values = 0;
+
+    enum_value new_value = parse_enum_value();
+    while (new_value.identifier)
+    {
+        buf_push(values, new_value);
+        new_value = parse_enum_value();
+    }
+
+    decl->values_count = (size_t)buf_len(values);
+    if (decl->values_count > 0)
+    {
+        decl->values = copy_buf_to_arena(arena, values);
+        buf_free(values);
+    }
+}
+
 decl* parse_declaration(void)
 {
     decl* declaration = NULL;
@@ -420,12 +466,8 @@ decl* parse_declaration(void)
             next_lexed_token();
             if (is_token_kind(TOKEN_NAME))
             {
-                declaration->variable_declaration.identifier = token.name;
+                declaration->identifier = token.name;
                 next_lexed_token();
-            }
-            else
-            {
-                // błąd
             }
 
             if (match_token_kind(':'))
@@ -452,7 +494,7 @@ decl* parse_declaration(void)
             next_lexed_token();
             if (is_token_kind(TOKEN_NAME))
             {
-                declaration->aggregate_declaration.identifier = token.name;
+                declaration->identifier = token.name;
                 next_lexed_token();
             }
 
@@ -462,16 +504,15 @@ decl* parse_declaration(void)
 
             expect_token_kind('}');
         }
-        else if (str_intern(token.name) == fn_keyword)
+        else if (decl_keyword == fn_keyword)
         {
             declaration = push_struct(arena, decl);
             declaration->kind = DECL_FUNCTION;
 
             next_lexed_token();
-
             if (is_token_kind(TOKEN_NAME))
             {
-                declaration->function_declaration.name = token.name;
+                declaration->identifier = token.name;
                 next_lexed_token();
             }
 
@@ -495,6 +536,24 @@ decl* parse_declaration(void)
             expect_token_kind('{');
             
             declaration->function_declaration.statements = parse_statement_block();
+
+            expect_token_kind('}');
+        }
+        else if (decl_keyword == enum_keyword)
+        {
+            declaration = push_struct(arena, decl);
+            declaration->kind = DECL_ENUM;
+
+            next_lexed_token();
+            if (is_token_kind(TOKEN_NAME))
+            {
+                declaration->identifier = token.name;
+                next_lexed_token();
+            }
+
+            expect_token_kind('{');
+
+            parse_enum(&declaration->enum_declaration);
 
             expect_token_kind('}');
         }
@@ -562,9 +621,9 @@ void print_declaration(decl* declaration)
     {
         case DECL_FUNCTION: {
             printf("(fn decl");
-            if (declaration->function_declaration.name)
+            if (declaration->identifier)
             {
-                printf(" name: %s", declaration->function_declaration.name);
+                printf(" name: %s", declaration->identifier);
             }
 
             if (declaration->function_declaration.parameters.param_count > 0)
@@ -587,19 +646,23 @@ void print_declaration(decl* declaration)
         break;
         case DECL_VARIABLE: {
             printf("(var decl");
-            if (declaration->variable_declaration.identifier)
+
+            if (declaration->identifier)
             {
-                printf(" name: %s", declaration->variable_declaration.identifier);
+                printf(" name: %s", declaration->identifier);
             }
+
             if (declaration->variable_declaration.type)
             {
                 printf(" type: %s", declaration->variable_declaration.type);
             }
+
             if (declaration->variable_declaration.expression)
             {
                 printf(" exp: ");
                 print_expression(declaration->variable_declaration.expression);
             }
+
             printf(")");
         }; 
         break;
@@ -615,9 +678,9 @@ void print_declaration(decl* declaration)
                 printf("(struct decl");
             }
 
-            if (declaration->aggregate_declaration.identifier)
+            if (declaration->identifier)
             {
-                printf(" name: %s", declaration->aggregate_declaration.identifier);
+                printf(" name: %s", declaration->identifier);
             }
             
             for (size_t index = 0; 
@@ -629,7 +692,28 @@ void print_declaration(decl* declaration)
             }
         
             printf(")");
-        }; break;
+        }; 
+        break;
+        case DECL_ENUM:
+        {
+            printf("(enum decl");
+
+            for (size_t index = 0;
+                index < declaration->enum_declaration.values_count;
+                index++)
+            {
+                enum_value* value = &declaration->enum_declaration.values[index];
+                printf("(flag: %s", value->identifier);
+                if (value->value_set)
+                {
+                    printf(" value: %d", value->value);
+                }
+                printf(")");
+            }
+
+            printf(")");
+        };
+        break;
     }
 }
 
@@ -696,14 +780,15 @@ void test_parsing(void)
     parse_text_and_print_s_expressions(test_str, true);
 
     test_str = "union some_union { a: int, b: float }";
+    parse_text_and_print_s_expressions(test_str, true); 
+    
+    test_str = "enum some_enum { A = 1, B, C, D = 4 }";
     parse_text_and_print_s_expressions(test_str, true);
 
     debug_breakpoint;
 
-
     /*
         co zostało:
-        * deklaracje: enums
         * statements: pętle, switche, wywołania funkcji
         * inne: ifs, else ifs, sizeof
         * decrement, increment
