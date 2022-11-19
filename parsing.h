@@ -138,18 +138,18 @@ typedef enum decl_kind
     DECL_FUNCTION
 } decl_kind;
 
-typedef struct struct_field
+typedef struct aggregate_field
 {
     char* identifier;
     char* type;
-} struct_field;
+} aggregate_field;
 
-typedef struct struct_decl
+typedef struct aggregate_decl
 {
     char* identifier;
-    struct_field* fields;
+    aggregate_field* fields;
     size_t fields_count;
-} struct_decl;
+} aggregate_decl;
 
 typedef struct variable_decl
 {
@@ -157,13 +157,6 @@ typedef struct variable_decl
     char* type; 
     expr* expression;
 } variable_decl;
-
-typedef struct union_decl
-{
-    char* identifier;
-    struct_decl* structs;
-    size_t structs_count;
-} union_decl;
 
 typedef struct function_param
 {
@@ -193,8 +186,7 @@ struct decl
     {
         function_decl function_declaration;
         variable_decl variable_declaration;
-        struct_decl struct_declaration;
-
+        aggregate_decl aggregate_declaration;
     };
 };
 

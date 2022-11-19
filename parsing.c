@@ -162,10 +162,6 @@ expr* parse_multiplicative_expression(void)
     return e;
 }
 
-// a + b + c + d + e + f
-// parsujemy jako
-// (((((a + b) + c) + d) + e) + f)
-
 expr* parse_additive_expression(void)
 {
     expr* e = parse_multiplicative_expression();
@@ -367,9 +363,9 @@ function_param_list parse_function_parameter_list(void)
     return result;
 }
 
-struct_field parse_struct_field()
+aggregate_field parse_aggregate_field()
 {
-    struct_field result = {0};
+    aggregate_field result = {0};
     if (is_token_kind(TOKEN_NAME))
     {        
         result.identifier = token.name;
@@ -391,21 +387,21 @@ struct_field parse_struct_field()
     return result;
 }
 
-void parse_struct_fields(struct_decl* struct_decl)
+void parse_aggregate_fields(aggregate_decl* decl)
 {
-    struct_field* fields = 0;
+    aggregate_field* fields = 0;
 
-    struct_field new_field = parse_struct_field();
+    aggregate_field new_field = parse_aggregate_field();
     while (new_field.type)
     {
         buf_push(fields, new_field);
-        new_field = parse_struct_field();
+        new_field = parse_aggregate_field();
     }
 
-    struct_decl->fields_count = (int)buf_len(fields);
-    if (struct_decl->fields_count > 0)
+    decl->fields_count = (int)buf_len(fields);
+    if (decl->fields_count > 0)
     {
-        struct_decl->fields = copy_buf_to_arena(arena, fields);
+        decl->fields = copy_buf_to_arena(arena, fields);
         buf_free(fields);
     }
 }
@@ -415,7 +411,8 @@ decl* parse_declaration(void)
     decl* declaration = NULL;
     if (is_token_kind(TOKEN_KEYWORD))
     {
-        if (str_intern(token.name) == let_keyword)
+        char* decl_keyword = str_intern(token.name);
+        if (decl_keyword == let_keyword)
         {
             declaration = push_struct(arena, decl);
             declaration->kind = DECL_VARIABLE;
@@ -430,37 +427,38 @@ decl* parse_declaration(void)
             {
                 // błąd
             }
-            
+
             if (match_token_kind(':'))
             {
                 if (is_token_kind(TOKEN_NAME))
                 {
                     declaration->variable_declaration.type = token.name;
                     next_lexed_token();
-                }               
-            } 
-            
+                }
+            }
+
             if (match_token_kind('='))
             {
                 expr* expression = parse_expression();
                 declaration->variable_declaration.expression = expression;
             }
         }
-        else if (str_intern(token.name) == struct_keyword)
+        else if (decl_keyword == struct_keyword
+                || decl_keyword == union_keyword)
         {
             declaration = push_struct(arena, decl);
-            declaration->kind = DECL_STRUCT;
+            declaration->kind = decl_keyword == struct_keyword ? DECL_STRUCT : DECL_UNION;
 
             next_lexed_token();
             if (is_token_kind(TOKEN_NAME))
             {
-                declaration->struct_declaration.identifier = token.name;
+                declaration->aggregate_declaration.identifier = token.name;
                 next_lexed_token();
             }
 
             expect_token_kind('{');
 
-            parse_struct_fields(&declaration->struct_declaration);
+            parse_aggregate_fields(&declaration->aggregate_declaration);
 
             expect_token_kind('}');
         }
@@ -605,19 +603,29 @@ void print_declaration(decl* declaration)
             printf(")");
         }; 
         break;
-        case DECL_STRUCT: {
-            printf("(struct decl");
-            if (declaration->struct_declaration.identifier)
+        case DECL_STRUCT: 
+        case DECL_UNION: 
+        {
+            if (declaration->kind == DECL_UNION)
             {
-                printf(" name: %s", declaration->struct_declaration.identifier);
+                printf("(union decl");
+            }
+            else
+            {
+                printf("(struct decl");
+            }
+
+            if (declaration->aggregate_declaration.identifier)
+            {
+                printf(" name: %s", declaration->aggregate_declaration.identifier);
             }
             
             for (size_t index = 0; 
-                index < declaration->struct_declaration.fields_count; 
+                index < declaration->aggregate_declaration.fields_count;
                 index++)
             {
-                printf("(name: %s", declaration->struct_declaration.fields[index].identifier);
-                printf(" type: %s)", declaration->struct_declaration.fields[index].type);
+                printf("(name: %s", declaration->aggregate_declaration.fields[index].identifier);
+                printf(" type: %s)", declaration->aggregate_declaration.fields[index].type);
             }
         
             printf(")");
@@ -687,22 +695,28 @@ void test_parsing(void)
     test_str = "struct x { a: int, b: float, c: y }";
     parse_text_and_print_s_expressions(test_str, true);
 
+    test_str = "union some_union { a: int, b: float }";
+    parse_text_and_print_s_expressions(test_str, true);
+
     debug_breakpoint;
 
 
     /*
         co zostało:
-        * deklaracje: structs, unions, enums
+        * deklaracje: enums
         * statements: pętle, switche, wywołania funkcji
         * inne: ifs, else ifs, sizeof
         * decrement, increment
+        * nested structs and unions
     */
 
     /*
-    test_str = "union some_union { struct x { a: int }, struct y { b: uint } }"
+    
     test_str = "enum some_enum { A = 1, B, C }"
     test_str = " fn some_function() { let x = 100\
         for (i = 0; i < x; i++) { x-- } x = x + 1 }"
     test_str = "fn some_function() { let x = 1 x++ ==x if (x == 1) { return true } }"
+    test_str = "struct nested_struct { struct x { a: int }, struct y { b: uint } }";
+    test_str = "union nested_union { struct x { a: int }, struct y { b: uint } }";
     */    
 }
