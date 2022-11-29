@@ -237,11 +237,42 @@ expr* parse_expression(void)
 }
 
 decl* parse_declaration(void);
+decl* parse_declaration_optional(void);
+stmt_block parse_statement_block(void);
+
+// i.e. assign, function invocation or incerement
+stmt* parse_simple_statement(void)
+{
+    // x = x + 1
+    // x++
+    // x()
+ 
+    stmt* s = 0; 
+    char* var = str_intern(token.name);
+
+    next_lexed_token();
+
+    if (is_token_kind(TOKEN_ASSIGN))
+    {
+        next_lexed_token();
+        
+        s = push_struct(arena, stmt);
+        expr* e = parse_expression();
+        s->kind = STMT_ASSIGN;
+        s->assign_statement.expr = e;
+        s->assign_statement.assigned_var = var;
+    }
+    else
+    {
+        debug_breakpoint;
+    }
+
+    return s;
+}
 
 stmt* parse_statement(void)
 {
-    stmt* s = 0;
-
+    stmt* s = 0;    
     if (is_token_kind(TOKEN_KEYWORD))
     {
         const char* keyword = str_intern(token.name);
@@ -271,16 +302,47 @@ stmt* parse_statement(void)
             s->decl_statement.decl = d;
             s->kind = STMT_DECL;
         }
-    }
-    else
-    {
+        else if (keyword == for_keyword)
+        {
+            s = push_struct(arena, stmt);
+            s->kind = STMT_FOR;
+            next_lexed_token();
 
-        debug_breakpoint;
-        //parse_expression();
-        //if () //inc dec assign
-        //{
-        //
-        //}
+            expect_token_kind(TOKEN_LEFT_PAREN);
+
+            s->for_statement.init_decl = parse_declaration();
+
+            expect_token_kind(TOKEN_SEMICOLON);
+
+            s->for_statement.cond_expr = parse_expression();
+
+            expect_token_kind(TOKEN_SEMICOLON);
+
+            s->for_statement.incr_expr = parse_expression();
+
+            expect_token_kind(TOKEN_RIGHT_PAREN);
+            expect_token_kind(TOKEN_LEFT_BRACE);
+
+            s->for_statement.statements = parse_statement_block();
+
+            expect_token_kind(TOKEN_RIGHT_BRACE);
+        }
+    }
+    else if (is_token_kind(TOKEN_NAME))
+    {        
+        decl* d = parse_declaration_optional();
+        if (d)
+        {
+            s = push_struct(arena, stmt);
+            s->kind = STMT_DECL;
+            s->decl_statement.decl = d;
+
+            debug_breakpoint;
+        }
+        else
+        {
+            s = parse_simple_statement();
+        }
     }
 
     return s;
@@ -452,7 +514,7 @@ void parse_enum(enum_decl* decl)
     }
 }
 
-decl* parse_declaration(void)
+decl* parse_declaration_optional(void)
 {
     decl* declaration = NULL;
     if (is_token_kind(TOKEN_KEYWORD))
@@ -561,7 +623,18 @@ decl* parse_declaration(void)
     return declaration;
 }
 
+decl* parse_declaration(void)
+{
+    decl* d = parse_declaration_optional();
+    if (d == 0)
+    {
+        fatal("expected declaration\n");
+    }
+    return d;
+}
+
 void print_declaration(decl* declaration);
+void print_statement_block(stmt_block block);
 
 void print_statement(stmt* statement)
 {
@@ -583,7 +656,21 @@ void print_statement(stmt* statement)
         case STMT_LIST: {}; break;
         case STMT_IF_ELSE: {}; break;
         case STMT_WHILE: {}; break;
-        case STMT_FOR: {}; break;
+        case STMT_ASSIGN: {
+            printf("= (");
+            printf(statement->assign_statement.assigned_var);
+            print_expression(statement->assign_statement.expr);
+            printf(")");
+        }; break;
+        case STMT_FOR: {
+            printf("(for: (");
+            print_declaration(statement->for_statement.init_decl);
+            print_expression(statement->for_statement.cond_expr);
+            print_expression(statement->for_statement.incr_expr);
+            printf(")");
+            print_statement_block(statement->for_statement.statements);
+            printf(")");        
+        }; break;
         case STMT_SWITCH: {}; break;
         case STMT_DECL:
         {
@@ -744,6 +831,8 @@ void test_parsing(void)
     char* test_str = 0;
 
     char* test_strs[] = {
+        /*
+        */
         "let x = a + -b + c + -d + e + f",    
         "let x = a * b + -c * d + e * -f",    
         "let x = a >= b || -c * d < e && -f", 
@@ -757,8 +846,8 @@ void test_parsing(void)
         "struct x { a: int, b: float, c: y }",
         "union some_union { a: int, b: float }",    
         "enum some_enum { A = 1, B, C, D = 4 }",
-        //"fn some_function() { let x = 100\
-        //    for (i = 0; i < x; i++) { x-- } x = x + 1 }",
+        "fn some_function() : int { let x = 100\
+            for (let i = 0; i < x; i++) { x = x + 1 } return x }",
     };
 
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);
@@ -773,15 +862,16 @@ void test_parsing(void)
     debug_breakpoint;
 
     /*
-        co zostało:
-        * statements: pętle, switche, wywołania funkcji
-        * inne: ifs, else ifs, sizeof
-        * decrement, increment
+        what left:
+        * switch
+        * while, while do
+        * ifs, else ifs, sizeof
+        * decrement, increment, various assigns, e. g. +=
+        * function invocation
         * nested structs and unions
     */
 
     /* 
-        test_str = "fn some_function() { let x = 1 x++ ==x if (x == 1) { return true } }"
         test_str = "struct nested_struct { struct x { a: int }, struct y { b: uint } }";
         test_str = "union nested_union { struct x { a: int }, struct y { b: uint } }";
     */    

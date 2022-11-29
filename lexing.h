@@ -8,11 +8,13 @@ typedef enum token_kind
     TOKEN_COMMA = 44,
     TOKEN_MINUS = 45,
     TOKEN_COLON = 58, // :
+    TOKEN_SEMICOLON = 59, // ;
     TOKEN_ASSIGN = 61, // =
     TOKEN_LEFT_PAREN = 40,
     TOKEN_RIGHT_PAREN = 41,
     TOKEN_BACKSLASH = 47, // /
     TOKEN_SLASH = 92,
+    TOKEN_CARET = 94,
     TOKEN_LEFT_BRACE = 123,
     TOKEN_RIGHT_BRACE = 125,
     // pierwsze 128 wartości jest dla one-character tokens
