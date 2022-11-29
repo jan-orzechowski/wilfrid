@@ -717,7 +717,7 @@ void print_declaration(decl* declaration)
     }
 }
 
-void parse_text_and_print_s_expressions(char* test, bool parse_as_declaration)
+void parse_text_and_print_s_expressions(char* test)
 {
     arena = allocate_memory_arena(megabytes(50));
 
@@ -730,18 +730,9 @@ void parse_text_and_print_s_expressions(char* test, bool parse_as_declaration)
 
     get_first_lexed_token();
 
-    if (parse_as_declaration)
-    {
-        decl* result = parse_declaration();
-        print_declaration(result);
-        printf("\n\n");
-    }
-    else
-    {
-        expr* result = parse_expression();
-        print_expression(result);
-        printf("\n\n");
-    }
+    decl* result = parse_declaration();
+    print_declaration(result);
+    printf("\n\n");
   
     debug_breakpoint;
 
@@ -752,38 +743,32 @@ void test_parsing(void)
 {
     char* test_str = 0;
 
-    test_str = "a + -b + c + -d + e + f";
-    parse_text_and_print_s_expressions(test_str, false);
-       
-    test_str = "a * b + -c * d + e * -f";
-    parse_text_and_print_s_expressions(test_str, false);
-    
-    test_str = "a >= b || -c * d < e && -f";
-    parse_text_and_print_s_expressions(test_str, false);
-    
-    test_str = "let some_variable = (a - b) + (c / d)";
-    parse_text_and_print_s_expressions(test_str, true);
+    char* test_strs[] = {
+        "let x = a + -b + c + -d + e + f",    
+        "let x = a * b + -c * d + e * -f",    
+        "let x = a >= b || -c * d < e && -f", 
+        "let x = (a - b) + (c / d)",
+        "let x : float = (a == -b)",
+        "fn f (a: int, b: float, c : int ) : float { return a + b }",
+        "fn f () {\
+            let x = 1\
+            let y = 2\
+            return x + y }",
+        "struct x { a: int, b: float, c: y }",
+        "union some_union { a: int, b: float }",    
+        "enum some_enum { A = 1, B, C, D = 4 }",
+        //"fn some_function() { let x = 100\
+        //    for (i = 0; i < x; i++) { x-- } x = x + 1 }",
+    };
 
-    test_str = "let some_variable : float = (a == -b)";
-    parse_text_and_print_s_expressions(test_str, true);
+    int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);
+    for (int i = 0; i < arr_length; i++)
+    {
+        char* str = test_strs[i];
+        parse_text_and_print_s_expressions(str);
 
-    test_str = "fn some_function (a: int, b: float, c : int ) : float { return a + b }";
-    parse_text_and_print_s_expressions(test_str, true);
-
-    test_str = "fn some_function () {\
-        let x = 1\
-        let y = 2\
-        return x + y }";
-    parse_text_and_print_s_expressions(test_str, true);
-
-    test_str = "struct x { a: int, b: float, c: y }";
-    parse_text_and_print_s_expressions(test_str, true);
-
-    test_str = "union some_union { a: int, b: float }";
-    parse_text_and_print_s_expressions(test_str, true); 
-    
-    test_str = "enum some_enum { A = 1, B, C, D = 4 }";
-    parse_text_and_print_s_expressions(test_str, true);
+        debug_breakpoint;
+    }
 
     debug_breakpoint;
 
@@ -795,13 +780,9 @@ void test_parsing(void)
         * nested structs and unions
     */
 
-    /*
-    
-    test_str = "enum some_enum { A = 1, B, C }"
-    test_str = " fn some_function() { let x = 100\
-        for (i = 0; i < x; i++) { x-- } x = x + 1 }"
-    test_str = "fn some_function() { let x = 1 x++ ==x if (x == 1) { return true } }"
-    test_str = "struct nested_struct { struct x { a: int }, struct y { b: uint } }";
-    test_str = "union nested_union { struct x { a: int }, struct y { b: uint } }";
+    /* 
+        test_str = "fn some_function() { let x = 1 x++ ==x if (x == 1) { return true } }"
+        test_str = "struct nested_struct { struct x { a: int }, struct y { b: uint } }";
+        test_str = "union nested_union { struct x { a: int }, struct y { b: uint } }";
     */    
 }
