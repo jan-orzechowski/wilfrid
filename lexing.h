@@ -1,42 +1,154 @@
 ﻿#pragma once
 
+char x = '~';
+
+// istotne jest to, że wartości enuma nigdy się nie zmniejszają
+// np. jesti TOKEN_A wynosi 1000, to zdefiniowany niżej TOKEN_B będzie wynosił 1001
 typedef enum token_kind
 {
+    // pierwsze 128 wartości jest dla one-character tokens
     TOKEN_EOF = 0,
-    TOKEN_STAR = 42,
-    TOKEN_PLUS = 43,
     TOKEN_COMMA = 44,
-    TOKEN_MINUS = 45,
     TOKEN_DOT = 46,
     TOKEN_COLON = 58, // :
     TOKEN_SEMICOLON = 59, // ;
-    TOKEN_ASSIGN = 61, // =
+    TOKEN_QUESTION = 63, // ?
     TOKEN_LEFT_PAREN = 40,
     TOKEN_RIGHT_PAREN = 41,
-    TOKEN_BACKSLASH = 47, // /
-    TOKEN_SLASH = 92,
+    //TOKEN_BACKSLASH = 47, // /
+    //TOKEN_SLASH = 92,
     TOKEN_LEFT_BRACKET = 91, // [
     TOKEN_RIGHT_BRACKET = 93, // ]
-    TOKEN_CARET = 94,
-    TOKEN_LEFT_BRACE = 123,
-    TOKEN_RIGHT_BRACE = 125,
-    // pierwsze 128 wartości jest dla one-character tokens
+    TOKEN_LEFT_BRACE = 123, // {
+    TOKEN_RIGHT_BRACE = 125, // }
+    TOKEN_NEGATION = 126, // ~
     TOKEN_LAST_CHAR = 127,
-    TOKEN_INT,
-    TOKEN_NAME,
+
+    // variables
     TOKEN_KEYWORD,
-    TOKEN_SHORT_ASSIGNMENT, // :=
+    TOKEN_INT,
+    TOKEN_FLOAT,
+    TOKEN_STR,
+    TOKEN_NAME,
+
+    // multiplicative precedence
+    TOKEN_FIRST_MUL_OPERATOR,
+    TOKEN_MUL = TOKEN_FIRST_MUL_OPERATOR,
+    TOKEN_DIV,
+    TOKEN_MOD,
+    TOKEN_BITWISE_AND, // &
+    TOKEN_LEFT_SHIFT,
+    TOKEN_RIGHT_SHIFT,
+    TOKEN_LAST_MUL_OPERATOR = TOKEN_RIGHT_SHIFT,
+
+    // additive precedence
+    TOKEN_FIRST_ADD_OPERATOR,
+    TOKEN_ADD = TOKEN_FIRST_ADD_OPERATOR,
+    TOKEN_SUB,
+    TOKEN_XOR, // ^
+    TOKEN_BITWISE_OR, // |
+    TOKEN_LAST_ADD_OPERATOR = TOKEN_BITWISE_OR,
+
+    // comparative precedence
+    TOKEN_FIRST_CMP_OPERATOR,
+    TOKEN_EQ = TOKEN_FIRST_CMP_OPERATOR, // ==
+    TOKEN_NEQ, // !=
     TOKEN_GT, // >
     TOKEN_LT, // <
     TOKEN_GEQ, // >=
     TOKEN_LEQ, // <=
-    TOKEN_EQ, // ==
-    TOKEN_NEQ, // !=
+    TOKEN_LAST_CMP_OPERATOR = TOKEN_LEQ,
+
     TOKEN_AND, // 'and' or &&
     TOKEN_OR, // 'or' or ||
-    // ...
-}
-token_kind;
+
+    // assignment operators
+    TOKEN_FIRST_ASSIGN_OPERATOR,
+    TOKEN_ASSIGN = TOKEN_FIRST_ASSIGN_OPERATOR,
+    TOKEN_ADD_ASSIGN,
+    TOKEN_SUB_ASSIGN,
+    TOKEN_OR_ASSIGN,
+    TOKEN_AND_ASSIGN,
+    TOKEN_XOR_ASSIGN,
+    TOKEN_LSHIFT_ASSIGN,
+    TOKEN_RSHIFT_ASSIGN,
+    TOKEN_MUL_ASSIGN,
+    TOKEN_DIV_ASSIGN,
+    TOKEN_MOD_ASSIGN,
+    TOKEN_LAST_ASSIGN_OPERATOR = TOKEN_MOD_ASSIGN,
+    
+    // inne
+    TOKEN_COLON_ASSIGN, // :=
+    TOKEN_INC, // ++
+    TOKEN_DEC, // --
+
+} token_kind;
+
+const char* token_kind_names[] = {
+ 
+    [TOKEN_EOF] = "EOF",
+    [TOKEN_COLON] = ":",
+    [TOKEN_LEFT_PAREN] = "(",
+    [TOKEN_RIGHT_PAREN] = ")",
+    [TOKEN_LEFT_BRACE] = "{",
+    [TOKEN_RIGHT_BRACE] = "}",
+    [TOKEN_LEFT_BRACKET] = "[",
+    [TOKEN_RIGHT_BRACKET] = "]",
+    [TOKEN_COMMA] = ",",
+    [TOKEN_DOT] = ".",
+    [TOKEN_QUESTION] = "?",
+    [TOKEN_SEMICOLON] = ";",
+
+    //[TOKEN_EXCLAMATION] = "!",
+    //[TOKEN_STAR] = "*",
+    //[TOKEN_BACKSLASH] = "/",
+    //[TOKEN_SLASH] = "\\",
+    [TOKEN_NEGATION] = "~",
+
+    [TOKEN_KEYWORD] = "keyword",
+    [TOKEN_INT] = "int",
+    [TOKEN_FLOAT] = "float",
+    [TOKEN_STR] = "string",
+    [TOKEN_NAME] = "name",
+
+    [TOKEN_MUL] = "*",
+    [TOKEN_DIV] = "/",
+    [TOKEN_MOD] = "%",
+    [TOKEN_BITWISE_AND] = "&",
+    [TOKEN_LEFT_SHIFT] = "<<",
+    [TOKEN_RIGHT_SHIFT] = ">>",
+
+    [TOKEN_ADD] = "+",
+    [TOKEN_SUB] = "-",
+    [TOKEN_BITWISE_OR] = "|",
+    [TOKEN_XOR] = "^",
+
+    [TOKEN_EQ] = "==",
+    [TOKEN_NEQ] = "!=",
+    [TOKEN_LT] = "<",
+    [TOKEN_GT] = ">",
+    [TOKEN_LEQ] = "<=",
+    [TOKEN_GEQ] = ">=",
+
+    [TOKEN_AND] = "AND",
+    [TOKEN_OR] = "OR",
+
+    [TOKEN_ASSIGN] = "=",
+    [TOKEN_ADD_ASSIGN] = "+=",
+    [TOKEN_SUB_ASSIGN] = "-=",
+    [TOKEN_OR_ASSIGN] = "|=",
+    [TOKEN_AND_ASSIGN] = "&=",
+    [TOKEN_XOR_ASSIGN] = "^=",
+    [TOKEN_MUL_ASSIGN] = "*=",
+    [TOKEN_DIV_ASSIGN] = "/=",
+    [TOKEN_MOD_ASSIGN] = "%=",
+    [TOKEN_LSHIFT_ASSIGN] = "<<=",
+    [TOKEN_RSHIFT_ASSIGN] = ">>=",
+
+    [TOKEN_COLON_ASSIGN] = ":=",
+    [TOKEN_INC] = "++",
+    [TOKEN_DEC] = "--",
+};
 
 typedef struct tok
 {

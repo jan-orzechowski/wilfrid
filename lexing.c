@@ -1,22 +1,28 @@
 ﻿#include "utils.h"
 #include "lexing.h"
 
+const char* get_token_kind_name(token_kind kind)
+{
+    if (kind < sizeof(token_kind_names) / sizeof(*token_kind_names))
+    {
+        return token_kind_names[kind];
+    }
+    else
+    {
+        return 0;
+    }
+}
+
 void print_token_kind(token_kind kind)
 {
-    switch (kind)
+    const char* name = get_token_kind_name(kind);
+    if (name)
     {
-        case TOKEN_EOF: { printf("EOF"); }; break;
-        case TOKEN_INT: { printf("INT"); }; break;
-        case TOKEN_NAME: { printf("NAME"); }; break;
-        case TOKEN_GT: { printf(">"); }; break;
-        case TOKEN_LT: { printf("<"); }; break;
-        case TOKEN_GEQ: { printf(">="); }; break;
-        case TOKEN_LEQ: { printf("<="); }; break; 
-        case TOKEN_EQ: { printf("=="); }; break;
-        case TOKEN_NEQ: { printf("!="); }; break;
-        case TOKEN_AND: { printf("AND"); }; break;
-        case TOKEN_OR: { printf("OR"); }; break;
-        default:{ printf("%.1s", &(char)kind); }; break;
+         printf("%s", name);
+    }
+    else
+    {
+        printf("TOKEN UNKNOWN: %.1s", &(char)kind);
     }
 }
 
@@ -134,42 +140,42 @@ void next_token(void)
         break;
         case '+':
         {
-            token.kind = '+';
+            token.kind = TOKEN_ADD;
             stream++;
             token.name = str_intern_range(token.start, stream);
         }
         break;
         case '-':
         {
-            token.kind = '-';
+            token.kind = TOKEN_SUB;
             stream++;
             token.name = str_intern_range(token.start, stream);
         }
         break;
         case '*':
         {
-            token.kind = '*';
+            token.kind = TOKEN_MUL;
             stream++;
             token.name = str_intern_range(token.start, stream);
         }
         break;
         case '/':
         {
-            token.kind = '/';
+            token.kind = TOKEN_DIV;
             stream++;
             token.name = str_intern_range(token.start, stream);
         }
         break;
         case '(':
         {
-            token.kind = '(';
+            token.kind = TOKEN_LEFT_PAREN;
             stream++;
             token.name = str_intern_range(token.start, stream);
         }
         break;
         case ')':
         {
-            token.kind = ')';
+            token.kind = TOKEN_RIGHT_PAREN;
             stream++;
             token.name = str_intern_range(token.start, stream);
         }
@@ -217,7 +223,7 @@ void next_token(void)
             else
             {
                 stream++;
-                token.kind = '|';
+                token.kind = TOKEN_BITWISE_OR;
                 token.name = str_intern_range(token.start, stream);
             }
         }
@@ -233,7 +239,7 @@ void next_token(void)
             else
             {
                 stream++;
-                token.kind = '&';
+                token.kind = TOKEN_BITWISE_AND;
                 token.name = str_intern_range(token.start, stream);
             }
         }
@@ -249,7 +255,7 @@ void next_token(void)
             else
             {
                 stream++;
-                token.kind = '!';
+                token.kind = TOKEN_NEGATION;
                 token.name = str_intern_range(token.start, stream);
             }
         }
@@ -265,7 +271,7 @@ void next_token(void)
             else
             {
                 stream++;
-                token.kind = '=';
+                token.kind = TOKEN_ASSIGN;
                 token.name = str_intern_range(token.start, stream);
             }
         }
@@ -275,7 +281,7 @@ void next_token(void)
             if (*(stream + 1) == '=')
             {
                 stream += 2;
-                token.kind = TOKEN_SHORT_ASSIGNMENT;
+                token.kind = TOKEN_COLON_ASSIGN;
                 token.name = str_intern_range(token.start, stream);
             }
             else

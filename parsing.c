@@ -84,10 +84,10 @@ expr* parse_base_expression(void)
     }
     else
     {
-        if (match_token_kind('('))
+        if (match_token_kind(TOKEN_LEFT_PAREN))
         {
             result = parse_expression();
-            expect_token_kind(')');
+            expect_token_kind(TOKEN_RIGHT_PAREN);
         }
     }
     return result;
@@ -156,23 +156,22 @@ expr* parse_unary_expression(void)
     expr* e = parse_complex_expression();
     if (e == NULL)
     {
-        if (match_token_kind('+'))
+        if (match_token_kind(TOKEN_ADD))
         {
-            e = push_unary_expr('+', parse_base_expression());
+            e = push_unary_expr(TOKEN_ADD, parse_base_expression());
         }
-        else if (match_token_kind('-'))
+        else if (match_token_kind(TOKEN_SUB))
         {
-            e = push_unary_expr('-', parse_base_expression());
+            e = push_unary_expr(TOKEN_SUB, parse_base_expression());
         }
     }
     return e;
 }
 
-
 expr* parse_multiplicative_expression(void)
 {
     expr* e = parse_unary_expression();
-    while (is_token_kind('*') || is_token_kind('/'))
+    while (is_token_kind(TOKEN_MUL) || is_token_kind(TOKEN_DIV))
     {
         expr* left_expr = e;
         token_kind op = token.kind;
@@ -187,7 +186,7 @@ expr* parse_multiplicative_expression(void)
 expr* parse_additive_expression(void)
 {
     expr* e = parse_multiplicative_expression();
-    while (is_token_kind('+') || is_token_kind('-'))
+    while (is_token_kind(TOKEN_ADD) || is_token_kind(TOKEN_SUB))
     {
         expr* left_expr = e;
         token_kind op = token.kind;
@@ -264,11 +263,7 @@ stmt_block parse_statement_block(void);
 
 // i.e. assign, function invocation or incerement
 stmt* parse_simple_statement(void)
-{
-    // x = x + 1
-    // x++
-    // x()
- 
+{ 
     stmt* s = 0; 
     expr* left_expr = parse_expression();
 
@@ -468,7 +463,7 @@ aggregate_field parse_aggregate_field(void)
             next_lexed_token();
         }
 
-        if (is_token_kind(','))
+        if (is_token_kind(TOKEN_COMMA))
         {
             next_lexed_token();
         }
@@ -514,7 +509,7 @@ enum_value parse_enum_value(void)
             }
         }
 
-        if (is_token_kind(','))
+        if (is_token_kind(TOKEN_COMMA))
         {
             next_lexed_token();
         }
@@ -559,7 +554,7 @@ decl* parse_declaration_optional(void)
                 next_lexed_token();
             }
 
-            if (match_token_kind(':'))
+            if (match_token_kind(TOKEN_COLON))
             {
                 if (is_token_kind(TOKEN_NAME))
                 {
@@ -568,7 +563,7 @@ decl* parse_declaration_optional(void)
                 }
             }
 
-            if (match_token_kind('='))
+            if (match_token_kind(TOKEN_ASSIGN))
             {
                 expr* expression = parse_expression();
                 declaration->variable_declaration.expression = expression;
@@ -587,11 +582,11 @@ decl* parse_declaration_optional(void)
                 next_lexed_token();
             }
 
-            expect_token_kind('{');
+            expect_token_kind(TOKEN_LEFT_BRACE);
 
             parse_aggregate_fields(&declaration->aggregate_declaration);
 
-            expect_token_kind('}');
+            expect_token_kind(TOKEN_RIGHT_BRACE);
         }
         else if (decl_keyword == fn_keyword)
         {
@@ -605,14 +600,14 @@ decl* parse_declaration_optional(void)
                 next_lexed_token();
             }
 
-            expect_token_kind('(');
+            expect_token_kind(TOKEN_LEFT_PAREN);
 
             declaration->function_declaration.parameters
                 = parse_function_parameter_list();
 
-            expect_token_kind(')');
+            expect_token_kind(TOKEN_RIGHT_PAREN);
 
-            if (is_token_kind(':'))
+            if (is_token_kind(TOKEN_COLON))
             {
                 next_lexed_token();
                 if (is_token_kind(TOKEN_NAME))
@@ -622,11 +617,11 @@ decl* parse_declaration_optional(void)
                 }
             }
 
-            expect_token_kind('{');
+            expect_token_kind(TOKEN_LEFT_BRACE);
             
             declaration->function_declaration.statements = parse_statement_block();
 
-            expect_token_kind('}');
+            expect_token_kind(TOKEN_RIGHT_BRACE);
         }
         else if (decl_keyword == enum_keyword)
         {
@@ -640,11 +635,11 @@ decl* parse_declaration_optional(void)
                 next_lexed_token();
             }
 
-            expect_token_kind('{');
+            expect_token_kind(TOKEN_LEFT_BRACE);
 
             parse_enum(&declaration->enum_declaration);
 
-            expect_token_kind('}');
+            expect_token_kind(TOKEN_RIGHT_BRACE);
         }
     }
     return declaration;
@@ -726,7 +721,7 @@ void print_expression(expr* e)
         break;
         case EXPR_FIELD:
         {
-            printf("(access field");
+            printf("(access field ");
             printf("%s", e->field_expr_value.field_name);
             printf(" in");
             print_expression(e->field_expr_value.expr);
