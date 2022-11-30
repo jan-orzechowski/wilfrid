@@ -97,11 +97,12 @@ typedef enum stmt_kind
     STMT_LIST,
     STMT_IF_ELSE,
     STMT_WHILE,
+    STMT_DO_WHILE,
     STMT_FOR,
     STMT_ASSIGN,
     STMT_SWITCH,
     STMT_EXPR,
-    STMT_BLOCK
+    STMT_BLOCK,    
 } stmt_kind;
 
 typedef struct if_else_stmt if_else_stmt;
@@ -136,6 +137,12 @@ typedef struct decl_stmt
     decl* decl;
 } decl_stmt;
 
+typedef struct while_stmt
+{
+    expr* cond_expr;
+    stmt_block statements;    
+} while_stmt;
+
 typedef struct for_stmt
 {
     decl* init_decl;
@@ -146,7 +153,7 @@ typedef struct for_stmt
 
 typedef struct assign_stmt
 {
-    char* assigned_var;
+    expr* assigned_var;
     expr* expr;
 } assign_stmt;
 
@@ -164,6 +171,8 @@ struct stmt
         assign_stmt assign_statement;
         expr* expression;
         stmt_block statements_block;
+        while_stmt while_statement;
+        while_stmt do_while_statement;
     };
 };
 

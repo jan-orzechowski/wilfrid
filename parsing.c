@@ -390,15 +390,51 @@ stmt* parse_statement(void)
             s->for_statement.incr_expr = parse_expression();
 
             expect_token_kind(TOKEN_RIGHT_PAREN);
+
             expect_token_kind(TOKEN_LEFT_BRACE);
-
             s->for_statement.statements = parse_statement_block();
-
             expect_token_kind(TOKEN_RIGHT_BRACE);
         }
         else if (keyword == if_keyword)
         {
             s = parse_if_statement();
+        }
+        else if (keyword == do_keyword)
+        {
+            s = push_struct(arena, stmt);
+            s->kind = STMT_DO_WHILE;
+            next_lexed_token();
+
+            expect_token_kind(TOKEN_LEFT_BRACE);
+            s->do_while_statement.statements = parse_statement_block();
+            expect_token_kind(TOKEN_RIGHT_BRACE);
+            
+            if (is_token_kind(TOKEN_KEYWORD) 
+                && str_intern(token.name) == while_keyword)
+            {
+                next_lexed_token();
+                expect_token_kind(TOKEN_LEFT_PAREN);
+                s->do_while_statement.cond_expr = parse_expression();
+                expect_token_kind(TOKEN_RIGHT_PAREN);
+            }
+            else
+            {
+                fatal("missing while clause in do while\n");
+            }
+        }
+        else if (keyword == while_keyword)
+        {
+            s = push_struct(arena, stmt);
+            s->kind = STMT_WHILE;
+            next_lexed_token();
+
+            expect_token_kind(TOKEN_LEFT_PAREN);
+            s->while_statement.cond_expr = parse_expression();
+            expect_token_kind(TOKEN_RIGHT_PAREN);
+
+            expect_token_kind(TOKEN_LEFT_BRACE);
+            s->while_statement.statements = parse_statement_block();
+            expect_token_kind(TOKEN_RIGHT_BRACE);
         }
     }
     else if (is_token_kind(TOKEN_NAME))
@@ -832,11 +868,6 @@ void print_statement(stmt* s)
             printf("continue "); 
         }; 
         break;
-        case STMT_PRINT:
-        {
-
-        };
-        break;
         case STMT_LIST:
         {
 
@@ -846,7 +877,7 @@ void print_statement(stmt* s)
         {
             printf("if cond:(");
             print_expression(s->if_else_statement.cond_expr);
-            printf("then: (");
+            printf(") then:(");
             print_statement_block(s->if_else_statement.then_block);
             printf(")");
             if (s->if_else_statement.else_stmt)
@@ -860,8 +891,21 @@ void print_statement(stmt* s)
         break;
         case STMT_WHILE: 
         {
-
+            printf("while cond:(");
+            print_expression(s->while_statement.cond_expr);
+            printf("{");
+            print_statement_block(s->while_statement.statements);
+            printf("}");
         }; 
+        break;
+        case STMT_DO_WHILE:
+        {
+            printf("do while cond:(");
+            print_expression(s->do_while_statement.cond_expr);
+            printf("{");
+            print_statement_block(s->do_while_statement.statements);
+            printf("}");
+        };
         break;
         case STMT_BLOCK:
         {
@@ -1057,9 +1101,9 @@ void test_parsing(void)
     char* test_strs[] = {
         /*
         */
-        "let x = a + -b + c + -d + e + f",    
-        "let x = a * b + -c * d + e * -f",    
-        "let x = a >= b || -c * d < e && -f", 
+        "let x = a + -b + c + -d + e + f",
+        "let x = a * b + -c * d + e * -f",
+        "let x = a >= b || -c * d < e && -f",
         "let x = (a - b) + (c / d)",
         "let x : float = (a == -b)",
         "fn f (a: int, b: float, c : int ) : float { return a + b }",
@@ -1068,7 +1112,7 @@ void test_parsing(void)
             let y = 2\
             return x + y }",
         "struct x { a: int, b: float, c: y }",
-        "union some_union { a: int, b: float }",    
+        "union some_union { a: int, b: float }",
         "enum some_enum { A = 1, B, C, D = 4 }",
         "fn some_function() : int { let x = 100\
             for (let i = 0; i < x; i++) { x = x + 1 } return x }",
@@ -1081,6 +1125,8 @@ void test_parsing(void)
         "fn f() {if (function(x)) { return y } else if (y == 2) { return z }}",
         "fn f() { if (x) { x = y } else if (y) {} else if (z) { z = x } else { y = z } }",
         "fn f() { if (sizeof(x) == 4) { return x } }"
+        "fn f() { while (x > y) { x = x + 1 } }",
+        "fn f() { do { x[index] = x - 1 } while (x < y) }"
     };
 
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);
@@ -1097,14 +1143,11 @@ void test_parsing(void)
     /*
         what left:
         * switch
-        * while, while do
         * decrement, increment, various assigns, e. g. +=
         * nested structs and unions
     */
 
     /* 
-        "while (x > y) { x++ y-- }"
-        "do { x-- } while (x < y)" 
         "switch (x) { case 1: {let x: int = 1 return x } break default: return 2 break }"
         "struct nested_struct { struct x { a: int }, struct y { b: uint } }";
         "union nested_union { struct x { a: int }, struct y { b: uint } }";
