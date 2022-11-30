@@ -42,15 +42,15 @@ expression = ternary_expr;
 
 print = 'print' identifier
 
+if_statement = 'if' '(' expression ')' statement_block ('else' statement_block | if_statement )
+
 statement = 'return' expression
      | 'break'
      | 'continue'
      | 'print' expression
      | declaration
-     | '{' {statement} '}'
-     | 'if' '(' expression ')' statement_block 
-        { 'else' 'if' '(' expression ')' statement_block) } 
-        ('else' statement_block)
+     | statement_block
+     | if_statement
      | 'while' '(' expression ')' statement_block
      | 'for' '(' statement_list ';' expression ';' statement_list ')' statement_block
      | 'do' statement_block 'while' '(' expression ')'

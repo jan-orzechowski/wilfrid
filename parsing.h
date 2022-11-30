@@ -16,7 +16,8 @@ typedef enum expr_kind
     EXPR_TERNARY,
     EXPR_CALL,
     EXPR_FIELD,
-    EXPR_INDEX
+    EXPR_INDEX,
+    EXPR_SIZEOF
 } expr_kind;
 
 typedef struct unary_expr unary_expr;
@@ -99,22 +100,17 @@ typedef enum stmt_kind
     STMT_FOR,
     STMT_ASSIGN,
     STMT_SWITCH,
-    STMT_EXPR
+    STMT_EXPR,
+    STMT_BLOCK
 } stmt_kind;
 
-typedef struct else_if
+typedef struct if_else_stmt if_else_stmt;
+struct if_else_stmt
 {
-    expr* condition;
-    stmt_block then;
-} else_if;
-
-typedef struct if_else
-{
-    expr* cmp_expr;
-    else_if* else_ifs;
-    size_t else_ifs_count;
-    stmt_block else_block;
-} if_else;
+    expr* cond_expr;
+    stmt_block then_block;
+    stmt* else_stmt;
+};
 
 typedef struct switch_case
 {
@@ -161,12 +157,13 @@ struct stmt
     {
         return_stmt return_statement;
         stmt* statement_list;
-        if_else if_else_statement;
+        if_else_stmt if_else_statement;
         switch_stmt switch_statement;
         decl_stmt decl_statement;
         for_stmt for_statement;
         assign_stmt assign_statement;
         expr* expression;
+        stmt_block statements_block;
     };
 };
 

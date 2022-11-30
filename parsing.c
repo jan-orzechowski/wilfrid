@@ -45,7 +45,16 @@ expr* push_name_expr(const char* name)
 {
     expr* result = push_struct(arena, expr);
     result->kind = EXPR_NAME;
-    result->identifier = name;
+    result->identifier = str_intern(name);
+    next_lexed_token();
+    return result;
+}
+
+expr* push_sizeof_expr(const char* name)
+{
+    expr* result = push_struct(arena, expr);
+    result->kind = EXPR_SIZEOF;
+    result->identifier = str_intern(name);
     next_lexed_token();
     return result;
 }
@@ -73,7 +82,7 @@ expr* parse_expression(void);
 
 expr* parse_base_expression(void)
 {
-    expr* result = NULL;
+    expr* result = 0;
     if (is_token_kind(TOKEN_INT))
     {
         result = push_int_expr(token.val);
@@ -81,6 +90,17 @@ expr* parse_base_expression(void)
     else if (is_token_kind(TOKEN_NAME))
     {
         result = push_name_expr(token.name);
+    }
+    else if (is_token_kind(TOKEN_KEYWORD))
+    {
+        char* keyword = str_intern(token.name);
+        if (keyword == sizeof_keyword)
+        {
+            next_lexed_token();
+            expect_token_kind(TOKEN_LEFT_PAREN);
+            result = push_sizeof_expr(token.name);
+            expect_token_kind(TOKEN_RIGHT_PAREN);
+        }
     }
     else
     {
@@ -284,11 +304,38 @@ stmt* parse_simple_statement(void)
         s = push_struct(arena, stmt);
         expr* e = parse_expression();
         s->kind = STMT_EXPR;
-        s->expression = e;      
-    
-        debug_breakpoint;
+        s->expression = e;
     }
    
+    return s;
+}
+
+stmt* parse_statement(void);
+
+stmt* parse_if_statement(void)
+{
+    stmt* s = 0;
+    if (str_intern(token.name) == if_keyword)
+    {
+        s = push_struct(arena, stmt);
+        s->kind = STMT_IF_ELSE;
+        next_lexed_token();
+
+        expect_token_kind(TOKEN_LEFT_PAREN);
+        s->if_else_statement.cond_expr = parse_expression();
+        expect_token_kind(TOKEN_RIGHT_PAREN);
+
+        expect_token_kind(TOKEN_LEFT_BRACE);
+        s->if_else_statement.then_block = parse_statement_block();
+        expect_token_kind(TOKEN_RIGHT_BRACE);
+
+        if (is_token_kind(TOKEN_KEYWORD) 
+            && str_intern(token.name) == else_keyword)
+        {
+            next_lexed_token();            
+            s->if_else_statement.else_stmt = parse_statement();           
+        }
+    }
     return s;
 }
 
@@ -303,7 +350,7 @@ stmt* parse_statement(void)
             s = push_struct(arena, stmt);
             s->kind = STMT_RETURN;
             next_lexed_token();
-            s->return_statement.expression = parse_expression();            
+            s->return_statement.expression = parse_expression();
         }
         else if (keyword == break_keyword)
         {
@@ -349,6 +396,10 @@ stmt* parse_statement(void)
 
             expect_token_kind(TOKEN_RIGHT_BRACE);
         }
+        else if (keyword == if_keyword)
+        {
+            s = parse_if_statement();
+        }
     }
     else if (is_token_kind(TOKEN_NAME))
     {        
@@ -365,6 +416,20 @@ stmt* parse_statement(void)
         {
             s = parse_simple_statement();
         }
+    }
+    else if (is_token_kind(TOKEN_LEFT_BRACE))
+    {
+        next_lexed_token();
+
+        stmt_block block = parse_statement_block();
+        if (block.statements_count > 0)
+        {
+            s = push_struct(arena, stmt);
+            s->kind = STMT_BLOCK;
+            s->statements_block = block;
+        }
+
+        expect_token_kind(TOKEN_RIGHT_BRACE);
     }
 
     return s;
@@ -677,6 +742,11 @@ void print_expression(expr* e)
             printf(" %s", e->identifier);
         }
         break;
+        case EXPR_SIZEOF:
+        {
+            printf("( sizeof %s)", e->identifier);
+        }
+        break;
         case EXPR_UNARY:
         {
             printf("(");
@@ -736,51 +806,104 @@ void print_expression(expr* e)
     }
 }
 
-void print_statement(stmt* statement)
+void print_statement(stmt* s)
 {
-    if (statement == NULL)
+    if (s == NULL)
     {
         return;
     }
 
-    switch (statement->kind)
+    switch (s->kind)
     {
-        case STMT_RETURN: {
+        case STMT_RETURN: 
+        {
             printf("return: (");
-            print_expression(statement->return_statement.expression);
+            print_expression(s->return_statement.expression);
             printf(")");
-        }; break;
-        case STMT_BREAK: { printf("break "); }; break;
-        case STMT_CONTINUE: { printf("continue "); }; break;
-        case STMT_PRINT: {}; break;
-        case STMT_LIST: {}; break;
-        case STMT_IF_ELSE: {}; break;
-        case STMT_WHILE: {}; break;
+        }; 
+        break;
+        case STMT_BREAK: 
+        { 
+            printf("break "); 
+        }; 
+        break;
+        case STMT_CONTINUE: 
+        { 
+            printf("continue "); 
+        }; 
+        break;
+        case STMT_PRINT:
+        {
+
+        };
+        break;
+        case STMT_LIST:
+        {
+
+        };
+        break;
+        case STMT_IF_ELSE: 
+        {
+            printf("if cond:(");
+            print_expression(s->if_else_statement.cond_expr);
+            printf("then: (");
+            print_statement_block(s->if_else_statement.then_block);
+            printf(")");
+            if (s->if_else_statement.else_stmt)
+            {
+                printf("else: (");
+                print_statement(s->if_else_statement.else_stmt);
+                printf(")");
+            }
+            printf(")");
+        };
+        break;
+        case STMT_WHILE: 
+        {
+
+        }; 
+        break;
+        case STMT_BLOCK:
+        {
+            printf("{");
+            print_statement_block(s->statements_block);
+            printf("}");
+        };
+        break;
         case STMT_ASSIGN: 
         {
             printf("= (");
-            print_expression(statement->assign_statement.assigned_var);
-            print_expression(statement->assign_statement.expr);
+            print_expression(s->assign_statement.assigned_var);
+            print_expression(s->assign_statement.expr);
             printf(")");
-        }; break;
-        case STMT_FOR: {
+        }; 
+        break;
+        case STMT_FOR: 
+        {
             printf("(for: (");
-            print_declaration(statement->for_statement.init_decl);
-            print_expression(statement->for_statement.cond_expr);
-            print_expression(statement->for_statement.incr_expr);
+            print_declaration(s->for_statement.init_decl);
+            print_expression(s->for_statement.cond_expr);
+            print_expression(s->for_statement.incr_expr);
             printf(")");
-            print_statement_block(statement->for_statement.statements);
+            print_statement_block(s->for_statement.statements);
             printf(")");        
-        }; break;
-        case STMT_SWITCH: {}; break;
+        }; 
+        break;
+        case STMT_SWITCH: 
+        {
+
+        };
+        break;
         case STMT_DECL:
         {
-            print_declaration(statement->decl_statement.decl);
+            print_declaration(s->decl_statement.decl);
         }
         break;
-        case STMT_EXPR: {
-            print_expression(statement->return_statement.expression);
-        }; break;
+        case STMT_EXPR: 
+        {
+            print_expression(s->return_statement.expression);
+        }; 
+        break;
     }
 }
 
@@ -954,6 +1077,10 @@ void test_parsing(void)
         "fn f(): int { let y = fun_1()\
              let z: int = fun_2(y[0], y[y[0] + 1])\
              return y * z }"
+        "fn f() { if (x == 1) { return y } else { return z } }",
+        "fn f() {if (function(x)) { return y } else if (y == 2) { return z }}",
+        "fn f() { if (x) { x = y } else if (y) {} else if (z) { z = x } else { y = z } }",
+        "fn f() { if (sizeof(x) == 4) { return x } }"
     };
 
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);
@@ -971,17 +1098,13 @@ void test_parsing(void)
         what left:
         * switch
         * while, while do
-        * ifs, else ifs, sizeof
         * decrement, increment, various assigns, e. g. +=
         * nested structs and unions
     */
 
     /* 
         "while (x > y) { x++ y-- }"
-        "do { x-- } while (x < y)"
-        "if (x == 1) { return y } else { return z }"
-        "if (function(x)) { return y } else if (y == 2) { return z }"
-        "if (sizeof(x) == 4) { return x }"
+        "do { x-- } while (x < y)" 
         "switch (x) { case 1: {let x: int = 1 return x } break default: return 2 break }"
         "struct nested_struct { struct x { a: int }, struct y { b: uint } }";
         "union nested_union { struct x { a: int }, struct y { b: uint } }";
