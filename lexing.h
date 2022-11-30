@@ -1,28 +1,22 @@
 ﻿#pragma once
 
-char x = '~';
-
 // istotne jest to, że wartości enuma nigdy się nie zmniejszają
 // np. jesti TOKEN_A wynosi 1000, to zdefiniowany niżej TOKEN_B będzie wynosił 1001
 typedef enum token_kind
 {
-    // pierwsze 128 wartości jest dla one-character tokens
-    TOKEN_EOF = 0,
-    TOKEN_COMMA = 44,
-    TOKEN_DOT = 46,
-    TOKEN_COLON = 58, // :
-    TOKEN_SEMICOLON = 59, // ;
-    TOKEN_QUESTION = 63, // ?
-    TOKEN_LEFT_PAREN = 40,
-    TOKEN_RIGHT_PAREN = 41,
-    //TOKEN_BACKSLASH = 47, // /
-    //TOKEN_SLASH = 92,
-    TOKEN_LEFT_BRACKET = 91, // [
-    TOKEN_RIGHT_BRACKET = 93, // ]
-    TOKEN_LEFT_BRACE = 123, // {
-    TOKEN_RIGHT_BRACE = 125, // }
-    TOKEN_NEGATION = 126, // ~
-    TOKEN_LAST_CHAR = 127,
+    TOKEN_EOF,
+    TOKEN_COMMA,
+    TOKEN_DOT,
+    TOKEN_COLON,
+    TOKEN_SEMICOLON,
+    TOKEN_QUESTION,
+    TOKEN_LEFT_PAREN,
+    TOKEN_RIGHT_PAREN,
+    TOKEN_LEFT_BRACKET, // [
+    TOKEN_RIGHT_BRACKET, // ]
+    TOKEN_LEFT_BRACE, // {
+    TOKEN_RIGHT_BRACE, // }
+    TOKEN_NEGATION, // '~' or '!'
 
     // variables
     TOKEN_KEYWORD,
@@ -98,11 +92,6 @@ const char* token_kind_names[] = {
     [TOKEN_DOT] = ".",
     [TOKEN_QUESTION] = "?",
     [TOKEN_SEMICOLON] = ";",
-
-    //[TOKEN_EXCLAMATION] = "!",
-    //[TOKEN_STAR] = "*",
-    //[TOKEN_BACKSLASH] = "/",
-    //[TOKEN_SLASH] = "\\",
     [TOKEN_NEGATION] = "~",
 
     [TOKEN_KEYWORD] = "keyword",

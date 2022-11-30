@@ -180,6 +180,55 @@ void next_token(void)
             token.name = str_intern_range(token.start, stream);
         }
         break;
+        case '{':
+        {
+            token.kind = TOKEN_LEFT_BRACE;
+            stream++;
+            token.name = str_intern_range(token.start, stream);
+        }
+        break;
+        case '}':
+        {
+            token.kind = TOKEN_RIGHT_BRACE;
+            stream++;
+            token.name = str_intern_range(token.start, stream);
+        }
+        break;
+        case ',':
+        {
+            token.kind = TOKEN_COMMA;
+            stream++;
+            token.name = str_intern_range(token.start, stream);
+        }
+        break;
+        case '.':
+        {
+            token.kind = TOKEN_DOT;
+            stream++;
+            token.name = str_intern_range(token.start, stream);
+        }
+        break;
+        case ';':
+        {
+            token.kind = TOKEN_SEMICOLON;
+            stream++;
+            token.name = str_intern_range(token.start, stream);
+        }
+        break;
+        case '[':
+        {
+            token.kind = TOKEN_LEFT_BRACKET;
+            stream++;
+            token.name = str_intern_range(token.start, stream);
+        }
+        break;
+        case ']':
+        {
+            token.kind = TOKEN_RIGHT_BRACKET;
+            stream++;
+            token.name = str_intern_range(token.start, stream);
+        }
+        break;
         case '<':
         {
             if (*(stream + 1) == '=')
