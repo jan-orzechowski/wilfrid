@@ -13,7 +13,10 @@ typedef enum expr_kind
     EXPR_NAME,
     EXPR_UNARY,
     EXPR_BINARY,
-    EXPR_TERNARY
+    EXPR_TERNARY,
+    EXPR_CALL,
+    EXPR_FIELD,
+    EXPR_INDEX
 } expr_kind;
 
 typedef struct unary_expr unary_expr;
@@ -40,6 +43,25 @@ struct ternary_expr
     expr* if_false;
 };
 
+typedef struct call_expr
+{
+    expr * function_expr;
+    expr** args;
+    size_t args_num;
+} call_expr;
+
+typedef struct index_expr
+{
+    expr* array_expr;
+    expr* index_expr;
+} index_expr;
+
+typedef struct field_expr
+{
+    expr* expr;
+    const char* field_name;
+} field_expr;
+
 struct expr
 {
     expr_kind kind;
@@ -51,6 +73,9 @@ struct expr
         unary_expr unary_expr_value;
         binary_expr binary_expr_value;
         ternary_expr ternary_expr_value;
+        call_expr call_expr_value;
+        index_expr index_expr_value;
+        field_expr field_expr_value;
     };
 };
 
@@ -74,7 +99,7 @@ typedef enum stmt_kind
     STMT_FOR,
     STMT_ASSIGN,
     STMT_SWITCH,
-    STMT_EXPRESSION
+    STMT_EXPR
 } stmt_kind;
 
 typedef struct else_if

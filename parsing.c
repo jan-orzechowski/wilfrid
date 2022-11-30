@@ -32,42 +32,6 @@ bool expect_token_kind(token_kind kind)
     return result;
 }
 
-void print_expression(expr* e)
-{
-    if (e == NULL)
-    {
-        return;
-    }
-
-    switch (e->kind)
-    {
-        case EXPR_INT:
-        {
-            printf(" %d", e->number_value);
-        } break;
-        case EXPR_NAME:
-        {
-            printf(" %.1s", e->identifier);
-        } break;
-        case EXPR_UNARY:
-        {
-            printf("(");
-            print_token_kind(e->binary_expr_value.operator);
-            print_expression(e->unary_expr_value.operand);
-            printf(")");
-        } break;
-        case EXPR_BINARY:
-        {
-            printf("(");
-            print_token_kind(e->binary_expr_value.operator);
-            print_expression(e->binary_expr_value.left_operand);
-            print_expression(e->binary_expr_value.right_operand);
-            printf(")");
-        } break;
-        case EXPR_TERNARY: {} break;
-    }
-}
-
 expr* push_int_expr(int value)
 {
     expr* result = push_struct(arena, expr);
@@ -129,9 +93,67 @@ expr* parse_base_expression(void)
     return result;
 }
 
+// przydałaby się lepsza nazwa na to
+expr* parse_complex_expression(void)
+{    
+    expr* result = parse_base_expression();
+    while (is_token_kind(TOKEN_LEFT_PAREN) 
+        || is_token_kind(TOKEN_LEFT_BRACKET) 
+        || is_token_kind(TOKEN_DOT))
+    {
+        expr* left_side = result;
+        if (is_token_kind(TOKEN_LEFT_PAREN))
+        {
+            next_lexed_token();
+
+            result = push_struct(arena, expr);
+            result->kind = EXPR_CALL;
+            result->call_expr_value.function_expr = left_side;
+
+            while (false == is_token_kind(TOKEN_RIGHT_PAREN))
+            {
+                expr* arg = parse_expression();
+                buf_push(result->call_expr_value.args, arg);
+
+                if (false == is_token_kind(TOKEN_RIGHT_PAREN))
+                {
+                    expect_token_kind(TOKEN_COMMA);
+                }
+            }
+            result->call_expr_value.args_num = buf_len(result->call_expr_value.args);
+
+            expect_token_kind(TOKEN_RIGHT_PAREN);
+        }
+        else if (is_token_kind(TOKEN_LEFT_BRACKET))
+        {
+            next_lexed_token();
+
+            result = push_struct(arena, expr);
+            result->kind = EXPR_INDEX;
+            result->index_expr_value.array_expr = left_side;
+            
+            expr* index_expr = parse_expression();
+            result->index_expr_value.index_expr = index_expr;
+
+            expect_token_kind(TOKEN_RIGHT_BRACKET);
+        } 
+        else if (is_token_kind(TOKEN_DOT))
+        {
+            next_lexed_token();
+            
+            result = push_struct(arena, expr);
+            result->kind = EXPR_FIELD;
+            result->field_expr_value.expr = left_side;
+            result->field_expr_value.field_name = token.name;
+            next_lexed_token();
+        }
+    }
+    return result;
+}
+
 expr* parse_unary_expression(void)
 {
-    expr* e = parse_base_expression();
+    expr* e = parse_complex_expression();
     if (e == NULL)
     {
         if (match_token_kind('+'))
@@ -248,9 +270,7 @@ stmt* parse_simple_statement(void)
     // x()
  
     stmt* s = 0; 
-    char* var = str_intern(token.name);
-
-    next_lexed_token();
+    expr* left_expr = parse_expression();
 
     if (is_token_kind(TOKEN_ASSIGN))
     {
@@ -260,13 +280,20 @@ stmt* parse_simple_statement(void)
         expr* e = parse_expression();
         s->kind = STMT_ASSIGN;
         s->assign_statement.expr = e;
-        s->assign_statement.assigned_var = var;
+        s->assign_statement.assigned_var = left_expr;
     }
     else
     {
+        next_lexed_token();
+
+        s = push_struct(arena, stmt);
+        expr* e = parse_expression();
+        s->kind = STMT_EXPR;
+        s->expression = e;      
+    
         debug_breakpoint;
     }
-
+   
     return s;
 }
 
@@ -636,6 +663,84 @@ decl* parse_declaration(void)
 void print_declaration(decl* declaration);
 void print_statement_block(stmt_block block);
 
+void print_expression(expr* e)
+{
+    if (e == NULL)
+    {
+        return;
+    }
+
+    switch (e->kind)
+    {
+        case EXPR_INT:
+        {
+            printf(" %d", e->number_value);
+        }
+        break;
+        case EXPR_NAME:
+        {
+            printf(" %s", e->identifier);
+        }
+        break;
+        case EXPR_UNARY:
+        {
+            printf("(");
+            print_token_kind(e->binary_expr_value.operator);
+            print_expression(e->unary_expr_value.operand);
+            printf(")");
+        }
+        break;
+        case EXPR_BINARY:
+        {
+            printf("(");
+            print_token_kind(e->binary_expr_value.operator);
+            print_expression(e->binary_expr_value.left_operand);
+            print_expression(e->binary_expr_value.right_operand);
+            printf(")");
+        }
+        break;
+        case EXPR_INDEX:
+        {
+            printf("(access index");
+            print_expression(e->index_expr_value.index_expr);
+            printf(" in");
+            print_expression(e->index_expr_value.array_expr);
+            printf(")");
+        }
+        break;
+        case EXPR_CALL:
+        {
+            printf("(call");
+            print_expression(e->call_expr_value.function_expr);
+            printf(" with args (");
+            for (size_t i = 0; i < e->call_expr_value.args_num; i++)
+            {
+                print_expression(e->call_expr_value.args[i]);
+                if (i != e->call_expr_value.args_num - 1)
+                {
+                    printf(", ");
+                }
+            }
+            printf("))");
+        }
+        break;
+        case EXPR_FIELD:
+        {
+            printf("(access field");
+            printf("%s", e->field_expr_value.field_name);
+            printf(" in");
+            print_expression(e->field_expr_value.expr);
+            printf(")");
+        }
+        break;
+        case EXPR_TERNARY:
+        {
+
+        }
+        break;
+    }
+}
+
 void print_statement(stmt* statement)
 {
     if (statement == NULL)
@@ -656,9 +761,10 @@ void print_statement(stmt* statement)
         case STMT_LIST: {}; break;
         case STMT_IF_ELSE: {}; break;
         case STMT_WHILE: {}; break;
-        case STMT_ASSIGN: {
+        case STMT_ASSIGN: 
+        {
             printf("= (");
-            printf(statement->assign_statement.assigned_var);
+            print_expression(statement->assign_statement.assigned_var);
             print_expression(statement->assign_statement.expr);
             printf(")");
         }; break;
@@ -677,7 +783,7 @@ void print_statement(stmt* statement)
             print_declaration(statement->decl_statement.decl);
         }
         break;
-        case STMT_EXPRESSION: {
+        case STMT_EXPR: {
             print_expression(statement->return_statement.expression);
         }; break;
     }
@@ -848,6 +954,11 @@ void test_parsing(void)
         "enum some_enum { A = 1, B, C, D = 4 }",
         "fn some_function() : int { let x = 100\
             for (let i = 0; i < x; i++) { x = x + 1 } return x }",
+        "let x = 2 + f(1, 2) + g(3) + 4",
+        "fn f(ind: int) { x.arr[ind] = y[ind] }",
+        "fn f(): int { let y = fun_1()\
+             let z: int = fun_2(y[0], y[y[0] + 1])\
+             return y * z }"
     };
 
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);
@@ -867,12 +978,17 @@ void test_parsing(void)
         * while, while do
         * ifs, else ifs, sizeof
         * decrement, increment, various assigns, e. g. +=
-        * function invocation
         * nested structs and unions
     */
 
     /* 
-        test_str = "struct nested_struct { struct x { a: int }, struct y { b: uint } }";
-        test_str = "union nested_union { struct x { a: int }, struct y { b: uint } }";
+        "while (x > y) { x++ y-- }"
+        "do { x-- } while (x < y)"
+        "if (x == 1) { return y } else { return z }"
+        "if (function(x)) { return y } else if (y == 2) { return z }"
+        "if (sizeof(x) == 4) { return x }"
+        "switch (x) { case 1: {let x: int = 1 return x } break default: return 2 break }"
+        "struct nested_struct { struct x { a: int }, struct y { b: uint } }";
+        "union nested_union { struct x { a: int }, struct y { b: uint } }";
     */    
 }
