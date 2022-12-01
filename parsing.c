@@ -317,66 +317,76 @@ void parse_switch_cases(switch_stmt* switch_statement)
     bool default_case_defined = false;
 
     switch_case** cases = 0;
+    switch_case* c = 0;
 
-    switch_case* s = 0;
     do
     {
-        s = 0;
-        if (is_token_kind(TOKEN_KEYWORD))
-        {            
-            char* keyword = str_intern(token.name);
-            if (keyword == case_keyword)
+        c = 0;
+        bool case_is_default = false;
+        expr** case_exprs = 0;
+        expr* e = 0;
+        
+        do
+        {
+            e = 0;
+
+            if (is_token_kind(TOKEN_KEYWORD))
             {
-                s = push_struct(arena, switch_case);
-
-                next_lexed_token();
-                s->cond_exprs = parse_expression();
-                expect_token_kind(TOKEN_COLON);
-
-                s->cond_exprs_num = 1; // tymczasowe
+                char* keyword = str_intern(token.name);
+                if (keyword == case_keyword)
+                {               
+                    next_lexed_token();
+                    e = parse_expression();
+                    expect_token_kind(TOKEN_COLON);
+                    buf_push(case_exprs, e);
+                }
+                else if (keyword == default_keyword
+                    && false == default_case_defined)
+                {
+                    next_lexed_token();
+                    case_is_default = true;
+                    default_case_defined = true;
+                    expect_token_kind(TOKEN_COLON);
+                }
+                else
+                {
+                    fatal("switch statement error: case or default keyword expected");
+                }
             }
-            else if (keyword == default_keyword
-                && false == default_case_defined)
-            {
-                s = push_struct(arena, switch_case);
+        }
+        while (e);
 
-                next_lexed_token();
-                s->is_default = true;
-                default_case_defined = true;
+        if (buf_len(case_exprs) > 0)
+        {
+            c = push_struct(arena, switch_case);
+            c->cond_exprs = copy_buf_to_arena(arena, case_exprs);
+            c->cond_exprs_num = buf_len(case_exprs);
+            c->is_default = case_is_default;
+        }
 
-                expect_token_kind(TOKEN_COLON);
-            }
-            else
-            {
-                // błąd
-            }
-
+        buf_free(case_exprs);
+        
+        if (c)
+        {
             expect_token_kind(TOKEN_LEFT_BRACE);
-            s->statements = parse_statement_block();
+            c->statements = parse_statement_block();
             expect_token_kind(TOKEN_RIGHT_BRACE);
 
             if (is_token_kind(TOKEN_KEYWORD)
                 && str_intern(token.name) == break_keyword)
             {
-                s->fallthrough = false;
+                c->fallthrough = false;
                 next_lexed_token();
             }
             else
             {
-                s->fallthrough = true;
+                c->fallthrough = true;
             }
-        }
-        else
-        {
-            // błąd
-        }
 
-        if (s != 0)
-        {
-            buf_push(cases, s);
+            buf_push(cases, c);
         }
     }
-    while (s);
+    while (c);
 
     if (buf_len(cases) > 0)
     {
@@ -1033,7 +1043,7 @@ void print_statement(stmt* s)
                 switch_case* c = s->switch_statement.cases[i];
                 for (size_t j = 0; j < c->cond_exprs_num; j++)
                 {
-                    expr* e = &c->cond_exprs[j];
+                    expr* e = c->cond_exprs[j];
                     print_expression(e);
                     if (j != c->cond_exprs_num - 1)
                     {
@@ -1042,15 +1052,17 @@ void print_statement(stmt* s)
                 }
                 if (c->is_default)
                 {
-                    printf(" default");
+                    printf(", default");
                 }
                 if (c->fallthrough)
                 {
-                    printf(" fallthrough");
+                    printf(", fallthrough");
                 }
                 printf(")");
 
+                printf("{");
                 print_statement_block(c->statements);
+                printf("}");
             }
             printf(")");
         };
@@ -1247,11 +1259,11 @@ void test_parsing(void)
         "fn f() {\
             switch (x){\
             case 1: {let x: int = 1 return x } break\
-            default: { return 2 } break } } "
-    /*    "fn f() {\
+            default: { return 2 } break } } ",
+        "fn f() {\
             switch (x){\
-            case 1: case 2: { y = 1 }\
-            case 3: { return 2 } }"*/
+            case 1: case 2: { y = 1 } case 3: case 4: case 5: { y = 2 }\
+            case 6: { return 2 } case 7: {} } }"
     };
 
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);

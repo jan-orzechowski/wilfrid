@@ -145,7 +145,7 @@ typedef struct assign_stmt
 
 typedef struct switch_case
 {
-    expr* cond_exprs;
+    expr** cond_exprs;
     size_t cond_exprs_num;
     stmt_block statements;
     bool is_default;
