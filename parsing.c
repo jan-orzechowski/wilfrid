@@ -104,6 +104,46 @@ expr* push_binary_expr(token_kind operator, expr* left_operand, expr* right_oper
 
 expr* parse_expression(void);
 
+type* parse_basic_type(void)
+{
+    type* t = 0;
+    if (is_token_kind(TOKEN_NAME))
+    {
+        t = push_struct(arena, type);
+        t->kind = TYPE_NAME;
+        t->name = token.name;
+        next_lexed_token();
+    }
+    return t;
+}
+
+type* parse_type(void)
+{
+    type* t = parse_basic_type();
+    while(is_token_kind(TOKEN_MUL) || is_token_kind(TOKEN_LEFT_BRACKET))
+    {
+        if (is_token_kind(TOKEN_MUL))
+        {
+            type* base_t = t;
+            t = push_struct(arena, type);
+            t->kind = TYPE_POINTER;
+            t->pointer.base_type = base_t;
+            next_lexed_token();
+        }
+        else
+        {
+            type* base_t = t;
+            t = push_struct(arena, type);
+            t->kind = TYPE_ARRAY;
+            next_lexed_token();
+            t->array.size_expr = parse_expression();
+            t->array.base_type = base_t;
+            expect_token_kind(TOKEN_RIGHT_BRACKET);
+        }
+    }
+    return t;
+}
+
 expr* parse_base_expression(void)
 {
     expr* result = 0;
@@ -641,8 +681,7 @@ function_param parse_function_parameter(void)
 
         if (is_token_kind(TOKEN_NAME))
         {
-            p.type = token.name;
-            next_lexed_token();
+            p.type = parse_type();
         }
     }
     return p;
@@ -697,8 +736,7 @@ aggregate_field parse_aggregate_field(void)
 
         if (is_token_kind(TOKEN_NAME))
         {
-            result.type = token.name;
-            next_lexed_token();
+            result.type = parse_type();
         }
 
         if (is_token_kind(TOKEN_COMMA))
@@ -794,11 +832,7 @@ decl* parse_declaration_optional(void)
 
             if (match_token_kind(TOKEN_COLON))
             {
-                if (is_token_kind(TOKEN_NAME))
-                {
-                    declaration->variable_declaration.type = token.name;
-                    next_lexed_token();
-                }
+                declaration->variable_declaration.type = parse_type();                
             }
 
             if (match_token_kind(TOKEN_ASSIGN))
@@ -850,8 +884,7 @@ decl* parse_declaration_optional(void)
                 next_lexed_token();
                 if (is_token_kind(TOKEN_NAME))
                 {
-                    declaration->function_declaration.return_type = token.name;
-                    next_lexed_token();
+                    declaration->function_declaration.return_type = parse_type();
                 }
             }
 
@@ -1135,10 +1168,40 @@ void print_statement_block(stmt_block block)
     }
 }
 
+void print_type(type* t)
+{
+    if (t != 0)
+    {
+        switch (t->kind)
+        {
+            case TYPE_NAME:
+            {
+                printf("type: %s", t->name);
+            };
+            break;
+            case TYPE_ARRAY:
+            {
+                printf(" array of length: ");
+                print_expression(t->array.size_expr);
+                printf(" of:");
+                print_type(t->array.base_type);
+            };
+            break;
+            case TYPE_POINTER:
+            {
+                printf(" pointer to ");
+                print_type(t->pointer.base_type);
+            };
+            break;
+        }
+    }
+}
+
 void print_function_param(function_param param)
 {
     printf("(param name: %s", param.identifier);
-    printf(" type: %s)", param.type);
+    print_type(param.type);
+    printf(")");
 }
 
 void print_declaration(decl* declaration)
@@ -1168,7 +1231,8 @@ void print_declaration(decl* declaration)
 
             if (declaration->function_declaration.return_type)
             {
-                printf(" return type: %s", declaration->function_declaration.return_type);
+                printf(" return type: ");
+                print_type(declaration->function_declaration.return_type);
             }
             printf(" body: {");
             print_statement_block(declaration->function_declaration.statements);
@@ -1185,7 +1249,8 @@ void print_declaration(decl* declaration)
 
             if (declaration->variable_declaration.type)
             {
-                printf(" type: %s", declaration->variable_declaration.type);
+                printf(" type: ");
+                print_type(declaration->variable_declaration.type);
             }
 
             if (declaration->variable_declaration.expression)
@@ -1219,7 +1284,9 @@ void print_declaration(decl* declaration)
                 index++)
             {
                 printf("(name: %s", declaration->aggregate_declaration.fields[index].identifier);
-                printf(" type: %s)", declaration->aggregate_declaration.fields[index].type);
+                printf(" type: ");
+                print_type(declaration->aggregate_declaration.fields[index].type);
+                printf(")");
             }
         
             printf(")");
@@ -1312,7 +1379,9 @@ void test_parsing(void)
         "fn f() {\
             switch (x){\
             case 1: case 2: { y++ } case 3: case 4: case 5: { y-- }\
-            case 6: { return 2 } case 7: {} } }",
+            case 6: { return 2 } case 7: {} } }",        
+        "fn f(x: int*, y: int[25], z: char*[25], w: int**[20] ) : int** { let x : int[256] = 0 } ",
+        "struct x { a: int[20], b: float**, c: int*[20]* } ",
     };
 
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);

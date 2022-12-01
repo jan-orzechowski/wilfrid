@@ -5,6 +5,38 @@
 typedef struct expr expr;
 typedef struct stmt stmt;
 typedef struct decl decl;
+typedef struct type type;
+
+typedef enum type_kind
+{
+    TYPE_NONE,
+    TYPE_NAME,
+    TYPE_ARRAY,
+    TYPE_POINTER
+} type_kind;
+
+typedef struct type_array
+{
+    type* base_type;
+    expr* size_expr;
+} type_array;
+
+typedef struct type_pointer
+{
+    type* base_type;
+} type_pointer;
+
+struct type
+{
+    type_kind kind;
+    union
+    {
+        const char* name;
+        type_array array;
+        type_pointer pointer;
+        //type_function function;
+    };
+};
 
 typedef enum expr_kind
 {
@@ -191,7 +223,7 @@ typedef enum decl_kind
 typedef struct aggregate_field
 {
     char* identifier;
-    char* type;
+    type* type;
 } aggregate_field;
 
 typedef struct aggregate_decl
@@ -202,14 +234,14 @@ typedef struct aggregate_decl
 
 typedef struct variable_decl
 {
-    char* type; 
+    type* type; 
     expr* expression;
 } variable_decl;
 
 typedef struct function_param
 {
     char* identifier;
-    char* type;
+    type* type;
 } function_param;
 
 typedef struct function_param_list
@@ -221,7 +253,7 @@ typedef struct function_param_list
 typedef struct function_decl
 {
     function_param_list parameters;
-    char* return_type;
+    type* return_type;
     stmt_block statements;
 } function_decl;
 
@@ -250,4 +282,3 @@ struct decl
         enum_decl enum_declaration;
     };
 };
-
