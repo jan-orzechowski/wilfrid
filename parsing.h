@@ -113,20 +113,6 @@ struct if_else_stmt
     stmt* else_stmt;
 };
 
-typedef struct switch_case
-{
-    expr** expressions;
-    size_t expressions_count;
-    stmt_block* code_block;
-} switch_case;
-
-typedef struct switch_stmt
-{
-    expr* checked_expression;
-    switch_case* cases;
-    size_t cases_num;
-} switch_stmt;
-
 typedef struct return_stmt
 {
     expr* expression;
@@ -157,6 +143,22 @@ typedef struct assign_stmt
     expr* expr;
 } assign_stmt;
 
+typedef struct switch_case
+{
+    expr* cond_exprs;
+    size_t cond_exprs_num;
+    stmt_block statements;
+    bool is_default;
+    bool fallthrough;
+} switch_case;
+
+typedef struct switch_stmt
+{
+    expr* var_expr;
+    switch_case** cases;
+    size_t cases_num;    
+} switch_stmt;
+
 struct stmt
 {
     stmt_kind kind;
@@ -165,7 +167,6 @@ struct stmt
         return_stmt return_statement;
         stmt* statement_list;
         if_else_stmt if_else_statement;
-        switch_stmt switch_statement;
         decl_stmt decl_statement;
         for_stmt for_statement;
         assign_stmt assign_statement;
@@ -173,6 +174,7 @@ struct stmt
         stmt_block statements_block;
         while_stmt while_statement;
         while_stmt do_while_statement;
+        switch_stmt switch_statement;
     };
 };
 

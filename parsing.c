@@ -312,6 +312,81 @@ stmt* parse_simple_statement(void)
 
 stmt* parse_statement(void);
 
+void parse_switch_cases(switch_stmt* switch_statement)
+{
+    bool default_case_defined = false;
+
+    switch_case** cases = 0;
+
+    switch_case* s = 0;
+    do
+    {
+        s = 0;
+        if (is_token_kind(TOKEN_KEYWORD))
+        {            
+            char* keyword = str_intern(token.name);
+            if (keyword == case_keyword)
+            {
+                s = push_struct(arena, switch_case);
+
+                next_lexed_token();
+                s->cond_exprs = parse_expression();
+                expect_token_kind(TOKEN_COLON);
+
+                s->cond_exprs_num = 1; // tymczasowe
+            }
+            else if (keyword == default_keyword
+                && false == default_case_defined)
+            {
+                s = push_struct(arena, switch_case);
+
+                next_lexed_token();
+                s->is_default = true;
+                default_case_defined = true;
+
+                expect_token_kind(TOKEN_COLON);
+            }
+            else
+            {
+                // błąd
+            }
+
+            expect_token_kind(TOKEN_LEFT_BRACE);
+            s->statements = parse_statement_block();
+            expect_token_kind(TOKEN_RIGHT_BRACE);
+
+            if (is_token_kind(TOKEN_KEYWORD)
+                && str_intern(token.name) == break_keyword)
+            {
+                s->fallthrough = false;
+                next_lexed_token();
+            }
+            else
+            {
+                s->fallthrough = true;
+            }
+        }
+        else
+        {
+            // błąd
+        }
+
+        if (s != 0)
+        {
+            buf_push(cases, s);
+        }
+    }
+    while (s);
+
+    if (buf_len(cases) > 0)
+    {
+        switch_statement->cases_num = buf_len(cases);
+        switch_statement->cases = copy_buf_to_arena(arena, cases);     
+    }
+
+    buf_free(cases);
+}
+
 stmt* parse_if_statement(void)
 {
     stmt* s = 0;
@@ -434,6 +509,20 @@ stmt* parse_statement(void)
 
             expect_token_kind(TOKEN_LEFT_BRACE);
             s->while_statement.statements = parse_statement_block();
+            expect_token_kind(TOKEN_RIGHT_BRACE);
+        }
+        else if (keyword == switch_keyword)
+        {
+            s = push_struct(arena, stmt);
+            s->kind = STMT_SWITCH;
+            next_lexed_token();
+
+            expect_token_kind(TOKEN_LEFT_PAREN);
+            s->switch_statement.var_expr = parse_expression();
+            expect_token_kind(TOKEN_RIGHT_PAREN);
+
+            expect_token_kind(TOKEN_LEFT_BRACE);
+            parse_switch_cases(&s->switch_statement);
             expect_token_kind(TOKEN_RIGHT_BRACE);
         }
     }
@@ -935,7 +1024,35 @@ void print_statement(stmt* s)
         break;
         case STMT_SWITCH: 
         {
+            printf("(switch: (");
+            print_expression(s->switch_statement.var_expr);
+            printf(")");
+            for (size_t i = 0; i < s->switch_statement.cases_num; i++)
+            {
+                printf("(case: (conditions:");
+                switch_case* c = s->switch_statement.cases[i];
+                for (size_t j = 0; j < c->cond_exprs_num; j++)
+                {
+                    expr* e = &c->cond_exprs[j];
+                    print_expression(e);
+                    if (j != c->cond_exprs_num - 1)
+                    {
+                        printf(", ");
+                    }
+                }
+                if (c->is_default)
+                {
+                    printf(" default");
+                }
+                if (c->fallthrough)
+                {
+                    printf(" fallthrough");
+                }
+                printf(")");
 
+                print_statement_block(c->statements);
+            }
+            printf(")");
         };
         break;
         case STMT_DECL:
@@ -1127,6 +1244,14 @@ void test_parsing(void)
         "fn f() { if (sizeof(x) == 4) { return x } }"
         "fn f() { while (x > y) { x = x + 1 } }",
         "fn f() { do { x[index] = x - 1 } while (x < y) }"
+        "fn f() {\
+            switch (x){\
+            case 1: {let x: int = 1 return x } break\
+            default: { return 2 } break } } "
+    /*    "fn f() {\
+            switch (x){\
+            case 1: case 2: { y = 1 }\
+            case 3: { return 2 } }"*/
     };
 
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);
@@ -1134,8 +1259,6 @@ void test_parsing(void)
     {
         char* str = test_strs[i];
         parse_text_and_print_s_expressions(str);
-
-        debug_breakpoint;
     }
 
     debug_breakpoint;
@@ -1148,7 +1271,7 @@ void test_parsing(void)
     */
 
     /* 
-        "switch (x) { case 1: {let x: int = 1 return x } break default: return 2 break }"
+       
         "struct nested_struct { struct x { a: int }, struct y { b: uint } }";
         "union nested_union { struct x { a: int }, struct y { b: uint } }";
     */    
