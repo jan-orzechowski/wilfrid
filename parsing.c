@@ -32,6 +32,30 @@ bool expect_token_kind(token_kind kind)
     return result;
 }
 
+bool is_assign_operation(token_kind kind)
+{
+    bool result = (kind >= TOKEN_FIRST_ASSIGN_OPERATOR && kind <= TOKEN_LAST_ASSIGN_OPERATOR);
+    return result;
+}
+
+bool is_multiplicative_operation(token_kind kind)
+{
+    bool result = (kind >= TOKEN_FIRST_MUL_OPERATOR && kind <= TOKEN_LAST_MUL_OPERATOR);
+    return result;
+}
+
+bool is_additive_operation(token_kind kind)
+{
+    bool result = (kind >= TOKEN_FIRST_ADD_OPERATOR && kind <= TOKEN_LAST_ADD_OPERATOR);
+    return result;
+}
+
+bool is_comparison_operation(token_kind kind)
+{
+    bool result = (kind >= TOKEN_FIRST_CMP_OPERATOR && kind <= TOKEN_LAST_CMP_OPERATOR);
+    return result;
+}
+
 expr* push_int_expr(int value)
 {
     expr* result = push_struct(arena, expr);
@@ -184,6 +208,10 @@ expr* parse_unary_expression(void)
         {
             e = push_unary_expr(TOKEN_SUB, parse_base_expression());
         }
+        else if (match_token_kind(TOKEN_NEGATION))
+        {
+            e = push_unary_expr(TOKEN_NEGATION, parse_base_expression());
+        }
     }
     return e;
 }
@@ -191,7 +219,7 @@ expr* parse_unary_expression(void)
 expr* parse_multiplicative_expression(void)
 {
     expr* e = parse_unary_expression();
-    while (is_token_kind(TOKEN_MUL) || is_token_kind(TOKEN_DIV))
+    while (is_multiplicative_operation(token.kind))
     {
         expr* left_expr = e;
         token_kind op = token.kind;
@@ -206,7 +234,7 @@ expr* parse_multiplicative_expression(void)
 expr* parse_additive_expression(void)
 {
     expr* e = parse_multiplicative_expression();
-    while (is_token_kind(TOKEN_ADD) || is_token_kind(TOKEN_SUB))
+    while (is_additive_operation(token.kind))
     {
         expr* left_expr = e;
         token_kind op = token.kind;
@@ -221,9 +249,7 @@ expr* parse_additive_expression(void)
 expr* parse_comparison_expression(void)
 {
     expr* e = parse_additive_expression();
-    while (is_token_kind(TOKEN_EQ) || is_token_kind(TOKEN_NEQ)
-        || is_token_kind(TOKEN_GT) || is_token_kind(TOKEN_GEQ) 
-        || is_token_kind(TOKEN_LT) || is_token_kind(TOKEN_LEQ))
+    while (is_comparison_operation(token.kind))
     {
         expr* left_expr = e;
         token_kind op = token.kind;
@@ -281,23 +307,35 @@ decl* parse_declaration(void);
 decl* parse_declaration_optional(void);
 stmt_block parse_statement_block(void);
 
-// i.e. assign, function invocation or incerement
 stmt* parse_simple_statement(void)
 { 
     stmt* s = 0; 
     expr* left_expr = parse_expression();
 
-    if (is_token_kind(TOKEN_ASSIGN))
+    if (is_assign_operation(token.kind))
     {
+        token_kind op = token.kind;
         next_lexed_token();
         
         s = push_struct(arena, stmt);
         expr* e = parse_expression();
         s->kind = STMT_ASSIGN;
-        s->assign_statement.expr = e;
-        s->assign_statement.assigned_var = left_expr;
+        s->assign_statement.operation = op;
+        s->assign_statement.value_expr = e;
+        s->assign_statement.assigned_var_expr = left_expr;
     }
-    else
+    else if (is_token_kind(TOKEN_INC) || is_token_kind(TOKEN_DEC))
+    {
+        token_kind op = token.kind;
+        next_lexed_token();
+
+        s = push_struct(arena, stmt);
+        s->kind = STMT_ASSIGN;
+        s->assign_statement.operation = op;
+        s->assign_statement.value_expr = 0;
+        s->assign_statement.assigned_var_expr = left_expr;
+    }
+    else 
     {
         next_lexed_token();
 
@@ -472,7 +510,7 @@ stmt* parse_statement(void)
 
             expect_token_kind(TOKEN_SEMICOLON);
 
-            s->for_statement.incr_expr = parse_expression();
+            s->for_statement.incr_stmt = parse_statement();
 
             expect_token_kind(TOKEN_RIGHT_PAREN);
 
@@ -976,14 +1014,16 @@ void print_statement(stmt* s)
         {
             printf("if cond:(");
             print_expression(s->if_else_statement.cond_expr);
-            printf(") then:(");
+            printf(") then:");
+            printf("{");
             print_statement_block(s->if_else_statement.then_block);
+            printf("}");
             printf(")");
             if (s->if_else_statement.else_stmt)
             {
-                printf("else: (");
+                printf("else: {");
                 print_statement(s->if_else_statement.else_stmt);
-                printf(")");
+                printf("}");
             }
             printf(")");
         };
@@ -1015,9 +1055,10 @@ void print_statement(stmt* s)
         break;
         case STMT_ASSIGN: 
         {
-            printf("= (");
-            print_expression(s->assign_statement.assigned_var);
-            print_expression(s->assign_statement.expr);
+            print_token_kind(s->assign_statement.operation);
+            printf("(");
+            print_expression(s->assign_statement.assigned_var_expr);
+            print_expression(s->assign_statement.value_expr);
             printf(")");
         }; 
         break;
@@ -1026,9 +1067,11 @@ void print_statement(stmt* s)
             printf("(for: (");
             print_declaration(s->for_statement.init_decl);
             print_expression(s->for_statement.cond_expr);
-            print_expression(s->for_statement.incr_expr);
+            print_statement(s->for_statement.incr_stmt);
             printf(")");
+            printf("{");
             print_statement_block(s->for_statement.statements);
+            printf("}");
             printf(")");        
         }; 
         break;
@@ -1085,6 +1128,10 @@ void print_statement_block(stmt_block block)
     for (int index = 0; index < block.statements_count; index++)
     {
         print_statement(block.statements[index]);
+        if (index != block.statements_count - 1)
+        {
+            printf(", ");
+        }
     }
 }
 
@@ -1123,9 +1170,9 @@ void print_declaration(decl* declaration)
             {
                 printf(" return type: %s", declaration->function_declaration.return_type);
             }
-            printf(" body: (");
+            printf(" body: {");
             print_statement_block(declaration->function_declaration.statements);
-            printf("))");
+            printf("})");
         }; 
         break;
         case DECL_VARIABLE: {
@@ -1230,15 +1277,15 @@ void test_parsing(void)
     char* test_strs[] = {
         /*
         */
-        "let x = a + -b + c + -d + e + f",
-        "let x = a * b + -c * d + e * -f",
+        "let x = a + -b << c + -d + e >> f",
+        "let x = a ^ b + c * -d + e | -f & g",
         "let x = a >= b || -c * d < e && -f",
         "let x = (a - b) + (c / d)",
         "let x : float = (a == -b)",
         "fn f (a: int, b: float, c : int ) : float { return a + b }",
         "fn f () {\
-            let x = 1\
-            let y = 2\
+            x += 1\
+            y -= 2\
             return x + y }",
         "struct x { a: int, b: float, c: y }",
         "union some_union { a: int, b: float }",
@@ -1246,6 +1293,7 @@ void test_parsing(void)
         "fn some_function() : int { let x = 100\
             for (let i = 0; i < x; i++) { x = x + 1 } return x }",
         "let x = 2 + f(1, 2) + g(3) + 4",
+        "fn f() { x *= 2 y |= !x z &= 8 w /= z u &&= ~y v ||= z a ^= b } ",
         "fn f(ind: int) { x.arr[ind] = y[ind] }",
         "fn f(): int { let y = fun_1()\
              let z: int = fun_2(y[0], y[y[0] + 1])\
@@ -1262,8 +1310,8 @@ void test_parsing(void)
             default: { return 2 } break } } ",
         "fn f() {\
             switch (x){\
-            case 1: case 2: { y = 1 } case 3: case 4: case 5: { y = 2 }\
-            case 6: { return 2 } case 7: {} } }"
+            case 1: case 2: { y++ } case 3: case 4: case 5: { y-- }\
+            case 6: { return 2 } case 7: {} } }",
     };
 
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);
@@ -1274,17 +1322,4 @@ void test_parsing(void)
     }
 
     debug_breakpoint;
-
-    /*
-        what left:
-        * switch
-        * decrement, increment, various assigns, e. g. +=
-        * nested structs and unions
-    */
-
-    /* 
-       
-        "struct nested_struct { struct x { a: int }, struct y { b: uint } }";
-        "union nested_union { struct x { a: int }, struct y { b: uint } }";
-    */    
 }

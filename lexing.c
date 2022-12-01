@@ -140,30 +140,78 @@ void next_token(void)
         break;
         case '+':
         {
-            token.kind = TOKEN_ADD;
-            stream++;
-            token.name = str_intern_range(token.start, stream);
+            if (*(stream + 1) == '+')
+            {
+                stream += 2;
+                token.kind = TOKEN_INC;
+                token.name = str_intern_range(token.start, stream);
+            }
+            else if (*(stream + 1) == '=')
+            {
+                stream += 2;
+                token.kind = TOKEN_ADD_ASSIGN;
+                token.name = str_intern_range(token.start, stream);
+            }
+            else
+            {
+                stream++;
+                token.kind = TOKEN_ADD;
+                token.name = str_intern_range(token.start, stream);
+            }
         }
         break;
         case '-':
-        {
-            token.kind = TOKEN_SUB;
-            stream++;
-            token.name = str_intern_range(token.start, stream);
+        {          
+            if (*(stream + 1) == '-')
+            {
+                stream += 2;
+                token.kind = TOKEN_DEC;
+                token.name = str_intern_range(token.start, stream);
+            }
+            else if (*(stream + 1) == '=')
+            {
+                stream += 2;
+                token.kind = TOKEN_SUB_ASSIGN;
+                token.name = str_intern_range(token.start, stream);
+            }
+            else
+            {
+                stream++;
+                token.kind = TOKEN_SUB;
+                token.name = str_intern_range(token.start, stream);
+            }
         }
         break;
         case '*':
         {
-            token.kind = TOKEN_MUL;
-            stream++;
-            token.name = str_intern_range(token.start, stream);
+            if (*(stream + 1) == '=')
+            {
+                stream += 2;
+                token.kind = TOKEN_MUL_ASSIGN;
+                token.name = str_intern_range(token.start, stream);
+            }
+            else
+            {
+                token.kind = TOKEN_MUL;
+                stream++;
+                token.name = str_intern_range(token.start, stream);
+            }
         }
         break;
         case '/':
         {
-            token.kind = TOKEN_DIV;
-            stream++;
-            token.name = str_intern_range(token.start, stream);
+            if (*(stream + 1) == '=')
+            {
+                stream += 2;
+                token.kind = TOKEN_DIV_ASSIGN;
+                token.name = str_intern_range(token.start, stream);
+            }
+            else
+            {
+                token.kind = TOKEN_DIV;
+                stream++;
+                token.name = str_intern_range(token.start, stream);
+            }
         }
         break;
         case '(':
@@ -232,10 +280,25 @@ void next_token(void)
         case '<':
         {
             if (*(stream + 1) == '=')
-            {
+            {              
                 stream += 2;
                 token.kind = TOKEN_LEQ;
-                token.name = str_intern_range(token.start, stream);
+                token.name = str_intern_range(token.start, stream);                
+            }
+            else if (*(stream + 1) == '<')
+            {
+                if (*(stream + 1) == '=')
+                {
+                    stream += 3;
+                    token.kind = TOKEN_LEFT_SHIFT_ASSIGN;
+                    token.name = str_intern_range(token.start, stream);
+                }
+                else
+                {
+                    stream += 2;
+                    token.kind = TOKEN_LEFT_SHIFT;
+                    token.name = str_intern_range(token.start, stream);
+                }
             }
             else
             {
@@ -248,10 +311,25 @@ void next_token(void)
         case '>':
         {
             if (*(stream + 1) == '=')
-            {
+            {             
                 stream += 2;
                 token.kind = TOKEN_GEQ;
                 token.name = str_intern_range(token.start, stream);
+            }
+            else if (*(stream + 1) == '>')
+            {
+                if (*(stream + 1) == '=')
+                {
+                    stream += 3;
+                    token.kind = TOKEN_RIGHT_SHIFT_ASSIGN;
+                    token.name = str_intern_range(token.start, stream);
+                }
+                else
+                {
+                    stream += 2;
+                    token.kind = TOKEN_RIGHT_SHIFT;
+                    token.name = str_intern_range(token.start, stream);
+                }              
             }
             else
             {
@@ -265,8 +343,23 @@ void next_token(void)
         {
             if (*(stream + 1) == '|')
             {
+                if (*(stream + 2) == '=')
+                {
+                    stream += 3;
+                    token.kind = TOKEN_OR_ASSIGN;
+                    token.name = str_intern_range(token.start, stream);
+                }
+                else
+                {
+                    stream += 2;
+                    token.kind = TOKEN_OR;
+                    token.name = str_intern_range(token.start, stream);
+                }
+            }
+            else if (*(stream + 1) == '=')
+            {
                 stream += 2;
-                token.kind = TOKEN_OR;
+                token.kind = TOKEN_BITWISE_OR_ASSIGN;
                 token.name = str_intern_range(token.start, stream);
             }
             else
@@ -281,14 +374,45 @@ void next_token(void)
         {
             if (*(stream + 1) == '&')
             {
+                if (*(stream + 2) == '=')
+                {
+                    stream += 3;
+                    token.kind = TOKEN_AND_ASSIGN;
+                    token.name = str_intern_range(token.start, stream);
+                }
+                else
+                {
+                    stream += 2;
+                    token.kind = TOKEN_AND;
+                    token.name = str_intern_range(token.start, stream);
+                }               
+            }
+            else if (*(stream + 1) == '=')
+            {
                 stream += 2;
-                token.kind = TOKEN_AND;
+                token.kind = TOKEN_BITWISE_AND_ASSIGN;
                 token.name = str_intern_range(token.start, stream);
             }
             else
             {
                 stream++;
                 token.kind = TOKEN_BITWISE_AND;
+                token.name = str_intern_range(token.start, stream);
+            }
+        }
+        break;
+        case '^':
+        {
+            if (*(stream + 1) == '=')
+            {
+                stream += 2;
+                token.kind = TOKEN_XOR_ASSIGN;
+                token.name = str_intern_range(token.start, stream);
+            }
+            else
+            {
+                stream++;
+                token.kind = TOKEN_XOR;
                 token.name = str_intern_range(token.start, stream);
             }
         }
@@ -307,6 +431,13 @@ void next_token(void)
                 token.kind = TOKEN_NEGATION;
                 token.name = str_intern_range(token.start, stream);
             }
+        }
+        break;
+        case '~':
+        {
+            stream++;
+            token.kind = TOKEN_NEGATION;
+            token.name = str_intern_range(token.start, stream);
         }
         break;
         case '=':

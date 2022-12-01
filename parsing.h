@@ -133,14 +133,15 @@ typedef struct for_stmt
 {
     decl* init_decl;
     expr* cond_expr;
-    expr* incr_expr;
+    stmt* incr_stmt;
     stmt_block statements;
 } for_stmt;
 
 typedef struct assign_stmt
 {
-    expr* assigned_var;
-    expr* expr;
+    expr* assigned_var_expr;
+    token_kind operation;
+    expr* value_expr;
 } assign_stmt;
 
 typedef struct switch_case
