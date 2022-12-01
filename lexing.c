@@ -256,6 +256,22 @@ void next_token(void)
             token.name = str_intern_range(token.start, stream);
         }
         break;
+        case '%':
+        {
+            if (*(stream + 1) == '=')
+            {
+                stream += 2;
+                token.kind = TOKEN_MOD_ASSIGN;
+                token.name = str_intern_range(token.start, stream);
+            }
+            else
+            {
+                token.kind = TOKEN_MOD;
+                stream++;
+                token.name = str_intern_range(token.start, stream);
+            }
+        }
+        break;
         case ';':
         {
             token.kind = TOKEN_SEMICOLON;

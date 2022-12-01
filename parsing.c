@@ -1280,13 +1280,14 @@ void test_parsing(void)
         "let x = a + -b << c + -d + e >> f",
         "let x = a ^ b + c * -d + e | -f & g",
         "let x = a >= b || -c * d < e && -f",
-        "let x = (a - b) + (c / d)",
+        "let x = (a - b) + (c % d)",
         "let x : float = (a == -b)",
         "fn f (a: int, b: float, c : int ) : float { return a + b }",
         "fn f () {\
             x += 1\
             y -= 2\
-            return x + y }",
+            z %= 3\
+            return x + y - z }",
         "struct x { a: int, b: float, c: y }",
         "union some_union { a: int, b: float }",
         "enum some_enum { A = 1, B, C, D = 4 }",
