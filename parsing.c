@@ -1112,7 +1112,7 @@ void test_parsing(void)
         "let x = a ^ *b + c * -d + e | -f & g",
         "let x = a >= b || -c * d < e && -f",
         "let x = (a - b) + (*c % d)",
-        "let x : float = (a == -b)",
+        "let x : bool = (a == -b)",
         "fn f (a: int, b: float, c : int ) : float { return a + b }",
         "fn f () {\
             x += 1\
