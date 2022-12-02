@@ -34,7 +34,6 @@ struct type
         const char* name;
         type_array array;
         type_pointer pointer;
-        //type_function function;
     };
 };
 
@@ -49,7 +48,8 @@ typedef enum expr_kind
     EXPR_CALL,
     EXPR_FIELD,
     EXPR_INDEX,
-    EXPR_SIZEOF
+    EXPR_SIZEOF,
+    EXPR_COMPOUND_LITERAL
 } expr_kind;
 
 typedef struct unary_expr unary_expr;
@@ -95,6 +95,18 @@ typedef struct field_expr
     const char* field_name;
 } field_expr;
 
+typedef struct compound_literal_field
+{
+    expr* expr;
+    const char* field_name;
+} compound_literal_field;
+
+typedef struct compound_literal_expr
+{
+    compound_literal_field** fields;
+    size_t fields_count;
+} compound_literal_expr;
+
 struct expr
 {
     expr_kind kind;
@@ -109,6 +121,7 @@ struct expr
         call_expr call_expr_value;
         index_expr index_expr_value;
         field_expr field_expr_value;
+        compound_literal_expr compound_literal_expr_value;
     };
 };
 

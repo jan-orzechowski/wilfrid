@@ -144,6 +144,62 @@ type* parse_type(void)
     return t;
 }
 
+expr* parse_compound_literal(void)
+{
+    expr* e = 0;
+    if (match_token_kind(TOKEN_LEFT_BRACE))
+    {
+        e = push_struct(arena, expr);
+        e->kind = EXPR_COMPOUND_LITERAL;
+
+        compound_literal_field** fields = 0;
+        compound_literal_field* field = 0;
+
+        do
+        {
+            field = 0;
+
+            expr* val = parse_expression();
+            if (val)
+            {
+                field = push_struct(arena, compound_literal_field);
+                if (val->kind == EXPR_NAME)
+                {                
+                    if (match_token_kind(TOKEN_ASSIGN))
+                    {
+                        field->field_name = val->identifier;
+                        field->expr = parse_expression();
+                    }
+                    else
+                    {
+                        field->expr = val;
+                    }
+                }
+                else
+                {
+                    field->expr = val;
+                }
+
+                // przecinek jest opcjonalny
+                match_token_kind(TOKEN_COMMA);
+
+                buf_push(fields, field);
+            }
+        }
+        while (field);
+
+        if (buf_len(fields) > 0)
+        {
+            e->compound_literal_expr_value.fields = copy_buf_to_arena(arena, fields);
+            e->compound_literal_expr_value.fields_count = buf_len(fields);
+            buf_free(fields);
+        }
+
+        expect_token_kind(TOKEN_RIGHT_BRACE);
+    }
+    return e;
+}
+
 expr* parse_base_expression(void)
 {
     expr* result = 0;
@@ -166,14 +222,20 @@ expr* parse_base_expression(void)
             expect_token_kind(TOKEN_RIGHT_PAREN);
         }
     }
+    else if (is_token_kind(TOKEN_LEFT_BRACE))
+    {
+        result = parse_compound_literal();        
+    }
+    else if (match_token_kind(TOKEN_LEFT_PAREN))
+    {
+        result = parse_expression();
+        expect_token_kind(TOKEN_RIGHT_PAREN);
+    }
     else
     {
-        if (match_token_kind(TOKEN_LEFT_PAREN))
-        {
-            result = parse_expression();
-            expect_token_kind(TOKEN_RIGHT_PAREN);
-        }
+        // błąd
     }
+    
     return result;
 }
 
@@ -1046,6 +1108,36 @@ void print_expression(expr* e)
             printf("))");
         }
         break;
+        case EXPR_COMPOUND_LITERAL:
+        {
+            printf("(literal: ");
+            for (size_t i = 0; i < e->compound_literal_expr_value.fields_count; i++)
+            {
+                printf("(");
+                compound_literal_field* f = e->compound_literal_expr_value.fields[i];
+                if (f->field_name)
+                {
+                    printf("%s:", f->field_name);
+                    print_expression(f->expr);
+                }
+                else
+                {
+                    print_expression(f->expr);
+                } 
+                printf(")");
+                if (i != e->compound_literal_expr_value.fields_count - 1)
+                {
+                    printf(", ");
+                }
+            }
+            printf(")");
+        }
+        break;
+        default:
+        {
+            fatal("expression kind not handled: %d", e->kind);
+        }
+        break;
     }
 }
 
@@ -1380,7 +1472,6 @@ void test_parsing(void)
 
     char* test_strs[] = {
         /*
-        */
         "let x = a + -b << c + -d + e >> f",
         "let x = a ^ *b + c * -d + e | -f & g",
         "let x = a >= b || -c * d < e && -f",
@@ -1416,10 +1507,13 @@ void test_parsing(void)
         "fn f() {\
             switch (x){\
             case 1: case 2: { y++ } case 3: case 4: case 5: { y-- }\
-            case 6: { return 2 } case 7: {} } }",        
+            case 6: { return 2 } case 7: {} } }",
         "fn f(x: int*, y: int[25], z: char*[25], w: int**[20] ) : int** { let x : int[256] = 0 } ",
         "struct x { a: int[20], b: float**, c: int*[20]* } ",
         "let x = y == z ? *y : 20",
+        "fn fc(x: stru*) : stu { stru.substru = {1, 2} let y = func(12, a, {2, 3, x, stru.substru}) return y }",
+        */
+        "fn f() { x.y = {z = 2, w = 3, p = 44, q = z, 22} }"
     };
 
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);
