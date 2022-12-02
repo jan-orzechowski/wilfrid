@@ -334,6 +334,26 @@ expr* parse_or_expr(void)
 expr* parse_ternary_expression(void)
 {
     expr* e = parse_or_expr();
+
+    if (e != 0)
+    {
+        if (is_token_kind(TOKEN_QUESTION))
+        {
+            next_lexed_token();
+            expr* cond = e;
+
+            expr* if_true_expr = parse_expression();
+            expect_token_kind(TOKEN_COLON);
+            expr* if_false_expr = parse_expression();
+
+            e = push_struct(arena, expr);
+            e->kind = EXPR_TERNARY;
+            e->ternary_expr_value.condition = cond;
+            e->ternary_expr_value.if_false = if_false_expr;
+            e->ternary_expr_value.if_true = if_true_expr;
+        }
+    }
+
     return e;
 }
 
@@ -1006,7 +1026,13 @@ void print_expression(expr* e)
         break;
         case EXPR_TERNARY:
         {
-
+            printf("(ternary condition:(");
+            print_expression(e->ternary_expr_value.condition);
+            printf(") if true:(");
+            print_expression(e->ternary_expr_value.if_true);
+            printf(") if false: (");
+            print_expression(e->ternary_expr_value.if_false);
+            printf("))");
         }
         break;
     }
@@ -1382,6 +1408,7 @@ void test_parsing(void)
             case 6: { return 2 } case 7: {} } }",        
         "fn f(x: int*, y: int[25], z: char*[25], w: int**[20] ) : int** { let x : int[256] = 0 } ",
         "struct x { a: int[20], b: float**, c: int*[20]* } ",
+        "let x = y == z ? y : 20",        
     };
 
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);

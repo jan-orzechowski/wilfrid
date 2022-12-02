@@ -488,12 +488,19 @@ void next_token(void)
             }
         }
         break;
+        case '?':
+        {
+            stream++;
+            token.kind = TOKEN_QUESTION;
+            token.name = str_intern_range(token.start, stream);
+        }
+        break;
         case ' ':
         {
             discard_token = true;
             stream++;
         }
-        break;
+        break;       
         default:
         {
             token.kind = *stream++;
