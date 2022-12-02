@@ -252,6 +252,10 @@ expr* parse_unary_expression(void)
         {
             e = push_unary_expr(TOKEN_NEGATION, parse_base_expression());
         }
+        else if (match_token_kind(TOKEN_MUL)) // pointer dereference
+        {
+            e = push_unary_expr(TOKEN_MUL, parse_base_expression());
+        }
     }
     return e;
 }
@@ -976,7 +980,14 @@ void print_expression(expr* e)
         case EXPR_UNARY:
         {
             printf("(");
-            print_token_kind(e->binary_expr_value.operator);
+            if (e->binary_expr_value.operator == TOKEN_MUL)
+            {
+                printf("pointer dereference");
+            }
+            else
+            {
+                print_token_kind(e->binary_expr_value.operator);            
+            }
             print_expression(e->unary_expr_value.operand);
             printf(")");
         }
@@ -1371,9 +1382,9 @@ void test_parsing(void)
         /*
         */
         "let x = a + -b << c + -d + e >> f",
-        "let x = a ^ b + c * -d + e | -f & g",
+        "let x = a ^ *b + c * -d + e | -f & g",
         "let x = a >= b || -c * d < e && -f",
-        "let x = (a - b) + (c % d)",
+        "let x = (a - b) + (*c % d)",
         "let x : float = (a == -b)",
         "fn f (a: int, b: float, c : int ) : float { return a + b }",
         "fn f () {\
@@ -1392,7 +1403,7 @@ void test_parsing(void)
         "fn f(): int { let y = fun_1()\
              let z: int = fun_2(y[0], y[y[0] + 1])\
              return y * z }"
-        "fn f() { if (x == 1) { return y } else { return z } }",
+        "fn f() { if (*x == 1) { return y } else { return z } }",
         "fn f() {if (function(x)) { return y } else if (y == 2) { return z }}",
         "fn f() { if (x) { x = y } else if (y) {} else if (z) { z = x } else { y = z } }",
         "fn f() { if (sizeof(x) == 4) { return x } }"
@@ -1408,7 +1419,7 @@ void test_parsing(void)
             case 6: { return 2 } case 7: {} } }",        
         "fn f(x: int*, y: int[25], z: char*[25], w: int**[20] ) : int** { let x : int[256] = 0 } ",
         "struct x { a: int[20], b: float**, c: int*[20]* } ",
-        "let x = y == z ? y : 20",        
+        "let x = y == z ? *y : 20",
     };
 
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);
