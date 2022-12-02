@@ -9,6 +9,7 @@
 #include <stdbool.h>
 
 #include "lexing.c"
+#include "print.c"
 #include "parsing.c"
 #include "vm.h"
 #include "vm.c"
