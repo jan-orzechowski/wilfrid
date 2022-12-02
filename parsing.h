@@ -12,7 +12,8 @@ typedef enum type_kind
     TYPE_NONE,
     TYPE_NAME,
     TYPE_ARRAY,
-    TYPE_POINTER
+    TYPE_POINTER,
+    TYPE_FUNCTION
 } type_kind;
 
 typedef struct type_array
@@ -26,6 +27,13 @@ typedef struct type_pointer
     type* base_type;
 } type_pointer;
 
+typedef struct type_function
+{
+    type* returned_type;
+    type** parameter_types;
+    size_t parameter_count;
+} type_function;
+
 struct type
 {
     type_kind kind;
@@ -34,6 +42,7 @@ struct type
         const char* name;
         type_array array;
         type_pointer pointer;
+        type_function function;
     };
 };
 
@@ -230,6 +239,7 @@ typedef enum decl_kind
     DECL_UNION,
     DECL_VARIABLE,
     DECL_FUNCTION,
+    DECL_TYPEDEF,
     DECL_ENUM
 } decl_kind;
 
@@ -283,6 +293,12 @@ typedef struct enum_decl
     size_t values_count;
 } enum_decl;
 
+typedef struct typedef_decl
+{
+    type* type;
+    const char* name;
+} typedef_decl;
+
 struct decl
 {
     decl_kind kind;
@@ -293,5 +309,6 @@ struct decl
         variable_decl variable_declaration;
         aggregate_decl aggregate_declaration;
         enum_decl enum_declaration;
+        typedef_decl typedef_declaration;
     };
 };

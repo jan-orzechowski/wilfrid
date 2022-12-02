@@ -174,6 +174,7 @@ typedef enum keywords
     KEYWORD_ENUM,
     KEYWORD_STRUCT,
     KEYWORD_UNION,
+    KEYWORD_TYPEDEF,
     KEYWORD_LET,
     KEYWORD_FN,
 } keywords;

@@ -103,16 +103,68 @@ expr* push_binary_expr(token_kind operator, expr* left_operand, expr* right_oper
 }
 
 expr* parse_expression(void);
+type* parse_type(void);
 
 type* parse_basic_type(void)
 {
     type* t = 0;
+
     if (is_token_kind(TOKEN_NAME))
     {
         t = push_struct(arena, type);
         t->kind = TYPE_NAME;
         t->name = token.name;
         next_lexed_token();
+    }
+    else if (is_token_kind(TOKEN_KEYWORD) && token.name == fn_keyword)
+    {
+        t = push_struct(arena, type);
+        t->kind = TYPE_FUNCTION;
+        next_lexed_token();
+
+        expect_token_kind(TOKEN_LEFT_PAREN);
+        {
+            type** params = 0;
+            type* param = 0;
+            do
+            {
+                param = parse_type();
+                if (param)
+                {
+                    buf_push(params, param);
+                    if (is_token_kind(TOKEN_COMMA))
+                    {
+                        next_lexed_token();
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            }
+            while (param);
+
+            t->function.parameter_count = buf_len(params);
+            if (t->function.parameter_count > 0)
+            {
+                t->function.parameter_types = copy_buf_to_arena(arena, params);
+                buf_free(params);
+            }
+        }
+
+        expect_token_kind(TOKEN_RIGHT_PAREN);
+
+        if (match_token_kind(TOKEN_COLON))
+        {
+            t->function.returned_type = parse_type();
+
+            debug_breakpoint;
+        }        
+    }
+    else if (match_token_kind(TOKEN_LEFT_PAREN))
+    {
+        t = parse_type();
+        expect_token_kind(TOKEN_RIGHT_PAREN);
     }
     return t;
 }
@@ -998,6 +1050,21 @@ decl* parse_declaration_optional(void)
 
             expect_token_kind(TOKEN_RIGHT_BRACE);
         }
+        else if (decl_keyword == typedef_keyword)
+        {
+            next_lexed_token();
+            declaration = push_struct(arena, decl);
+            declaration->kind = DECL_TYPEDEF;
+
+            expr* name_expr = parse_expression();
+            assert(name_expr->kind == EXPR_NAME);
+            expect_token_kind(TOKEN_ASSIGN);
+            type* type = parse_type();
+
+            declaration->typedef_declaration.name = name_expr->identifier;
+            declaration->typedef_declaration.type = type;
+        }
+
     }
     return declaration;
 }
@@ -1322,6 +1389,28 @@ void print_type(type* t)
                 print_type(t->pointer.base_type);
             };
             break;
+            case TYPE_FUNCTION:
+            {
+                printf(" function accepting (");
+                for (size_t i = 0; i < t->function.parameter_count; i++)
+                {
+                    type* p = t->function.parameter_types[i];
+                    print_type(p);
+                    if (i != t->function.parameter_count - 1)
+                    {
+                        printf(", ");
+                    }
+                }
+                printf(")");
+                if (t->function.returned_type)
+                {
+                    printf("returning (");
+                    print_type(t->function.returned_type);
+                    printf(")");
+                }
+                printf(")");
+            };
+            break;
         }
     }
 }
@@ -1441,6 +1530,20 @@ void print_declaration(decl* declaration)
             printf(")");
         };
         break;
+        case DECL_TYPEDEF:
+        {
+            printf("(typedef name: ");
+            printf(declaration->typedef_declaration.name);
+            printf(" type:");
+            print_type(declaration->typedef_declaration.type);
+            printf(")");
+        };
+        break;
+        default:
+        {
+            assert("invalid default case");
+        };
+        break;
     }
 }
 
@@ -1472,6 +1575,7 @@ void test_parsing(void)
 
     char* test_strs[] = {
         /*
+        */
         "let x = a + -b << c + -d + e >> f",
         "let x = a ^ *b + c * -d + e | -f & g",
         "let x = a >= b || -c * d < e && -f",
@@ -1512,8 +1616,9 @@ void test_parsing(void)
         "struct x { a: int[20], b: float**, c: int*[20]* } ",
         "let x = y == z ? *y : 20",
         "fn fc(x: stru*) : stu { stru.substru = {1, 2} let y = func(12, a, {2, 3, x, stru.substru}) return y }",
-        */
-        "fn f() { x.y = {z = 2, w = 3, p = 44, q = z, 22} }"
+        "fn f() { x.y = {z = 2, w = 3, p = 44, q = z, 22} }",
+        "typedef vectors = vector[1+2]",
+        "typedef t = (fn(int*[2], int):int)[16]",
     };
 
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);
