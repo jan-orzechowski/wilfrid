@@ -16,7 +16,8 @@ typedef enum token_kind
     TOKEN_RIGHT_BRACKET, // ]
     TOKEN_LEFT_BRACE, // {
     TOKEN_RIGHT_BRACE, // }
-    TOKEN_NEGATION, // '~' or '!'
+    TOKEN_NOT, // !
+    TOKEN_BITWISE_NOT, // ~
 
     // variables
     TOKEN_KEYWORD,
@@ -94,7 +95,8 @@ const char* token_kind_names[] = {
     [TOKEN_DOT] = ".",
     [TOKEN_QUESTION] = "?",
     [TOKEN_SEMICOLON] = ";",
-    [TOKEN_NEGATION] = "~",
+    [TOKEN_NOT] = "!",
+    [TOKEN_BITWISE_NOT] = "~",
 
     [TOKEN_KEYWORD] = "keyword",
     [TOKEN_INT] = "int",

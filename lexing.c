@@ -446,7 +446,7 @@ void next_token(void)
             else
             {
                 stream++;
-                token.kind = TOKEN_NEGATION;
+                token.kind = TOKEN_NOT;
                 token.name = str_intern_range(token.start, stream);
             }
         }
@@ -454,7 +454,7 @@ void next_token(void)
         case '~':
         {
             stream++;
-            token.kind = TOKEN_NEGATION;
+            token.kind = TOKEN_BITWISE_NOT;
             token.name = str_intern_range(token.start, stream);
         }
         break;

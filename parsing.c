@@ -362,9 +362,13 @@ expr* parse_unary_expression(void)
         {
             e = push_unary_expr(TOKEN_SUB, parse_base_expression());
         }
-        else if (match_token_kind(TOKEN_NEGATION))
+        else if (match_token_kind(TOKEN_NOT))
         {
-            e = push_unary_expr(TOKEN_NEGATION, parse_base_expression());
+            e = push_unary_expr(TOKEN_NOT, parse_base_expression());
+        }
+        else if (match_token_kind(TOKEN_BITWISE_NOT))
+        {
+            e = push_unary_expr(TOKEN_BITWISE_NOT, parse_base_expression());
         }
         else if (match_token_kind(TOKEN_MUL)) // pointer dereference
         {
