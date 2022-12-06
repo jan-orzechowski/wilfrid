@@ -97,3 +97,38 @@ void stack_vm_test(int* code)
     buf_free(code);
     free(stack);
 }
+
+void parsing_and_vm_test(char* expr, int value)
+{
+    init_stream(expr);
+    while (token.kind)
+    {
+        next_token();
+    }
+
+    get_first_lexed_token();
+    //parse_expr();
+    buf_push(code, POP);
+
+    stack_size = 1024;
+    stack = xmalloc(sizeof(int) * stack_size);
+
+    buf_free(vm_output);
+
+    run_vm(code);
+
+    assert(vm_output[0] == value);
+
+    buf_free(code);
+    buf_free(vm_output);
+    free(stack);
+}
+
+#define PARSING_TEST(expr) { int val = (expr); parsing_and_vm_test(#expr, val); } 
+
+void vm_test(void)
+{
+    PARSING_TEST(2 + 2);
+    PARSING_TEST((12    + 4) + 28 - 14 + (8 - 4) / 2 + (2 * 2 - 1 * 4));
+    PARSING_TEST(2 +-2 / -2);
+}
