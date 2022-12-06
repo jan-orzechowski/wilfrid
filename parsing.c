@@ -103,32 +103,32 @@ expr* push_binary_expr(token_kind operator, expr* left_operand, expr* right_oper
 }
 
 expr* parse_expression(void);
-type* parse_type(void);
+typespec* parse_typespec(void);
 
-type* parse_basic_type(void)
+typespec* parse_basic_typespec(void)
 {
-    type* t = 0;
+    typespec* t = 0;
 
     if (is_token_kind(TOKEN_NAME))
     {
-        t = push_struct(arena, type);
-        t->kind = TYPE_NAME;
+        t = push_struct(arena, typespec);
+        t->kind = TYPESPEC_NAME;
         t->name = token.name;
         next_lexed_token();
     }
     else if (is_token_kind(TOKEN_KEYWORD) && token.name == fn_keyword)
     {
-        t = push_struct(arena, type);
-        t->kind = TYPE_FUNCTION;
+        t = push_struct(arena, typespec);
+        t->kind = TYPESPEC_FUNCTION;
         next_lexed_token();
 
         expect_token_kind(TOKEN_LEFT_PAREN);
         {
-            type** params = 0;
-            type* param = 0;
+            typespec** params = 0;
+            typespec* param = 0;
             do
             {
-                param = parse_type();
+                param = parse_typespec();
                 if (param)
                 {
                     buf_push(params, param);
@@ -156,37 +156,37 @@ type* parse_basic_type(void)
 
         if (match_token_kind(TOKEN_COLON))
         {
-            t->function.returned_type = parse_type();
+            t->function.returned_type = parse_typespec();
 
             debug_breakpoint;
         }        
     }
     else if (match_token_kind(TOKEN_LEFT_PAREN))
     {
-        t = parse_type();
+        t = parse_typespec();
         expect_token_kind(TOKEN_RIGHT_PAREN);
     }
     return t;
 }
 
-type* parse_type(void)
+typespec* parse_typespec(void)
 {
-    type* t = parse_basic_type();
+    typespec* t = parse_basic_typespec();
     while(is_token_kind(TOKEN_MUL) || is_token_kind(TOKEN_LEFT_BRACKET))
     {
         if (is_token_kind(TOKEN_MUL))
         {
-            type* base_t = t;
-            t = push_struct(arena, type);
-            t->kind = TYPE_POINTER;
+            typespec* base_t = t;
+            t = push_struct(arena, typespec);
+            t->kind = TYPESPEC_POINTER;
             t->pointer.base_type = base_t;
             next_lexed_token();
         }
         else
         {
-            type* base_t = t;
-            t = push_struct(arena, type);
-            t->kind = TYPE_ARRAY;
+            typespec* base_t = t;
+            t = push_struct(arena, typespec);
+            t->kind = TYPESPEC_ARRAY;
             next_lexed_token();
             t->array.size_expr = parse_expression();
             t->array.base_type = base_t;
@@ -823,7 +823,7 @@ function_param parse_function_parameter(void)
 
         if (is_token_kind(TOKEN_NAME))
         {
-            p.type = parse_type();
+            p.type = parse_typespec();
         }
     }
     return p;
@@ -878,7 +878,7 @@ aggregate_field parse_aggregate_field(void)
 
         if (is_token_kind(TOKEN_NAME))
         {
-            result.type = parse_type();
+            result.type = parse_typespec();
         }
 
         if (is_token_kind(TOKEN_COMMA))
@@ -974,7 +974,7 @@ decl* parse_declaration_optional(void)
 
             if (match_token_kind(TOKEN_COLON))
             {
-                declaration->variable_declaration.type = parse_type();                
+                declaration->variable_declaration.type = parse_typespec();                
             }
 
             if (match_token_kind(TOKEN_ASSIGN))
@@ -1026,7 +1026,7 @@ decl* parse_declaration_optional(void)
                 next_lexed_token();
                 if (is_token_kind(TOKEN_NAME))
                 {
-                    declaration->function_declaration.return_type = parse_type();
+                    declaration->function_declaration.return_type = parse_typespec();
                 }
             }
 
@@ -1063,7 +1063,7 @@ decl* parse_declaration_optional(void)
             expr* name_expr = parse_expression();
             assert(name_expr->kind == EXPR_NAME);
             expect_token_kind(TOKEN_ASSIGN);
-            type* type = parse_type();
+            typespec* type = parse_typespec();
 
             declaration->typedef_declaration.name = name_expr->identifier;
             declaration->typedef_declaration.type = type;

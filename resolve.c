@@ -1,6 +1,57 @@
 ﻿#include "lexing.h"
 #include "parsing.h"
 
+typedef struct symbol symbol;
+typedef struct type type;
+
+typedef enum type_kind
+{
+    TYPE_NONE,
+    TYPE_INCOMPLETE,
+    TYPE_COMPLETING,
+    TYPE_COMPLETED,
+    TYPE_INT,
+    TYPE_CHAR,
+    TYPE_FLOAT,
+    TYPE_NAME,
+    TYPE_ARRAY,
+    TYPE_POINTER,
+    TYPE_FUNCTION
+} type_kind;
+
+typedef struct type_array
+{
+    type* base_type;
+    expr* size_expr;
+} type_array;
+
+typedef struct type_pointer
+{
+    typespec* base_type;
+} type_pointer;
+
+typedef struct type_function
+{
+    type* returned_type;
+    type** parameter_types;
+    size_t parameter_count;
+} type_function;
+
+struct type
+{
+    type_kind kind;
+    symbol* symbol;
+    size_t size;
+    size_t align;
+    union
+    {
+        const char* name;
+        type_array array;
+        type_pointer pointer;
+        type_function function;
+    };
+};
+
 typedef enum symbol_kind
 {
     SYMBOL_NONE,
@@ -139,43 +190,28 @@ symbol* resolve_name(char* name)
     return s;
 }
 
-type* resolve_type(type* t)
+type* resolve_type(typespec* t)
 {
     if (t)
     {
         switch (t->kind)
         {
-            case TYPE_INT:
-            {
-
-            }
-            break;
-            case TYPE_FLOAT:
-            {
-
-            }
-            break;
-            case TYPE_CHAR:
-            {
-
-            }
-            break;
-            case TYPE_NAME:
+            case TYPESPEC_NAME:
             {
                 resolve_name(t->name);
             }
             break;
-            case TYPE_ARRAY:
+            case TYPESPEC_ARRAY:
             {
 
             }
             break;
-            case TYPE_POINTER:
+            case TYPESPEC_POINTER:
             {
 
             }
             break;
-            case TYPE_FUNCTION:
+            case TYPESPEC_FUNCTION:
             {
 
             }

@@ -330,40 +330,40 @@ void print_statement_block(stmt_block block)
     indent--;
 }
 
-void print_type(type* t)
+void print_typespec(typespec* t)
 {
     if (t != 0)
     {
         switch (t->kind)
         {
-            case TYPE_NAME:
+            case TYPESPEC_NAME:
             {
                 printf("(type %s)", t->name);
             };
             break;
-            case TYPE_ARRAY:
+            case TYPESPEC_ARRAY:
             {
                 printf("(array ");
-                print_type(t->array.base_type);
+                print_typespec(t->array.base_type);
                 printf(" ");
                 print_expression(t->array.size_expr);
                 printf(")");
             };
             break;
-            case TYPE_POINTER:
+            case TYPESPEC_POINTER:
             {
                 printf("(pointer ");
-                print_type(t->pointer.base_type);
+                print_typespec(t->pointer.base_type);
                 printf(")");
             };
             break;
-            case TYPE_FUNCTION:
+            case TYPESPEC_FUNCTION:
             {
                 printf("(function (");                
                 for (size_t i = 0; i < t->function.parameter_count; i++)
                 {
-                    type* p = t->function.parameter_types[i];
-                    print_type(p);
+                    typespec* p = t->function.parameter_types[i];
+                    print_typespec(p);
                     if (i != t->function.parameter_count - 1)
                     {
                         printf(" ");
@@ -373,7 +373,7 @@ void print_type(type* t)
                 if (t->function.returned_type)
                 {
                     printf(" ");
-                    print_type(t->function.returned_type);
+                    print_typespec(t->function.returned_type);
                 }
                 printf(")");
             };
@@ -406,7 +406,7 @@ void print_declaration(decl* declaration)
                 {
                     function_param* p = &declaration->function_declaration.parameters.params[index];
                     printf("(%s ", p->identifier);
-                    print_type(p->type);
+                    print_typespec(p->type);
                     printf(")");
 
                     if (index < declaration->function_declaration.parameters.param_count - 1)
@@ -419,7 +419,7 @@ void print_declaration(decl* declaration)
             if (declaration->function_declaration.return_type)
             {
                 printf(" ");
-                print_type(declaration->function_declaration.return_type);
+                print_typespec(declaration->function_declaration.return_type);
             }
             
             print_statement_block(declaration->function_declaration.statements);
@@ -440,7 +440,7 @@ void print_declaration(decl* declaration)
             if (declaration->variable_declaration.type)
             {
                 printf(" ");
-                print_type(declaration->variable_declaration.type);
+                print_typespec(declaration->variable_declaration.type);
             }
 
             if (declaration->variable_declaration.expression)
@@ -478,7 +478,7 @@ void print_declaration(decl* declaration)
                 print_newline();
                 printf("(%s", declaration->aggregate_declaration.fields[index].identifier);
                 printf(" ");
-                print_type(declaration->aggregate_declaration.fields[index].type);
+                print_typespec(declaration->aggregate_declaration.fields[index].type);
                 printf(")");
             }
 
@@ -516,7 +516,7 @@ void print_declaration(decl* declaration)
         {
             printf("(typedef-decl %s", declaration->typedef_declaration.name);
             printf(" ");
-            print_type(declaration->typedef_declaration.type);
+            print_typespec(declaration->typedef_declaration.type);
             printf(")");
         }
         break;

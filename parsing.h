@@ -5,58 +5,46 @@
 typedef struct expr expr;
 typedef struct stmt stmt;
 typedef struct decl decl;
-typedef struct type type;
+typedef struct typespec typespec;
 
-typedef enum type_kind
+typedef enum typespec_kind
 {
-    TYPE_NONE,
+    TYPESPEC_NONE,
+    TYPESPEC_NAME,
+    TYPESPEC_ARRAY,
+    TYPESPEC_POINTER,
+    TYPESPEC_FUNCTION
+} typespec_kind;
 
-    TYPE_INCOMPLETE,
-    TYPE_COMPLETING,
-
-    // built-in types
-    TYPE_INT,
-    TYPE_FLOAT,
-    TYPE_CHAR,
-
-    TYPE_NAME,
-    TYPE_ARRAY,
-    TYPE_POINTER,
-    TYPE_FUNCTION
-} type_kind;
-
-typedef struct type_array
+typedef struct typespec_array
 {
-    type* base_type;
+    typespec* base_type;
     expr* size_expr;
-} type_array;
+} typespec_array;
 
-typedef struct type_pointer
+typedef struct typespec_pointer
 {
-    type* base_type;
-} type_pointer;
+    typespec* base_type;
+} typespec_pointer;
 
-typedef struct type_function
+typedef struct typespec_function
 {
-    type* returned_type;
-    type** parameter_types;
+    typespec* returned_type;
+    typespec** parameter_types;
     size_t parameter_count;
-} type_function;
+} typespec_function;
 
 typedef struct symbol symbol;
 
-struct type
+struct typespec
 {
-    type_kind kind;
-    symbol* symbol;
-    size_t size;
-    size_t align;
+    typespec_kind kind;
     union
     {
         const char* name;
-        type_array array;
-        type_pointer pointer;
-        type_function function;
+        typespec_array array;
+        typespec_pointer pointer;
+        typespec_function function;
     };
 };
 
@@ -260,7 +248,7 @@ typedef enum decl_kind
 typedef struct aggregate_field
 {
     char* identifier;
-    type* type;
+    typespec* type;
 } aggregate_field;
 
 typedef struct aggregate_decl
@@ -271,14 +259,14 @@ typedef struct aggregate_decl
 
 typedef struct variable_decl
 {
-    type* type; 
+    typespec* type; 
     expr* expression;
 } variable_decl;
 
 typedef struct function_param
 {
     char* identifier;
-    type* type;
+    typespec* type;
 } function_param;
 
 typedef struct function_param_list
@@ -290,7 +278,7 @@ typedef struct function_param_list
 typedef struct function_decl
 {
     function_param_list parameters;
-    type* return_type;
+    typespec* return_type;
     stmt_block statements;
 } function_decl;
 
@@ -309,7 +297,7 @@ typedef struct enum_decl
 
 typedef struct typedef_decl
 {
-    type* type;
+    typespec* type;
     const char* name;
 } typedef_decl;
 
