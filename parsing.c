@@ -1079,10 +1079,24 @@ decl* parse_declaration(void)
     return d;
 }
 
+decl* parse_decl(char* str)
+{
+    init_stream(str);
+    while (token.kind)
+    {
+        next_token();
+    }
+
+    get_first_lexed_token();
+
+    decl* result = parse_declaration();
+    return result;
+}
+
 void parse_text_and_print_s_expressions(char* test)
 {
     arena = allocate_memory_arena(megabytes(50));
-
+    
     // musimy najpierw zamienić na ciąg tokenów
     init_stream(test);
     while (token.kind)
@@ -1096,8 +1110,6 @@ void parse_text_and_print_s_expressions(char* test)
     print_declaration(result);
     printf("\n\n");
   
-    debug_breakpoint;
-
     free_memory_arena(arena);
 }
 

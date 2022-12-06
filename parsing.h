@@ -10,6 +10,15 @@ typedef struct type type;
 typedef enum type_kind
 {
     TYPE_NONE,
+
+    TYPE_INCOMPLETE,
+    TYPE_COMPLETING,
+
+    // built-in types
+    TYPE_INT,
+    TYPE_FLOAT,
+    TYPE_CHAR,
+
     TYPE_NAME,
     TYPE_ARRAY,
     TYPE_POINTER,
@@ -34,9 +43,14 @@ typedef struct type_function
     size_t parameter_count;
 } type_function;
 
+typedef struct symbol symbol;
+
 struct type
 {
     type_kind kind;
+    symbol* symbol;
+    size_t size;
+    size_t align;
     union
     {
         const char* name;

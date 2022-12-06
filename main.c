@@ -11,12 +11,11 @@
 #include "lexing.c"
 #include "print.c"
 #include "parsing.c"
+#include "resolve.c"
 #include "vm.h"
 #include "vm.c"
 
 #include "main.h"
-
-
 
 int main(int argc, char** argv)
 {
@@ -29,8 +28,7 @@ int main(int argc, char** argv)
 
     stack_vm_test(code);
     
-    test_parsing();
-
+    resolve_test();
 
     return 1;
 }
