@@ -1,5 +1,6 @@
 ﻿#include "lexing.h"
 #include "parsing.h"
+#include "utils.h"
 
 typedef struct symbol symbol;
 typedef struct type type;
@@ -13,6 +14,8 @@ typedef enum type_kind
     TYPE_INT,
     TYPE_CHAR,
     TYPE_FLOAT,
+    TYPE_STRUCT,
+    TYPE_UNION,
     TYPE_NAME,
     TYPE_ARRAY,
     TYPE_POINTER,
@@ -27,7 +30,7 @@ typedef struct type_array
 
 typedef struct type_pointer
 {
-    typespec* base_type;
+    type* base_type;
 } type_pointer;
 
 typedef struct type_function
@@ -36,6 +39,18 @@ typedef struct type_function
     type** parameter_types;
     size_t parameter_count;
 } type_function;
+
+typedef struct type_aggregate_field
+{
+    char* name;
+    type* type;
+} type_aggregate_field;
+
+typedef struct type_aggregate
+{
+    type_aggregate_field** fields;
+    size_t fields_count;
+} type_aggregate;
 
 struct type
 {
@@ -49,6 +64,7 @@ struct type
         type_array array;
         type_pointer pointer;
         type_function function;
+        type_aggregate aggregate;
     };
 };
 
@@ -79,10 +95,33 @@ typedef struct symbol
     int64_t val;
 } symbol;
 
+
+size_t get_type_size(type* type)
+{
+    assert(type->kind > TYPE_COMPLETING);
+    assert(type->size != 0);
+    return type->size;
+}
+
+size_t get_type_align(type* type)
+{
+    assert(type->kind > TYPE_COMPLETING);
+    assert(is_power_of_2(type->align));
+    return type->align;
+}
+
+type* type_float = &(type) { .name = "float", .kind = TYPE_FLOAT, .size = 4, .align = 4 };
+type* type_int =   &(type) { .name = "int",   .kind = TYPE_INT, .size = 4, .align = 4 };
+type* type_char =  &(type) { .name = "char",  .kind = TYPE_CHAR, .size = 1, .align = 1 };
+
+const size_t POINTER_SIZE = 8;
+const size_t POINTER_ALIGN = 8;
+
 symbol** symbols;
 symbol** ordered_symbols;
 
 void resolve_symbol(symbol* s);
+type* resolve_typespec(typespec* t);
 
 symbol* get_symbol(char* name)
 {
@@ -107,10 +146,54 @@ type* get_new_type(type_kind kind)
     return t;
 }
 
+void get_complete_struct_type(type* type, type_aggregate_field* fields, size_t fields_count)
+{
+    assert(type->kind == TYPE_COMPLETING);
+    type->kind = TYPE_STRUCT;
+    type->size = 0;
+    type->align = 0;
+
+    for (type_aggregate_field* it = fields; it != fields + fields_count; it++)
+    {
+        type->size = get_type_size(it->type) + align_up(type->size, get_type_align(it->type));
+        type->align = max(type->align, get_type_align(it->type));
+    }
+
+    type->aggregate.fields = xmempcy(fields, fields_count * sizeof(*fields));
+    type->aggregate.fields_count = fields_count;
+}
+
+void get_complete_union_type(type* type, type_aggregate_field* fields, size_t fields_count)
+{
+    assert(type->kind == TYPE_COMPLETING);
+    type->kind = TYPE_UNION;
+    type->size = 0;
+    type->align = 0;
+
+    for (type_aggregate_field* it = fields; it != fields + fields_count; it++)
+    {
+        assert(it->type->kind > TYPE_COMPLETING);
+        type->size = max(type->size, get_type_size(it->type));
+        type->align = max(type->align, get_type_align(it->type));
+    }
+    
+    type->aggregate.fields = xmempcy(fields, fields_count * sizeof(*fields));
+    type->aggregate.fields_count = fields_count;
+}
+
 type* get_incomplete_type(symbol* sym)
 {
     type* type = get_new_type(TYPE_INCOMPLETE);
     type->symbol = sym;
+    return type;
+}
+
+type* get_pointer_type(type* base_type)
+{
+    type* type = get_new_type(TYPE_POINTER);
+    type->size = POINTER_SIZE;
+    type->align = POINTER_ALIGN;
+    type->pointer.base_type = base_type;
     return type;
 }
 
@@ -150,7 +233,7 @@ symbol* get_symbol_from_decl(decl* d)
     symbol* sym = get_new_symbol(kind, d->identifier, d);
     if (d->kind == DECL_STRUCT || d->kind == DECL_UNION)
         // te rodzaje deklaracji są rozstrzygnięte od razu, gdy je napotykamy
-        // natomiast samy typ jest jeszcze incomplete
+        // natomiast sam typ jest jeszcze incomplete
     {
         sym->state = SYMBOL_RESOLVED;
         sym->type = get_incomplete_type(sym);
@@ -167,7 +250,7 @@ symbol* push_installed_symbol(char* name, type* type)
     return sym;
 }
 
-void push_symbol(decl* d)
+void push_symbol_from_decl(decl* d)
 {
     symbol* s = get_symbol_from_decl(d);
     buf_push(symbols, s);
@@ -175,7 +258,49 @@ void push_symbol(decl* d)
 
 void complete_type(type* t)
 {
+    if (t->kind == TYPE_COMPLETING)
+    {
+        fatal("detected type completion cycle");
+        return;
+    }
+    else if (t->kind != TYPE_INCOMPLETE)
+    {
+        return;
+    }
+    
+    t->kind = TYPE_COMPLETING;
+    decl* d = t->symbol->decl;
 
+    // pozostałe typy są kompletne od razu
+    assert(d->kind == DECL_STRUCT || d->kind == DECL_UNION);
+    
+    // idziemy po kolei po polach
+    type_aggregate_field* fields = NULL;
+    for (size_t i = 0; i < d->aggregate_declaration.fields_count; i++)
+    {
+        aggregate_field field = d->aggregate_declaration.fields[i];
+        type* field_type = resolve_typespec(field.type);
+        complete_type(field_type); // wszystkie muszą być completed, ponieważ musimy znać ich rozmiar
+
+        buf_push(fields, ((type_aggregate_field){ field.identifier, field_type }));
+    }
+
+    if (buf_len(fields) == 0)
+    {
+        fatal("Struct/union has no fields");
+    }
+
+    if (d->kind == DECL_STRUCT)
+    {
+        get_complete_struct_type(t, fields, buf_len(fields));
+    }
+    else
+    {
+        assert(d->kind == DECL_UNION);
+        get_complete_union_type(t, fields, buf_len(fields));
+    }
+
+    buf_push(ordered_symbols, t->symbol);
 }
 
 symbol* resolve_name(char* name)
@@ -190,35 +315,47 @@ symbol* resolve_name(char* name)
     return s;
 }
 
-type* resolve_type(typespec* t)
+type* resolve_typespec(typespec* t)
 {
+    type* result = 0;
     if (t)
     {
         switch (t->kind)
         {
             case TYPESPEC_NAME:
             {
-                resolve_name(t->name);
+                symbol* sym = resolve_name(t->name);
+                if (sym->kind != SYMBOL_TYPE)
+                {
+                    fatal("%s must denote a type", t->name);
+                    result = 0;
+                }
+                else
+                {
+                    result = sym->type;
+                }
             }
             break;
             case TYPESPEC_ARRAY:
             {
-
+                // musimy jeszcze wziąć rozmiar
+                result = resolve_typespec(t->array.base_type);
             }
             break;
             case TYPESPEC_POINTER:
             {
-
+                type* base_type = resolve_typespec(t->pointer.base_type);
+                result = get_pointer_type(base_type);
             }
             break;
             case TYPESPEC_FUNCTION:
             {
-
+                //result = resolve_typespec(t->function.returned_type);
             }
             break;
         }
     }
-    return t;
+    return result;
 }
 
 type* resolve_expression(expr* e)
@@ -246,12 +383,16 @@ type* resolve_expression(expr* e)
 }
 
 type* resolve_variable(decl* d)
+type* resolve_variable_decl(decl* d)
 {
     type* result = 0;
     
+    // musi być albo typ, albo wyrażenie
+    // mogą być oba, ale wtedy muszą się zgadzać
+
     if (d->variable_declaration.type)
     {
-        result = resolve_type(d->variable_declaration.type);
+        result = resolve_typespec(d->variable_declaration.type);
     }
 
     if (d->variable_declaration.expression)
@@ -259,6 +400,14 @@ type* resolve_variable(decl* d)
         result = resolve_expression(d->variable_declaration.expression);
     }
 
+    return result;
+}
+
+type* resolve_type_decl(decl* d)
+{
+    assert(d->kind == DECL_TYPEDEF); // jedyny rodzaj, jaki tu trzeba obsłużyć
+    // unions i structs są resolved od razu
+    type* result = resolve_typespec(d->typedef_declaration.type);
     return result;
 }
 
@@ -282,12 +431,12 @@ void resolve_symbol(symbol* s)
     {
         case SYMBOL_VARIABLE:
         {
-            s->type = resolve_variable(s->decl);
+            s->type = resolve_variable_decl(s->decl);
         }
         break;
         case SYMBOL_TYPE:
-        {
-            s->type = resolve_type(s->decl);
+        {            
+            s->type = resolve_type_decl(s->decl);
         }
         break;
     }
@@ -305,10 +454,6 @@ void complete_symbol(symbol* sym)
     }
 }
 
-type* type_float = &(type) { .name = "float", .kind = TYPE_FLOAT };
-type* type_int =   &(type) { .name = "int",   .kind = TYPE_INT };
-type* type_char =  &(type) { .name = "char",  .kind = TYPE_CHAR };
-
 void resolve_test(void)
 {
     arena = allocate_memory_arena(megabytes(50));
@@ -320,14 +465,17 @@ void resolve_test(void)
 
     char* test_strs[] = {
         "let x: int = y",
-        "let y: int = 1"
+        "let y: int = 1",
+        "struct Z { s: S, t: T* }",
+        "struct S { i: int, c: char }",
+        "struct T { i: int }"
     };
 
     for (size_t i = 0; i < sizeof(test_strs)/sizeof(test_strs[0]); i++)
     {
         char* str = test_strs[i];
         decl* d = parse_decl(str);        
-        push_symbol(d);
+        push_symbol_from_decl(d);
     }
 
     for (symbol** it = symbols + installed_count; 

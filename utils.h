@@ -8,6 +8,12 @@
 
 #define debug_breakpoint {int x = 0;}
 
+#define is_power_of_2(x) (((x) != 0) && ((x) & ((x) - 1)) == 0)
+#define align_down(num, align) ((num) & ~((align) - 1))
+#define align_up(num, align) (align_down((num) + (align) - 1, (align)))
+#define align_down_ptr(ptr, align) ((void *)align_down((uintptr_t)(ptr), (align)))
+#define align_up_ptr(ptr, align) ((void *)align_up((uintptr_t)(ptr), (align)))
+
 void* xrealloc(void* ptr, size_t num_bytes)
 {
     ptr = realloc(ptr, num_bytes);
@@ -39,6 +45,13 @@ void* xcalloc(size_t num_bytes)
         exit(1);
     }
     return ptr;
+}
+
+void* xmempcy(void* src, size_t size)
+{
+    void* dest = xmalloc(size);
+    memcpy(dest, src, size);
+    return dest;
 }
 
 #define kilobytes(n) (1024 * n)
