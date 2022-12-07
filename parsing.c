@@ -971,16 +971,24 @@ decl* parse_declaration_optional(void)
                 declaration->identifier = token.name;
                 next_lexed_token();
             }
-
-            if (match_token_kind(TOKEN_COLON))
-            {
-                declaration->variable_declaration.type = parse_typespec();                
-            }
-
-            if (match_token_kind(TOKEN_ASSIGN))
+            
+            if (match_token_kind(TOKEN_COLON_ASSIGN))
             {
                 expr* expression = parse_expression();
                 declaration->variable_declaration.expression = expression;
+            }
+            else
+            {
+                if (match_token_kind(TOKEN_COLON))
+                {
+                    declaration->variable_declaration.type = parse_typespec();
+                }
+
+                if (match_token_kind(TOKEN_ASSIGN))
+                {
+                    expr* expression = parse_expression();
+                    declaration->variable_declaration.expression = expression;
+                }
             }
         }
         else if (decl_keyword == struct_keyword
@@ -1117,18 +1125,17 @@ void parse_text_and_print_s_expressions(char* test)
     free_memory_arena(arena);
 }
 
-void test_parsing(void)
+void parse_test(void)
 {
     char* test_str = 0;
 
     char* test_strs[] = {
-        /*
-        */
-        "let x = a + -b << c + -d + e >> f",
-        "let x = a ^ *b + c * -d + e | -f & g",
-        "let x = a >= b || -c * d < e && -f",
-        "let x = (a - b) + (*c % d)",
+        "let x := a + -b << c + -d + e >> f",
+        "let x := a ^ *b + c * -d + e | -f & g",
+        "let x := a >= b || -c * d < e && -f",
+        "let x := (a - b) + (*c % d)",
         "let x : bool = (a == -b)",
+        "let x: int[1 + 2] = {1, 2, 3}",
         "fn f (a: int, b: float, c : int ) : float { return a + b }",
         "fn f () {\
             x += 1\
