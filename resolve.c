@@ -155,35 +155,37 @@ type* get_new_type(type_kind kind)
     return t;
 }
 
-void get_complete_struct_type(type* type, type_aggregate_field* fields, size_t fields_count)
+void get_complete_struct_type(type* type, type_aggregate_field** fields, size_t fields_count)
 {
     assert(type->kind == TYPE_COMPLETING);
     type->kind = TYPE_STRUCT;
     type->size = 0;
     type->align = 0;
 
-    for (type_aggregate_field* it = fields; it != fields + fields_count; it++)
+    for (type_aggregate_field** it = fields; it != fields + fields_count; it++)
     {
-        type->size = get_type_size(it->type) + align_up(type->size, get_type_align(it->type));
-        type->align = max(type->align, get_type_align(it->type));
+        type_aggregate_field* field = *it;
+        type->size = get_type_size(field->type) + align_up(type->size, get_type_align(field->type));
+        type->align = max(type->align, get_type_align(field->type));
     }
 
     type->aggregate.fields = xmempcy(fields, fields_count * sizeof(*fields));
     type->aggregate.fields_count = fields_count;
 }
 
-void get_complete_union_type(type* type, type_aggregate_field* fields, size_t fields_count)
+void get_complete_union_type(type* type, type_aggregate_field** fields, size_t fields_count)
 {
     assert(type->kind == TYPE_COMPLETING);
     type->kind = TYPE_UNION;
     type->size = 0;
     type->align = 0;
 
-    for (type_aggregate_field* it = fields; it != fields + fields_count; it++)
+    for (type_aggregate_field** it = fields; it != fields + fields_count; it++)
     {
-        assert(it->type->kind > TYPE_COMPLETING);
-        type->size = max(type->size, get_type_size(it->type));
-        type->align = max(type->align, get_type_align(it->type));
+        type_aggregate_field* field = *it;
+        assert(field->type->kind > TYPE_COMPLETING);
+        type->size = max(type->size, get_type_size(field->type));
+        type->align = max(type->align, get_type_align(field->type));
     }
     
     type->aggregate.fields = xmempcy(fields, fields_count * sizeof(*fields));
@@ -228,6 +230,7 @@ symbol* get_new_symbol(symbol_kind kind, char* name, decl* decl)
 
 resolved_expr* get_resolved_rvalue(type* t)
 {
+    assert(t);
     resolved_expr* result = xcalloc(sizeof(resolved_expr));
     result->type = t;
     return result;
@@ -235,6 +238,8 @@ resolved_expr* get_resolved_rvalue(type* t)
 
 resolved_expr* get_resolved_lvalue(type* t)
 {
+    assert(t);
+    assert(t->kind != SYMBOL_CONST);
     resolved_expr* result = xcalloc(sizeof(resolved_expr));
     result->type = t;
     result->is_lvalue = true;
@@ -268,12 +273,19 @@ symbol* get_symbol_from_decl(decl* d)
             kind = SYMBOL_VARIABLE;
         }
         break;
+        case DECL_CONST:
+        {
+            kind = SYMBOL_CONST;
+        }
+        break;
         default:
         {
-            assert("invalid default case");
+            fatal("invalid default case");
         }
         break;
     }
+    assert(kind != SYMBOL_NONE);
+
     symbol* sym = get_new_symbol(kind, d->identifier, d);
     if (d->kind == DECL_STRUCT || d->kind == DECL_UNION)
         // te rodzaje deklaracji są rozstrzygnięte od razu, gdy je napotykamy
@@ -319,19 +331,22 @@ void complete_type(type* t)
     assert(d->kind == DECL_STRUCT || d->kind == DECL_UNION);
     
     // idziemy po kolei po polach
-    type_aggregate_field* fields = NULL;
+    type_aggregate_field** fields = NULL;
     for (size_t i = 0; i < d->aggregate_declaration.fields_count; i++)
     {
         aggregate_field field = d->aggregate_declaration.fields[i];
         type* field_type = resolve_typespec(field.type);
         complete_type(field_type); // wszystkie muszą być completed, ponieważ musimy znać ich rozmiar
 
-        buf_push(fields, ((type_aggregate_field){ field.identifier, field_type }));
+        type_aggregate_field* type_field = xcalloc(sizeof(type_aggregate_field));
+        type_field->name = field.identifier;
+        type_field->type = field_type;
+        buf_push(fields, type_field);
     }
 
     if (buf_len(fields) == 0)
     {
-        fatal("Struct/union has no fields");
+        fatal("struct/union has no fields");
     }
 
     if (d->kind == DECL_STRUCT)
@@ -520,8 +535,8 @@ resolved_expr* resolve_expr_binary(expr* expr)
     }
 
     if (left->is_const && right->is_const)
-    {
-        result = get_resolved_const(eval_int_unary_op(expr->binary_expr_value.operator, left->val, right->val));
+    {        
+        result = get_resolved_const(eval_int_binary_op(expr->binary_expr_value.operator, left->val, right->val));
     }
     else
     {
@@ -530,6 +545,13 @@ resolved_expr* resolve_expr_binary(expr* expr)
 
     return result;
 }
+
+//resolved_expr* resolve_expr_sizeof(expr* e)
+//{
+//    resolved_expr* result = 0;
+//
+//    return result;
+//}
 
 resolved_expr* resolve_expression(expr* e)
 {
@@ -546,9 +568,13 @@ resolved_expr* resolve_expression(expr* e)
             {
                 result = get_resolved_lvalue(sym->type);
             }
+            else if (sym->kind == SYMBOL_CONST)
+            {
+                result = get_resolved_rvalue(sym->type);
+            }
             else
             {
-                assert("must be a variable name!");
+                fatal("must be a variable name!");
             } 
         }
         break;
@@ -574,6 +600,44 @@ resolved_expr* resolve_expression(expr* e)
         case EXPR_TERNARY:
         {
             fatal("ternary expressions not allowed as constants");
+        }
+        break;
+        case EXPR_SIZEOF:
+        {
+            // może być albo typ, albo całe wyrażenie
+            resolved_expr* expr = resolve_expression(e->sizeof_expr_value.expr);
+            type* expr_type = expr->type;
+            complete_type(expr_type);
+            int64_t size = get_type_size(expr_type);
+            result = get_resolved_const(size);
+            debug_breakpoint;
+        }
+        break;
+        case EXPR_FIELD:
+        {           
+            resolved_expr* aggregate_expr = resolve_expression(e->field_expr_value.expr);
+            char* field_name = str_intern(e->field_expr_value.field_name);
+            type* t = aggregate_expr->type;
+            complete_type(t);
+
+            type* found = 0;
+            for (size_t i = 0; i < t->aggregate.fields_count; i++)
+            {
+                type_aggregate_field* f = t->aggregate.fields[i];
+                if (field_name == f->name)
+                {
+                    found = f->type;
+                    break;
+                }                
+            }
+            if (!found)
+            {                
+                fatal("no field of name: %s", field_name);
+            }
+
+            result = get_resolved_lvalue(found);
+
+            debug_breakpoint;
         }
         break;
         case EXPR_INDEX:
@@ -621,6 +685,18 @@ resolved_expr resolve_expected_expr(expr* e, type* expected_type)
 {
     resolved_expr result = {0};
 
+    return result;
+}
+
+type* resolve_const_decl(decl* d)
+{
+    type* result = 0;
+    assert(d->const_declaration.expression);
+    resolved_expr* expr = resolve_expression(d->const_declaration.expression);
+    if (expr)
+    {
+        result = expr->type;
+    }
     return result;
 }
 
@@ -674,6 +750,11 @@ void resolve_symbol(symbol* s)
     assert(s->decl);
     switch (s->kind)
     {
+        case SYMBOL_CONST:
+        {
+            s->type = resolve_const_decl(s->decl);
+        }
+        break;
         case SYMBOL_VARIABLE:
         {
             s->type = resolve_variable_decl(s->decl);
@@ -699,6 +780,16 @@ void complete_symbol(symbol* sym)
     }
 }
 
+typedef struct test
+{
+    int i;
+    int j;
+} test;
+
+test t;
+
+const int size = sizeof(t.i);
+
 void resolve_test(void)
 {
     arena = allocate_memory_arena(megabytes(50));
@@ -715,18 +806,26 @@ void resolve_test(void)
         "let d = b[0]",
         "let c: int[4]",
         "let b = &a[0]",
-        "let a: int[3] = {1, 2, 3}",
         "let x: int = y",
         "let y: int = 1",
+        "let i = n+m",
+        "let z: Z",
+        "const m = sizeof(z.t)",
+        "const n = sizeof(&a[0])",
         "struct Z { s: S, t: T* }",
-        "struct S { i: int, c: char }",
-        "struct T { i: int }"
+        "struct T { i: int }",
+        "let a: int[3] = {1, 2, 3}",
+        "struct S { t: int, c: char }",        
     };
 
+    printf("original:\n\n");
     for (size_t i = 0; i < sizeof(test_strs)/sizeof(test_strs[0]); i++)
     {
         char* str = test_strs[i];
-        decl* d = parse_decl(str);        
+        decl* d = parse_decl(str);
+        print_declaration(d);
+        printf("\n");
+
         push_symbol_from_decl(d);
     }
 
@@ -738,6 +837,7 @@ void resolve_test(void)
         complete_symbol(sym);
     }
    
+    printf("\nordered:\n\n");
     for (symbol** it = ordered_symbols; it != buf_end(ordered_symbols); it++)
     {
         symbol* sym = *it;

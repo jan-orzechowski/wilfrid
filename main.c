@@ -28,7 +28,7 @@ int main(int argc, char** argv)
 
     stack_vm_test(code);
     
-#if 1
+#if 0
     parse_test();
 #else
     resolve_test();
