@@ -25,7 +25,7 @@ typedef enum type_kind
 typedef struct type_array
 {
     type* base_type;
-    expr* size_expr;
+    size_t size;
 } type_array;
 
 typedef struct type_pointer
@@ -95,6 +95,13 @@ typedef struct symbol
     int64_t val;
 } symbol;
 
+typedef struct resolved_expr
+{
+    type* type;
+    bool is_lvalue;
+    bool is_const;
+    int64_t val;
+} resolved_expr;
 
 size_t get_type_size(type* type)
 {
@@ -120,8 +127,10 @@ const size_t POINTER_ALIGN = 8;
 symbol** symbols;
 symbol** ordered_symbols;
 
+void complete_type(type* t);
 void resolve_symbol(symbol* s);
 type* resolve_typespec(typespec* t);
+resolved_expr* resolve_expression(expr* e);
 
 symbol* get_symbol(char* name)
 {
@@ -181,6 +190,17 @@ void get_complete_union_type(type* type, type_aggregate_field* fields, size_t fi
     type->aggregate.fields_count = fields_count;
 }
 
+type* get_array_type(type* element, size_t size)
+{
+    complete_type(element);
+    type* t = get_new_type(TYPE_ARRAY);
+    t->size = size * get_type_size(element);
+    t->align = get_type_align(element);
+    t->array.base_type = element;
+    t->array.size = size;
+    return t; 
+}
+
 type* get_incomplete_type(symbol* sym)
 {
     type* type = get_new_type(TYPE_INCOMPLETE);
@@ -204,6 +224,30 @@ symbol* get_new_symbol(symbol_kind kind, char* name, decl* decl)
     sym->name = name;
     sym->decl = decl;
     return sym;
+}
+
+resolved_expr* get_resolved_rvalue(type* t)
+{
+    resolved_expr* result = xcalloc(sizeof(resolved_expr));
+    result->type = t;
+    return result;
+}
+
+resolved_expr* get_resolved_lvalue(type* t)
+{
+    resolved_expr* result = xcalloc(sizeof(resolved_expr));
+    result->type = t;
+    result->is_lvalue = true;
+    return result;
+}
+
+resolved_expr* get_resolved_const(int64_t val)
+{
+    resolved_expr* result = xcalloc(sizeof(resolved_expr));
+    result->type = type_int;
+    result->is_const = true;
+    result->val = val;
+    return result;
 }
 
 symbol* get_symbol_from_decl(decl* d)
@@ -337,9 +381,13 @@ type* resolve_typespec(typespec* t)
             }
             break;
             case TYPESPEC_ARRAY:
-            {
-                // musimy jeszcze wziąć rozmiar
-                result = resolve_typespec(t->array.base_type);
+            {                                
+
+                type* element = resolve_typespec(t->array.base_type);
+                resolved_expr* size_expr = resolve_expression(t->array.size_expr);
+                // teraz trzeba czegoś w rodzaju evalutate expression...
+
+                result = get_array_type(element, size_expr->val);
             }
             break;
             case TYPESPEC_POINTER:
@@ -358,19 +406,206 @@ type* resolve_typespec(typespec* t)
     return result;
 }
 
-type* resolve_expression(expr* e)
+int64_t eval_int_unary_op(token_kind op, int64_t val)
 {
-    type* result = 0;
+    switch (op)
+    {
+        case TOKEN_ADD: return +val;
+        case TOKEN_SUB: return -val;
+        case TOKEN_NOT: return !val;
+        case TOKEN_BITWISE_NOT: return ~val;
+        default: fatal("operation not implemented"); return 0;
+    }
+}
+
+int64_t eval_int_binary_op(token_kind op, int64_t left, int64_t right)
+{
+    switch (op)
+    {
+        case TOKEN_ADD: return left + right;
+        case TOKEN_SUB: return left - right;
+        case TOKEN_MUL: return left * right;
+        case TOKEN_DIV: return (right != 0) ? left / right : 0;
+        case TOKEN_MOD: return (right != 0) ? left % right : 0;
+        case TOKEN_BITWISE_AND: return left & right;
+        case TOKEN_BITWISE_OR: return left | right;
+        case TOKEN_LEFT_SHIFT: return left << right;
+        case TOKEN_RIGHT_SHIFT: return left >> right;
+        case TOKEN_XOR: return left ^ right;
+        case TOKEN_EQ: return left == right;
+        case TOKEN_NEQ: return left != right;
+        case TOKEN_LT: return left < right;
+        case TOKEN_LEQ: return left <= right;
+        case TOKEN_GT: return left > right;
+        case TOKEN_GEQ: return left >= right;
+        case TOKEN_AND: return left && right;
+        case TOKEN_OR: return left || right;
+        default: fatal("operation not implemented"); return 0;
+    }
+}
+
+resolved_expr* pointer_decay(resolved_expr* e)
+{        
+    if (e->type->kind == TYPE_ARRAY)
+    {
+        e = get_resolved_rvalue(get_pointer_type(e->type->array.base_type));
+    }
+    return e;
+}
+
+resolved_expr* resolve_expr_unary(expr* expr)
+{
+    resolved_expr* result = 0;
+
+    assert(expr->kind == EXPR_UNARY);
+    resolved_expr* operand = resolve_expression(expr->unary_expr_value.operand);
+    type* type = operand->type;
+    switch (expr->unary_expr_value.operator)
+    {
+        case TOKEN_MUL:
+        {
+            operand = pointer_decay(operand);
+            if (type->kind != TYPE_POINTER)
+            {
+                fatal("Cannot dereference non-pointer type");
+            }
+            result = get_resolved_lvalue(type->pointer.base_type);
+        }
+        break;
+        case TOKEN_BITWISE_AND:
+        {
+            if (false == operand->is_lvalue)
+            {
+                fatal("Cannot take address of non-lvalue");
+            }
+            result = get_resolved_rvalue(get_pointer_type(type));
+        }
+        break;       
+        default:
+        {
+            if (type->kind != TYPE_INT)
+            {
+                fatal("Can only use unary %s with ints", get_token_kind_name(expr->unary_expr_value.operator));
+            }
+            if (operand->is_const)
+            {
+                int64_t value = eval_int_unary_op(expr->unary_expr_value.operator, operand->val);
+                result = get_resolved_const(value);
+            }
+            else
+            {
+                result = get_resolved_rvalue(type);
+            }
+        }
+    }
+
+    return result;
+}
+
+resolved_expr* resolve_expr_binary(expr* expr)
+{
+    resolved_expr* result = 0;
+
+    assert(expr->kind == EXPR_BINARY);
+    resolved_expr* left = resolve_expression(expr->binary_expr_value.left_operand);
+    resolved_expr* right = resolve_expression(expr->binary_expr_value.right_operand);
+    
+    if (left->type != type_int)
+    {
+        fatal("left operand of + must be int");
+    }
+    if (right->type != left->type)
+    {
+        fatal("left and right operand of + must have same type");
+    }
+
+    if (left->is_const && right->is_const)
+    {
+        result = get_resolved_const(eval_int_unary_op(expr->binary_expr_value.operator, left->val, right->val));
+    }
+    else
+    {
+        result = get_resolved_rvalue(left->type);
+    }
+
+    return result;
+}
+
+resolved_expr* resolve_expression(expr* e)
+{
+    resolved_expr* result = 0;
     switch (e->kind)
     {
         case EXPR_NAME:
         {
-            result = resolve_name(e->identifier);
+            // tutaj musimy mieć variable, a nie typ
+            // ponieważ jest to expression! 
+            // np. int[10] to nie expression, to deklaracja typu
+            symbol* sym = resolve_name(e->identifier);          
+            if (sym->kind == SYMBOL_VARIABLE)
+            {
+                result = get_resolved_lvalue(sym->type);
+            }
+            else
+            {
+                assert("must be a variable name!");
+            } 
         }
         break;
         case EXPR_INT:
         {
+            result = get_resolved_rvalue(type_int);
+            result->is_const = true;
+            result->val = e->number_value;
+
             debug_breakpoint;
+        }
+        break;
+        case EXPR_BINARY:
+        {
+            result = resolve_expr_binary(e);
+        }
+        break;
+        case EXPR_UNARY:
+        {
+            result = resolve_expr_unary(e);
+        }
+        break;
+        case EXPR_TERNARY:
+        {
+            fatal("ternary expressions not allowed as constants");
+        }
+        break;
+        case EXPR_INDEX:
+        {
+            debug_breakpoint;
+
+            resolved_expr* operand_expr = resolve_expression(e->index_expr_value.array_expr);
+            if (pointer_decay(operand_expr)->type->kind != TYPE_POINTER)
+            {
+                fatal("can only index arrays or pointers");
+            }
+            
+            resolved_expr* index_expr = resolve_expression(e->index_expr_value.index_expr);
+
+
+            if (index_expr->type->kind != TYPE_INT)
+            {
+                fatal("index must be an integer");
+            }
+
+            result = get_resolved_lvalue(operand_expr->type->pointer.base_type);
+        }
+        break;
+        case EXPR_COMPOUND_LITERAL:
+        {
+            for (size_t i = 0; i < e->compound_literal_expr_value.fields_count; i++)
+            {
+                compound_literal_field* field = e->compound_literal_expr_value.fields[i];
+                resolved_expr* field_expr = resolve_expression(field->expr);
+
+                // co dalej z tym robić?
+            }
         }
         break;
         default:
@@ -382,7 +617,13 @@ type* resolve_expression(expr* e)
     return result;
 }
 
-type* resolve_variable(decl* d)
+resolved_expr resolve_expected_expr(expr* e, type* expected_type)
+{
+    resolved_expr result = {0};
+
+    return result;
+}
+
 type* resolve_variable_decl(decl* d)
 {
     type* result = 0;
@@ -397,7 +638,11 @@ type* resolve_variable_decl(decl* d)
 
     if (d->variable_declaration.expression)
     {
-        result = resolve_expression(d->variable_declaration.expression);
+        resolved_expr* expr = resolve_expression(d->variable_declaration.expression);
+        if (expr)
+        {
+            result = expr->type;
+        }
     }
 
     return result;
@@ -461,9 +706,16 @@ void resolve_test(void)
     size_t installed_count = 3;
     push_installed_symbol(str_intern("char"), type_char);
     push_installed_symbol(str_intern("int"), type_int);
-    push_installed_symbol(str_intern("float"), type_int);
+    push_installed_symbol(str_intern("float"), type_float);
 
     char* test_strs[] = {
+        "let f := g[1 + 3]",
+        "let g: int[10]",
+        "let e = *b",
+        "let d = b[0]",
+        "let c: int[4]",
+        "let b = &a[0]",
+        "let a: int[3] = {1, 2, 3}",
         "let x: int = y",
         "let y: int = 1",
         "struct Z { s: S, t: T* }",

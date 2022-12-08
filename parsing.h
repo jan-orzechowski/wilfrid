@@ -51,7 +51,11 @@ struct typespec
 typedef enum expr_kind
 {
     EXPR_NONE = 0,
+    
     EXPR_INT,
+    EXPR_FLOAT,
+    EXPR_CHAR,
+
     EXPR_NAME,
     EXPR_UNARY,
     EXPR_BINARY,
