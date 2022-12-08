@@ -374,6 +374,10 @@ expr* parse_unary_expression(void)
         {
             e = push_unary_expr(TOKEN_MUL, parse_base_expression());
         }
+        else if (match_token_kind(TOKEN_BITWISE_AND)) // address of
+        {
+            e = push_unary_expr(TOKEN_BITWISE_AND, parse_base_expression());
+        }
     }
     return e;
 }
@@ -1133,7 +1137,7 @@ void parse_test(void)
         "let x := a + -b << c + -d + e >> f",
         "let x := a ^ *b + c * -d + e | -f & g",
         "let x := a >= b || -c * d < e && -f",
-        "let x := (a - b) + (*c % d)",
+        "let x := (&a - &b) + (*c % d)",
         "let x : bool = (a == -b)",
         "let x: int[1 + 2] = {1, 2, 3}",
         "fn f (a: int, b: float, c : int ) : float { return a + b }",
