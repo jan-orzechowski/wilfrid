@@ -32,7 +32,9 @@ void print_expression(expr* e)
         break;
         case EXPR_SIZEOF:
         {
-            printf("(sizeof %s)", e->identifier);
+            printf("(sizeof ");
+            print_expression(e->sizeof_expr_value.expr);
+            printf(")");
         }
         break;
         case EXPR_UNARY:

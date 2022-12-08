@@ -74,12 +74,11 @@ expr* push_name_expr(const char* name)
     return result;
 }
 
-expr* push_sizeof_expr(const char* name)
+expr* push_sizeof_expr(expr* e)
 {
     expr* result = push_struct(arena, expr);
     result->kind = EXPR_SIZEOF;
-    result->identifier = str_intern(name);
-    next_lexed_token();
+    result->sizeof_expr_value.expr = e;
     return result;
 }
 
@@ -270,7 +269,10 @@ expr* parse_base_expression(void)
         {
             next_lexed_token();
             expect_token_kind(TOKEN_LEFT_PAREN);
-            result = push_sizeof_expr(token.name);
+
+            expr* e = parse_expression();
+            result = push_sizeof_expr(e);
+
             expect_token_kind(TOKEN_RIGHT_PAREN);
         }
     }
@@ -1159,6 +1161,7 @@ void parse_test(void)
         "let x := (&a - &b) + (*c % d)",
         "let x : bool = (a == -b)",
         "let x: int[1 + 2] = {1, 2, 3}",
+        "const x = sizeof(t.subt.x)",
         "fn f (a: int, b: float, c : int ) : float { return a + b }",
         "fn f () {\
             x += 1\

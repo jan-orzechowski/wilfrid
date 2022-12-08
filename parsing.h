@@ -122,6 +122,11 @@ typedef struct compound_literal_expr
     size_t fields_count;
 } compound_literal_expr;
 
+typedef struct sizeof_expr
+{
+    expr* expr;
+} sizeof_expr;
+
 struct expr
 {
     expr_kind kind;
@@ -137,6 +142,7 @@ struct expr
         index_expr index_expr_value;
         field_expr field_expr_value;
         compound_literal_expr compound_literal_expr_value;
+        sizeof_expr sizeof_expr_value;
     };
 };
 
