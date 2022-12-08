@@ -452,6 +452,21 @@ void print_declaration(decl* declaration)
             printf(")");
         }
         break;
+        case DECL_CONST:
+        {
+            printf("(const-decl ");
+            if (declaration->identifier)
+            {
+                printf("%s", declaration->identifier);
+            }          
+            if (declaration->const_declaration.expression)
+            {
+                printf(" ");
+                print_expression(declaration->const_declaration.expression);
+            }
+            printf(")");
+        }
+        break;
         case DECL_STRUCT:
         case DECL_UNION:
         {

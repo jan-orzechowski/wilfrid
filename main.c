@@ -28,8 +28,11 @@ int main(int argc, char** argv)
 
     stack_vm_test(code);
     
-    //parse_test();
+#if 1
+    parse_test();
+#else
     resolve_test();
+#endif
 
     return 1;
 }

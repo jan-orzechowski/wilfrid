@@ -33,6 +33,7 @@ const char* let_keyword;
 const char* fn_keyword;
 const char* typedef_keyword;
 const char* sizeof_keyword;
+const char* const_keyword;
 const char* break_keyword;
 const char* continue_keyword;
 const char* return_keyword;
@@ -63,6 +64,7 @@ void init_keywords(void)
         KEYWORD(fn);
         KEYWORD(typedef);
         KEYWORD(sizeof);
+        KEYWORD(const);
         KEYWORD(break);
         KEYWORD(continue);
         KEYWORD(return);

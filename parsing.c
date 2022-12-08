@@ -673,7 +673,8 @@ stmt* parse_statement(void)
             s->kind = STMT_CONTINUE;
             next_lexed_token();
         }
-        else if (keyword == let_keyword)
+        else if (keyword == let_keyword
+            || keyword == const_keyword)
         {
             decl* d = parse_declaration();
             s = push_struct(arena, stmt);
@@ -995,6 +996,24 @@ decl* parse_declaration_optional(void)
                 }
             }
         }
+        else if (decl_keyword == const_keyword)
+        {
+            declaration = push_struct(arena, decl);
+            declaration->kind = DECL_CONST;
+
+            next_lexed_token();
+            if (is_token_kind(TOKEN_NAME))
+            {
+                declaration->identifier = token.name;
+                next_lexed_token();
+            }
+
+            if (expect_token_kind(TOKEN_ASSIGN))
+            {
+                expr* expression = parse_expression();
+                declaration->const_declaration.expression = expression;
+            }
+        }       
         else if (decl_keyword == struct_keyword
                 || decl_keyword == union_keyword)
         {
@@ -1134,7 +1153,7 @@ void parse_test(void)
     char* test_str = 0;
 
     char* test_strs[] = {
-        "let x := a + -b << c + -d + e >> f",
+        "const x = a + -b << c + -d + e >> f",
         "let x := a ^ *b + c * -d + e | -f & g",
         "let x := a >= b || -c * d < e && -f",
         "let x := (&a - &b) + (*c % d)",

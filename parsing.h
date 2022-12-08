@@ -244,6 +244,7 @@ typedef enum decl_kind
     DECL_STRUCT,
     DECL_UNION,
     DECL_VARIABLE,
+    DECL_CONST,
     DECL_FUNCTION,
     DECL_TYPEDEF,
     DECL_ENUM
@@ -266,6 +267,11 @@ typedef struct variable_decl
     typespec* type; 
     expr* expression;
 } variable_decl;
+
+typedef struct const_decl
+{
+    expr* expression;
+} const_decl;
 
 typedef struct function_param
 {
@@ -316,5 +322,6 @@ struct decl
         aggregate_decl aggregate_declaration;
         enum_decl enum_declaration;
         typedef_decl typedef_declaration;
+        const_decl const_declaration;
     };
 };
