@@ -27,7 +27,7 @@ bool expect_token_kind(token_kind kind)
     bool result = match_token_kind(kind);
     if (false == result)
     {
-        fatal("expected token of different kind: %d", kind);
+        fatal("expected token of different kind: %s", get_token_kind_name(kind));
     }
     return result;
 }
@@ -378,7 +378,9 @@ expr* parse_unary_expression(void)
         }
         else if (match_token_kind(TOKEN_BITWISE_AND)) // address of
         {
-            e = push_unary_expr(TOKEN_BITWISE_AND, parse_base_expression());
+            // tutaj musimy mieć "greedy parsing" w prawo
+            // np. &a[10] to adres 10. elementu, a nie 10 element w tabeli adresów
+            e = push_unary_expr(TOKEN_BITWISE_AND, parse_expression());
         }
     }
     return e;
@@ -1162,6 +1164,7 @@ void parse_test(void)
         "let x : bool = (a == -b)",
         "let x: int[1 + 2] = {1, 2, 3}",
         "const x = sizeof(t.subt.x)",
+        "const n = sizeof(&a[0].b.c[10])",
         "fn f (a: int, b: float, c : int ) : float { return a + b }",
         "fn f () {\
             x += 1\
@@ -1200,6 +1203,8 @@ void parse_test(void)
         "fn f() { x.y = {z = 2, w = 3, p = 44, q = z, 22} }",
         "typedef vectors = vector[1+2]",
         "typedef t = (fn(int*[2], int):int)[16]",
+        /*
+        */
     };
 
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);

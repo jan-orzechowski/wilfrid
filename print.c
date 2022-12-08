@@ -92,9 +92,9 @@ void print_expression(expr* e)
         case EXPR_FIELD:
         {
             printf("(access-field ");
-            print_expression(e->field_expr_value.expr);
-            printf(" ");
             printf("%s", e->field_expr_value.field_name);
+            printf(" ");
+            print_expression(e->field_expr_value.expr);
             printf(")");
         }
         break;
