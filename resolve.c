@@ -11,6 +11,7 @@ typedef enum type_kind
     TYPE_INCOMPLETE,
     TYPE_COMPLETING,
     TYPE_COMPLETED,
+    TYPE_VOID,
     TYPE_INT,
     TYPE_CHAR,
     TYPE_FLOAT,
@@ -55,7 +56,7 @@ typedef struct type_aggregate
 struct type
 {
     type_kind kind;
-    symbol* symbol;
+    symbol* symbol; // używane tylko przy typach, które muszą być completed
     size_t size;
     size_t align;
     union
@@ -73,7 +74,7 @@ typedef enum symbol_kind
     SYMBOL_NONE,
     SYMBOL_VARIABLE,
     SYMBOL_CONST,
-    SYMBOL_FUNC,
+    SYMBOL_FUNCTION,
     SYMBOL_TYPE,
     SYMBOL_ENUM_CONST,
 } symbol_kind;
@@ -117,9 +118,10 @@ size_t get_type_align(type* type)
     return type->align;
 }
 
-type* type_float = &(type) { .name = "float", .kind = TYPE_FLOAT, .size = 4, .align = 4 };
-type* type_int =   &(type) { .name = "int",   .kind = TYPE_INT, .size = 4, .align = 4 };
+type* type_void =  &(type) { .name = "void",  .kind = TYPE_VOID, .size = 0, .align = 0 };
 type* type_char =  &(type) { .name = "char",  .kind = TYPE_CHAR, .size = 1, .align = 1 };
+type* type_int =   &(type) { .name = "int",   .kind = TYPE_INT, .size = 4, .align = 4 };
+type* type_float = &(type) { .name = "float", .kind = TYPE_FLOAT, .size = 4, .align = 4 };
 
 const size_t POINTER_SIZE = 8;
 const size_t POINTER_ALIGN = 8;
@@ -219,6 +221,17 @@ type* get_pointer_type(type* base_type)
     return type;
 }
 
+type* get_function_type(type** parameter_types, size_t parameter_types_count, type* return_type)
+{
+    type* type = get_new_type(TYPE_FUNCTION);
+    type->size = POINTER_SIZE;
+    type->align = POINTER_ALIGN;
+    type->function.parameter_types = parameter_types;
+    type->function.parameter_count = parameter_types_count;
+    type->function.returned_type = return_type;
+    return type;
+}
+
 symbol* get_new_symbol(symbol_kind kind, char* name, decl* decl)
 {
     symbol* sym = xcalloc(sizeof(symbol));
@@ -228,7 +241,7 @@ symbol* get_new_symbol(symbol_kind kind, char* name, decl* decl)
     return sym;
 }
 
-resolved_expr* get_resolved_rvalue(type* t)
+resolved_expr* get_resolved_rvalue_expr(type* t)
 {
     assert(t);
     resolved_expr* result = xcalloc(sizeof(resolved_expr));
@@ -236,7 +249,7 @@ resolved_expr* get_resolved_rvalue(type* t)
     return result;
 }
 
-resolved_expr* get_resolved_lvalue(type* t)
+resolved_expr* get_resolved_lvalue_expr(type* t)
 {
     assert(t);
     assert(t->kind != SYMBOL_CONST);
@@ -246,7 +259,7 @@ resolved_expr* get_resolved_lvalue(type* t)
     return result;
 }
 
-resolved_expr* get_resolved_const(int64_t val)
+resolved_expr* get_resolved_const_expr(int64_t val)
 {
     resolved_expr* result = xcalloc(sizeof(resolved_expr));
     result->type = type_int;
@@ -278,6 +291,11 @@ symbol* get_symbol_from_decl(decl* d)
             kind = SYMBOL_CONST;
         }
         break;
+        case DECL_FUNCTION:
+        {
+            kind = SYMBOL_FUNCTION;
+        } 
+        break;
         default:
         {
             fatal("invalid default case");
@@ -288,8 +306,6 @@ symbol* get_symbol_from_decl(decl* d)
 
     symbol* sym = get_new_symbol(kind, d->name, d);
     if (d->kind == DECL_STRUCT || d->kind == DECL_UNION)
-        // te rodzaje deklaracji są rozstrzygnięte od razu, gdy je napotykamy
-        // natomiast sam typ jest jeszcze incomplete
     {
         sym->state = SYMBOL_RESOLVED;
         sym->type = get_incomplete_type(sym);
@@ -463,7 +479,7 @@ resolved_expr* pointer_decay(resolved_expr* e)
 {        
     if (e->type->kind == TYPE_ARRAY)
     {
-        e = get_resolved_rvalue(get_pointer_type(e->type->array.base_type));
+        e = get_resolved_rvalue_expr(get_pointer_type(e->type->array.base_type));
     }
     return e;
 }
@@ -484,7 +500,7 @@ resolved_expr* resolve_expr_unary(expr* expr)
             {
                 fatal("Cannot dereference non-pointer type");
             }
-            result = get_resolved_lvalue(type->pointer.base_type);
+            result = get_resolved_lvalue_expr(type->pointer.base_type);
         }
         break;
         case TOKEN_BITWISE_AND:
@@ -493,7 +509,7 @@ resolved_expr* resolve_expr_unary(expr* expr)
             {
                 fatal("Cannot take address of non-lvalue");
             }
-            result = get_resolved_rvalue(get_pointer_type(type));
+            result = get_resolved_rvalue_expr(get_pointer_type(type));
         }
         break;       
         default:
@@ -505,11 +521,11 @@ resolved_expr* resolve_expr_unary(expr* expr)
             if (operand->is_const)
             {
                 int64_t value = eval_int_unary_op(expr->unary_expr_value.operator, operand->val);
-                result = get_resolved_const(value);
+                result = get_resolved_const_expr(value);
             }
             else
             {
-                result = get_resolved_rvalue(type);
+                result = get_resolved_rvalue_expr(type);
             }
         }
     }
@@ -535,23 +551,17 @@ resolved_expr* resolve_expr_binary(expr* expr)
     }
 
     if (left->is_const && right->is_const)
-    {        
-        result = get_resolved_const(eval_int_binary_op(expr->binary_expr_value.operator, left->val, right->val));
+    {   
+        int64_t const_value = eval_int_binary_op(expr->binary_expr_value.operator, left->val, right->val);
+        result = get_resolved_const_expr(const_value);
     }
     else
     {
-        result = get_resolved_rvalue(left->type);
+        result = get_resolved_rvalue_expr(left->type);
     }
 
     return result;
 }
-
-//resolved_expr* resolve_expr_sizeof(expr* e)
-//{
-//    resolved_expr* result = 0;
-//
-//    return result;
-//}
 
 resolved_expr* resolve_expression(expr* e)
 {
@@ -563,11 +573,17 @@ resolved_expr* resolve_expression(expr* e)
             symbol* sym = resolve_name(e->name);          
             if (sym->kind == SYMBOL_VARIABLE)
             {
-                result = get_resolved_lvalue(sym->type);
+                result = get_resolved_lvalue_expr(sym->type);
             }
             else if (sym->kind == SYMBOL_CONST)
             {
-                result = get_resolved_rvalue(sym->type);
+                result = get_resolved_rvalue_expr(sym->type);
+            }
+            else if (sym->kind == SYMBOL_FUNCTION)
+            {                  
+               result = get_resolved_lvalue_expr(sym->type);
+               
+               debug_breakpoint;
             }
             else
             {
@@ -577,9 +593,35 @@ resolved_expr* resolve_expression(expr* e)
         break;
         case EXPR_INT:
         {
-            result = get_resolved_rvalue(type_int);
+            result = get_resolved_rvalue_expr(type_int);
             result->is_const = true;
             result->val = e->number_value;
+        }
+        break;
+        case EXPR_CALL:
+        {
+            resolved_expr* fn_expr = resolve_expression(e->call_expr_value.function_expr);
+            size_t arg_param_count = fn_expr->type->function.parameter_count;
+            if (arg_param_count == e->call_expr_value.args_num)
+            {
+                for (size_t i = 0; i < arg_param_count; i++)
+                {
+                    expr* arg_expr = e->call_expr_value.args[i];
+                    resolved_expr* resolved_arg_expr = resolve_expression(arg_expr);
+
+                    type* param_type = fn_expr->type->function.parameter_types[i];
+                    
+                    if (param_type != resolved_arg_expr->type)
+                    {
+                        debug_breakpoint;
+                        fatal("argument has invalid type");
+                    }
+                }
+            }
+            else
+            {
+                fatal("invalid number of arguments");
+            }
 
             debug_breakpoint;
         }
@@ -606,7 +648,7 @@ resolved_expr* resolve_expression(expr* e)
             type* expr_type = expr->type;
             complete_type(expr_type);
             int64_t size = get_type_size(expr_type);
-            result = get_resolved_const(size);
+            result = get_resolved_const_expr(size);
             debug_breakpoint;
         }
         break;
@@ -632,7 +674,7 @@ resolved_expr* resolve_expression(expr* e)
                 fatal("no field of name: %s", field_name);
             }
 
-            result = get_resolved_lvalue(found);
+            result = get_resolved_lvalue_expr(found);
 
             debug_breakpoint;
         }
@@ -655,7 +697,7 @@ resolved_expr* resolve_expression(expr* e)
                 fatal("index must be an integer");
             }
 
-            result = get_resolved_lvalue(operand_expr->type->pointer.base_type);
+            result = get_resolved_lvalue_expr(operand_expr->type->pointer.base_type);
         }
         break;
         case EXPR_COMPOUND_LITERAL:
@@ -723,9 +765,34 @@ type* resolve_variable_decl(decl* d)
 
 type* resolve_type_decl(decl* d)
 {
-    assert(d->kind == DECL_TYPEDEF); // jedyny rodzaj, jaki tu trzeba obsłużyć
+    assert(d->kind == DECL_TYPEDEF); 
+    // jedyny rodzaj, jaki tu trzeba obsłużyć
     // unions i structs są resolved od razu
     type* result = resolve_typespec(d->typedef_declaration.type);
+    return result;
+}
+
+type* resolve_function_decl(decl* d)
+{
+    assert(d->kind == DECL_FUNCTION);
+
+    type* resolved_return_type = type_void;
+    if (d->function_declaration.return_type)
+    {
+        resolved_return_type = resolve_typespec(d->function_declaration.return_type);
+    }
+    
+    type** resolved_args = 0;
+    function_param_list* args = &d->function_declaration.parameters;
+    for (size_t i = 0; i < args->param_count; i++)
+    {
+        function_param* p = &args->params[i];
+        // nazwy argumentów na razie nas nie obchodzą
+        type* t = resolve_typespec(p->type);
+        buf_push(resolved_args, t);
+    }
+
+    type* result = get_function_type(resolved_args, buf_len(resolved_args), resolved_return_type);
     return result;
 }
 
@@ -762,6 +829,16 @@ void resolve_symbol(symbol* s)
             s->type = resolve_type_decl(s->decl);
         }
         break;
+        case SYMBOL_FUNCTION:
+        {
+            s->type = resolve_function_decl(s->decl);
+        }
+        break;
+        default:
+        {
+            fatal("unimplemented symbol type");
+        }
+        break;
     }
 
     s->state = SYMBOL_RESOLVED;
@@ -792,6 +869,7 @@ void resolve_test(void)
     arena = allocate_memory_arena(megabytes(50));
     
     size_t installed_count = 3;
+    push_installed_symbol(str_intern("void"), type_void);
     push_installed_symbol(str_intern("char"), type_char);
     push_installed_symbol(str_intern("int"), type_int);
     push_installed_symbol(str_intern("float"), type_float);
@@ -812,7 +890,11 @@ void resolve_test(void)
         "struct Z { s: S, t: T* }",
         "struct T { i: int }",
         "let a: int[3] = {1, 2, 3}",
-        "struct S { t: int, c: char }",        
+        "struct S { t: int, c: char }",
+        "let x = fun(1, 2)",
+        "fn fun(i: int, j: int) { return i + j }"        
+        /*
+        */
     };
 
     printf("original:\n\n");
