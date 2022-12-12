@@ -27,7 +27,7 @@ void print_expression(expr* e)
         break;
         case EXPR_NAME:
         {
-            printf("%s", e->identifier);
+            printf("%s", e->name);
         }
         break;
         case EXPR_SIZEOF:
@@ -396,9 +396,9 @@ void print_declaration(decl* declaration)
         case DECL_FUNCTION:
         {
             printf("(fn-decl ");
-            if (declaration->identifier)
+            if (declaration->name)
             {
-                printf("%s", declaration->identifier);
+                printf("%s", declaration->name);
             }
 
             if (declaration->function_declaration.parameters.param_count > 0)
@@ -407,7 +407,7 @@ void print_declaration(decl* declaration)
                 for (int index = 0; index < declaration->function_declaration.parameters.param_count; index++)
                 {
                     function_param* p = &declaration->function_declaration.parameters.params[index];
-                    printf("(%s ", p->identifier);
+                    printf("(%s ", p->name);
                     print_typespec(p->type);
                     printf(")");
 
@@ -434,9 +434,9 @@ void print_declaration(decl* declaration)
         {
             printf("(var-decl ");
 
-            if (declaration->identifier)
+            if (declaration->name)
             {
-                printf("%s", declaration->identifier);
+                printf("%s", declaration->name);
             }
 
             if (declaration->variable_declaration.type)
@@ -457,9 +457,9 @@ void print_declaration(decl* declaration)
         case DECL_CONST:
         {
             printf("(const-decl ");
-            if (declaration->identifier)
+            if (declaration->name)
             {
-                printf("%s", declaration->identifier);
+                printf("%s", declaration->name);
             }          
             if (declaration->const_declaration.expression)
             {
@@ -481,9 +481,9 @@ void print_declaration(decl* declaration)
                 printf("(struct-decl");
             }
 
-            if (declaration->identifier)
+            if (declaration->name)
             {
-                printf(" %s", declaration->identifier);
+                printf(" %s", declaration->name);
             }
 
             indent++;
@@ -493,7 +493,7 @@ void print_declaration(decl* declaration)
                 index++)
             {
                 print_newline();
-                printf("(%s", declaration->aggregate_declaration.fields[index].identifier);
+                printf("(%s", declaration->aggregate_declaration.fields[index].name);
                 printf(" ");
                 print_typespec(declaration->aggregate_declaration.fields[index].type);
                 printf(")");
@@ -516,7 +516,7 @@ void print_declaration(decl* declaration)
             {
                 print_newline();
                 enum_value* value = &declaration->enum_declaration.values[index];
-                printf("(%s", value->identifier);
+                printf("(%s", value->name);
                 if (value->value_set)
                 {
                     printf(" %d", value->value);

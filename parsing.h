@@ -93,7 +93,7 @@ struct ternary_expr
 
 typedef struct call_expr
 {
-    expr * function_expr;
+    expr* function_expr;
     expr** args;
     size_t args_num;
 } call_expr;
@@ -133,7 +133,7 @@ struct expr
     union
     {
         int number_value;
-        const char* identifier;
+        const char* name;
         const char* string_value;
         unary_expr unary_expr_value;
         binary_expr binary_expr_value;
@@ -258,7 +258,7 @@ typedef enum decl_kind
 
 typedef struct aggregate_field
 {
-    char* identifier;
+    char* name;
     typespec* type;
 } aggregate_field;
 
@@ -281,7 +281,7 @@ typedef struct const_decl
 
 typedef struct function_param
 {
-    char* identifier;
+    char* name;
     typespec* type;
 } function_param;
 
@@ -300,7 +300,7 @@ typedef struct function_decl
 
 typedef struct enum_value
 {
-    char* identifier;
+    char* name;
     bool value_set;
     int64_t value;
 } enum_value;
@@ -319,8 +319,8 @@ typedef struct typedef_decl
 
 struct decl
 {
+    char* name;
     decl_kind kind;
-    char* identifier;
     union
     {
         function_decl function_declaration;

@@ -69,7 +69,7 @@ expr* push_name_expr(const char* name)
 {
     expr* result = push_struct(arena, expr);
     result->kind = EXPR_NAME;
-    result->identifier = str_intern(name);
+    result->name = str_intern(name);
     next_lexed_token();
     return result;
 }
@@ -218,7 +218,7 @@ expr* parse_compound_literal(void)
                 {                
                     if (match_token_kind(TOKEN_ASSIGN))
                     {
-                        field->field_name = val->identifier;
+                        field->field_name = val->name;
                         field->expr = parse_expression();
                     }
                     else
@@ -825,7 +825,7 @@ function_param parse_function_parameter(void)
     function_param p = {0};
     if (is_token_kind(TOKEN_NAME))
     {
-        p.identifier = token.name;
+        p.name = token.name;
 
         next_lexed_token();
         expect_token_kind(TOKEN_COLON);
@@ -845,7 +845,7 @@ function_param_list parse_function_parameter_list(void)
     while (is_token_kind(TOKEN_NAME))
     {
         function_param p = parse_function_parameter();
-        if (p.identifier != NULL)
+        if (p.name != NULL)
         {
             buf_push(params, p);
 
@@ -880,7 +880,7 @@ aggregate_field parse_aggregate_field(void)
     aggregate_field result = {0};
     if (is_token_kind(TOKEN_NAME))
     {        
-        result.identifier = token.name;
+        result.name = token.name;
 
         next_lexed_token();
         expect_token_kind(TOKEN_COLON);
@@ -922,7 +922,7 @@ enum_value parse_enum_value(void)
     enum_value result = { 0 };
     if (is_token_kind(TOKEN_NAME))
     {
-        result.identifier = token.name;
+        result.name = token.name;
         next_lexed_token();
 
         if (is_token_kind(TOKEN_ASSIGN))
@@ -949,7 +949,7 @@ void parse_enum(enum_decl* decl)
     enum_value* values = 0;
 
     enum_value new_value = parse_enum_value();
-    while (new_value.identifier)
+    while (new_value.name)
     {
         buf_push(values, new_value);
         new_value = parse_enum_value();
@@ -977,7 +977,7 @@ decl* parse_declaration_optional(void)
             next_lexed_token();
             if (is_token_kind(TOKEN_NAME))
             {
-                declaration->identifier = token.name;
+                declaration->name = token.name;
                 next_lexed_token();
             }
             
@@ -1008,7 +1008,7 @@ decl* parse_declaration_optional(void)
             next_lexed_token();
             if (is_token_kind(TOKEN_NAME))
             {
-                declaration->identifier = token.name;
+                declaration->name = token.name;
                 next_lexed_token();
             }
 
@@ -1027,7 +1027,7 @@ decl* parse_declaration_optional(void)
             next_lexed_token();
             if (is_token_kind(TOKEN_NAME))
             {
-                declaration->identifier = token.name;
+                declaration->name = token.name;
                 next_lexed_token();
             }
 
@@ -1045,7 +1045,7 @@ decl* parse_declaration_optional(void)
             next_lexed_token();
             if (is_token_kind(TOKEN_NAME))
             {
-                declaration->identifier = token.name;
+                declaration->name = token.name;
                 next_lexed_token();
             }
 
@@ -1079,7 +1079,7 @@ decl* parse_declaration_optional(void)
             next_lexed_token();
             if (is_token_kind(TOKEN_NAME))
             {
-                declaration->identifier = token.name;
+                declaration->name = token.name;
                 next_lexed_token();
             }
 
@@ -1100,7 +1100,7 @@ decl* parse_declaration_optional(void)
             expect_token_kind(TOKEN_ASSIGN);
             typespec* type = parse_typespec();
 
-            declaration->typedef_declaration.name = name_expr->identifier;
+            declaration->typedef_declaration.name = name_expr->name;
             declaration->typedef_declaration.type = type;
         }
 

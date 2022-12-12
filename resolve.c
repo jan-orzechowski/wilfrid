@@ -286,7 +286,7 @@ symbol* get_symbol_from_decl(decl* d)
     }
     assert(kind != SYMBOL_NONE);
 
-    symbol* sym = get_new_symbol(kind, d->identifier, d);
+    symbol* sym = get_new_symbol(kind, d->name, d);
     if (d->kind == DECL_STRUCT || d->kind == DECL_UNION)
         // te rodzaje deklaracji są rozstrzygnięte od razu, gdy je napotykamy
         // natomiast sam typ jest jeszcze incomplete
@@ -339,7 +339,7 @@ void complete_type(type* t)
         complete_type(field_type); // wszystkie muszą być completed, ponieważ musimy znać ich rozmiar
 
         type_aggregate_field* type_field = xcalloc(sizeof(type_aggregate_field));
-        type_field->name = field.identifier;
+        type_field->name = field.name;
         type_field->type = field_type;
         buf_push(fields, type_field);
     }
@@ -560,10 +560,7 @@ resolved_expr* resolve_expression(expr* e)
     {
         case EXPR_NAME:
         {
-            // tutaj musimy mieć variable, a nie typ
-            // ponieważ jest to expression! 
-            // np. int[10] to nie expression, to deklaracja typu
-            symbol* sym = resolve_name(e->identifier);          
+            symbol* sym = resolve_name(e->name);          
             if (sym->kind == SYMBOL_VARIABLE)
             {
                 result = get_resolved_lvalue(sym->type);
