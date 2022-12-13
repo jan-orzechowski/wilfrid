@@ -133,6 +133,7 @@ void complete_type(type* t);
 void resolve_symbol(symbol* s);
 type* resolve_typespec(typespec* t);
 resolved_expr* resolve_expression(expr* e);
+void resolve_statement(stmt* st, type* opt_ret_type);
 
 symbol* get_symbol(char* name)
 {
@@ -581,9 +582,9 @@ resolved_expr* resolve_expression(expr* e)
             }
             else if (sym->kind == SYMBOL_FUNCTION)
             {                  
-               result = get_resolved_lvalue_expr(sym->type);
+                result = get_resolved_lvalue_expr(sym->type);
                
-               debug_breakpoint;
+                debug_breakpoint;
             }
             else
             {
@@ -608,12 +609,9 @@ resolved_expr* resolve_expression(expr* e)
                 {
                     expr* arg_expr = e->call_expr_value.args[i];
                     resolved_expr* resolved_arg_expr = resolve_expression(arg_expr);
-
-                    type* param_type = fn_expr->type->function.parameter_types[i];
-                    
+                    type* param_type = fn_expr->type->function.parameter_types[i];                    
                     if (param_type != resolved_arg_expr->type)
                     {
-                        debug_breakpoint;
                         fatal("argument has invalid type");
                     }
                 }
@@ -622,8 +620,7 @@ resolved_expr* resolve_expression(expr* e)
             {
                 fatal("invalid number of arguments");
             }
-
-            debug_breakpoint;
+            result = get_resolved_rvalue_expr(fn_expr->type->function.returned_type);
         }
         break;
         case EXPR_BINARY:
@@ -649,7 +646,6 @@ resolved_expr* resolve_expression(expr* e)
             complete_type(expr_type);
             int64_t size = get_type_size(expr_type);
             result = get_resolved_const_expr(size);
-            debug_breakpoint;
         }
         break;
         case EXPR_FIELD:
@@ -675,14 +671,10 @@ resolved_expr* resolve_expression(expr* e)
             }
 
             result = get_resolved_lvalue_expr(found);
-
-            debug_breakpoint;
         }
         break;
         case EXPR_INDEX:
         {
-            debug_breakpoint;
-
             resolved_expr* operand_expr = resolve_expression(e->index_expr_value.array_expr);
             if (pointer_decay(operand_expr)->type->kind != TYPE_POINTER)
             {
@@ -720,10 +712,13 @@ resolved_expr* resolve_expression(expr* e)
     return result;
 }
 
-resolved_expr resolve_expected_expr(expr* e, type* expected_type)
+resolved_expr* resolve_expected_expr(expr* e, type* expected_type)
 {
-    resolved_expr result = {0};
-
+    resolved_expr* result = resolve_expression(e);
+    if (result->type != expected_type)
+    {
+        fatal("type different than expected");
+    }
     return result;
 }
 
@@ -845,6 +840,145 @@ void resolve_symbol(symbol* s)
     buf_push(ordered_symbols, s);
 }
 
+void resolve_statement_block(stmt_block st_block)
+{
+    for (size_t i = 0; i < st_block.statements_count; i++)
+    {
+        stmt* st = st_block.statements[i];
+        resolve_statement(st, NULL);
+    }
+}
+
+void resolve_statement(stmt* st, type* opt_ret_type)
+{
+    switch (st->kind)
+    {
+        case STMT_NONE:
+        {
+            fatal("statement must have a valid kind");
+        }
+        break;
+        case STMT_RETURN:
+        {
+            if (st->expression)
+            {
+                resolved_expr* result = resolve_expected_expr(st->expression, opt_ret_type);
+                if (result->type != opt_ret_type)
+                {
+                    fatal("return type mismatch");
+                }
+            }
+            else
+            {
+                if (opt_ret_type != type_void)
+                {
+                    fatal("empty return expression for function with non-void return type");
+                }
+            }
+            break;
+        }
+        break;
+        case STMT_IF_ELSE:
+        {
+            resolve_expression(st->if_else_statement.cond_expr);
+            resolve_statement_block(st->if_else_statement.then_block);
+            resolve_statement(st->if_else_statement.else_stmt, NULL);
+        }
+        break;
+        case STMT_WHILE:
+        {
+            resolve_expression(st->while_statement.cond_expr);
+            resolve_statement_block(st->while_statement.statements);
+        }
+        break;
+        case STMT_DO_WHILE:
+        {
+            resolve_expression(st->do_while_statement.cond_expr);
+            resolve_statement_block(st->do_while_statement.statements);
+        }
+        break;
+        case STMT_FOR:
+        {
+            resolve_type_decl(st->for_statement.init_decl);
+            resolve_expression(st->for_statement.cond_expr);
+            resolve_statement(st->for_statement.incr_stmt, NULL);
+
+            resolve_statement_block(st->for_statement.statements);
+        }
+        break;
+        case STMT_DECL:
+        {
+            push_symbol_from_decl(st->decl_statement.decl);
+        }
+        break;
+        case STMT_ASSIGN:
+        {
+            resolved_expr* left = resolve_expression(st->assign_statement.assigned_var_expr);
+            if (st->assign_statement.value_expr)
+            {                
+                resolved_expr* right = resolve_expected_expr(st->assign_statement.value_expr, left->type);
+                if (left->type != right->type)
+                {
+                    fatal("types do not match in assignment statement");
+                }
+            }
+            if (false == left->is_lvalue)
+            {
+                fatal("cannot assign to non-lvalue");
+            }
+            if (st->assign_statement.operation != TOKEN_ASSIGN && left->type != type_int)
+            {
+                fatal("for now can only use assignment operators with type int");
+            }
+        }
+        break; 
+        case STMT_EXPR:
+        {
+            resolve_expression(st->expression);
+        }
+        break;
+        case STMT_BLOCK:
+        {
+            resolve_statement_block(st->statements_block);
+        }
+        break;
+        case STMT_BREAK:
+        case STMT_CONTINUE:
+        break;
+        case STMT_SWITCH:
+        default:
+        {
+            fatal("stmt kind not implemented");
+        }
+        break;
+    }
+}
+
+void resolve_function_body(symbol* s)
+{
+    assert(s->state == SYMBOL_RESOLVED);
+    type* ret_type = s->type->function.returned_type;
+
+    // temporary hack
+    {
+        for (size_t i = 0; i < s->decl->function_declaration.parameters.param_count; i++)
+        {
+            function_param* p = &s->decl->function_declaration.parameters.params[i];
+            symbol* sym = get_new_symbol(SYMBOL_VARIABLE, p->name, NULL);
+            sym->type = resolve_typespec(p->type);
+            sym->state = SYMBOL_RESOLVED;
+            buf_push(symbols, sym);
+        }
+    }
+
+    size_t count = s->decl->function_declaration.statements.statements_count;
+    for (size_t i = 0; i < count; i++)
+    {
+        stmt* st = s->decl->function_declaration.statements.statements[i];
+        resolve_statement(st, ret_type);        
+    }
+}
+
 void complete_symbol(symbol* sym)
 {
     resolve_symbol(sym);
@@ -852,17 +986,11 @@ void complete_symbol(symbol* sym)
     {
         complete_type(sym->type);
     }
+    else if (sym->kind == SYMBOL_FUNCTION)
+    {
+        resolve_function_body(sym);
+    }
 }
-
-typedef struct test
-{
-    int i;
-    int j;
-} test;
-
-test t;
-
-const int size = sizeof(t.i);
 
 void resolve_test(void)
 {
@@ -875,6 +1003,7 @@ void resolve_test(void)
     push_installed_symbol(str_intern("float"), type_float);
 
     char* test_strs[] = {
+#if 1
         "let f := g[1 + 3]",
         "let g: int[10]",
         "let e = *b",
@@ -890,11 +1019,12 @@ void resolve_test(void)
         "struct Z { s: S, t: T* }",
         "struct T { i: int }",
         "let a: int[3] = {1, 2, 3}",
-        "struct S { t: int, c: char }",
+        "struct S { t: int, c: char }",        
         "let x = fun(1, 2)",
-        "fn fun(i: int, j: int) { return i + j }"        
-        /*
-        */
+        "fn fun(i: int, j: int): int { j++ i++ return i + j }",
+        "struct v2 { x: int, y: int }",
+        "fn fun2(vec: v2): int { return vec.x + 1 } ",
+#endif
     };
 
     printf("original:\n\n");

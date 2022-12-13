@@ -159,8 +159,8 @@ typedef enum stmt_kind
     STMT_BREAK,
     STMT_CONTINUE,
     STMT_DECL,
-    STMT_PRINT,
-    STMT_LIST,
+    //STMT_PRINT,
+    //STMT_LIST,
     STMT_IF_ELSE,
     STMT_WHILE,
     STMT_DO_WHILE,
@@ -232,7 +232,7 @@ struct stmt
     union
     {
         return_stmt return_statement;
-        stmt* statement_list;
+        //stmt* statement_list;
         if_else_stmt if_else_statement;
         decl_stmt decl_statement;
         for_stmt for_statement;

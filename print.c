@@ -173,11 +173,6 @@ void print_statement(stmt* s)
             printf("(continue)");
         }
         break;
-        case STMT_LIST:
-        {
-
-        }
-        break;
         case STMT_IF_ELSE:
         {
             printf("(if ");
