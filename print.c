@@ -8,10 +8,10 @@ void print_newline(void)
     printf("\n%.*s", 2 * indent, "                                                                               ");
 }
 
-void print_declaration(decl* declaration);
-void print_statement_block(stmt_block block);
+void print_decl(decl* d);
+void print_stmt_block(stmt_block block);
 
-void print_expression(expr* e)
+void print_expr(expr* e)
 {
     if (e == NULL)
     {
@@ -33,55 +33,55 @@ void print_expression(expr* e)
         case EXPR_SIZEOF:
         {
             printf("(sizeof ");
-            print_expression(e->sizeof_expr_value.expr);
+            print_expr(e->size_of.expr);
             printf(")");
         }
         break;
         case EXPR_UNARY:
         {
             printf("(");
-            if (e->unary_expr_value.operator == TOKEN_MUL)
+            if (e->unary.operator == TOKEN_MUL)
             {
                 printf("pointer-dereference");
             }
             else
             {
-                print_token_kind(e->unary_expr_value.operator);
+                print_token_kind(e->unary.operator);
             }
             printf(" ");
-            print_expression(e->unary_expr_value.operand);
+            print_expr(e->unary.operand);
             printf(")");
         }
         break;
         case EXPR_BINARY:
         {
             printf("(");
-            print_token_kind(e->binary_expr_value.operator);
+            print_token_kind(e->binary.operator);
             printf(" ");
-            print_expression(e->binary_expr_value.left_operand);
+            print_expr(e->binary.left);
             printf(" ");
-            print_expression(e->binary_expr_value.right_operand);
+            print_expr(e->binary.right);
             printf(")");
         }
         break;
         case EXPR_INDEX:
         {
             printf("(access-index ");
-            print_expression(e->index_expr_value.index_expr);
+            print_expr(e->index.index_expr);
             printf(" ");
-            print_expression(e->index_expr_value.array_expr);
+            print_expr(e->index.array_expr);
             printf(")");
         }
         break;
         case EXPR_CALL:
         {
             printf("(");
-            print_expression(e->call_expr_value.function_expr);
+            print_expr(e->call.function_expr);
             printf(" ");
-            for (size_t i = 0; i < e->call_expr_value.args_num; i++)
+            for (size_t i = 0; i < e->call.args_num; i++)
             {
-                print_expression(e->call_expr_value.args[i]);
-                if (i != e->call_expr_value.args_num - 1)
+                print_expr(e->call.args[i]);
+                if (i != e->call.args_num - 1)
                 {
                     printf(" ");
                 }
@@ -92,22 +92,22 @@ void print_expression(expr* e)
         case EXPR_FIELD:
         {
             printf("(access-field ");
-            printf("%s", e->field_expr_value.field_name);
+            printf("%s", e->field.field_name);
             printf(" ");
-            print_expression(e->field_expr_value.expr);
+            print_expr(e->field.expr);
             printf(")");
         }
         break;
         case EXPR_TERNARY:
         {
             printf("(? ");
-            print_expression(e->ternary_expr_value.condition);
+            print_expr(e->ternary.condition);
             
             indent++;
             print_newline();
-            print_expression(e->ternary_expr_value.if_true);
+            print_expr(e->ternary.if_true);
             print_newline();
-            print_expression(e->ternary_expr_value.if_false);
+            print_expr(e->ternary.if_false);
             
             indent--;
             print_newline();
@@ -117,21 +117,21 @@ void print_expression(expr* e)
         case EXPR_COMPOUND_LITERAL:
         {
             printf("(compound ");
-            for (size_t i = 0; i < e->compound_literal_expr_value.fields_count; i++)
+            for (size_t i = 0; i < e->compound_literal.fields_count; i++)
             {
-                compound_literal_field* f = e->compound_literal_expr_value.fields[i];
+                compound_literal_field* f = e->compound_literal.fields[i];
                 if (f->field_name)
                 {
                     printf("(%s ", f->field_name);
-                    print_expression(f->expr);
+                    print_expr(f->expr);
                     printf(")");
                 }
                 else
                 {
-                    print_expression(f->expr);
+                    print_expr(f->expr);
                 }           
 
-                if (i != e->compound_literal_expr_value.fields_count - 1)
+                if (i != e->compound_literal.fields_count - 1)
                 {
                     printf(" ");
                 }
@@ -141,7 +141,7 @@ void print_expression(expr* e)
         break;
         default:
         {
-            fatal("expression kind not handled: %d", e->kind);
+            fatal("expr kind not handled: %d", e->kind);
         }
         break;
     }
@@ -159,7 +159,7 @@ void print_statement(stmt* s)
         case STMT_RETURN:
         {
             printf("(return ");
-            print_expression(s->return_statement.expression);
+            print_expr(s->return_stmt.ret_expr);
             printf(")");
         }
         break;
@@ -176,25 +176,25 @@ void print_statement(stmt* s)
         case STMT_IF_ELSE:
         {
             printf("(if ");
-            print_expression(s->if_else_statement.cond_expr);
+            print_expr(s->if_else.cond_expr);
             
-            print_statement_block(s->if_else_statement.then_block);
+            print_stmt_block(s->if_else.then_block);
            
-            if (s->if_else_statement.else_stmt)
+            if (s->if_else.else_stmt)
             {
                 indent++;
                 print_newline();
                 printf("else");
 
-                if (s->if_else_statement.else_stmt->kind == STMT_BLOCK)
+                if (s->if_else.else_stmt->kind == STMT_BLOCK)
                 {
-                    print_statement(s->if_else_statement.else_stmt);
+                    print_statement(s->if_else.else_stmt);
                 }
                 else
                 {
                     indent++;
                     print_newline();
-                    print_statement(s->if_else_statement.else_stmt);
+                    print_statement(s->if_else.else_stmt);
                     indent--;
                 }                
               
@@ -208,9 +208,9 @@ void print_statement(stmt* s)
         case STMT_WHILE:
         {
             printf("(while ");
-            print_expression(s->while_statement.cond_expr);
+            print_expr(s->while_stmt.cond_expr);
 
-            print_statement_block(s->while_statement.statements);
+            print_stmt_block(s->while_stmt.stmts);
 
             print_newline();
             printf(")");
@@ -219,9 +219,9 @@ void print_statement(stmt* s)
         case STMT_DO_WHILE:
         {
             printf("(do-while ");
-            print_expression(s->do_while_statement.cond_expr);;
+            print_expr(s->do_while_stmt.cond_expr);;
 
-            print_statement_block(s->do_while_statement.statements);
+            print_stmt_block(s->do_while_stmt.stmts);
 
             print_newline();
             printf(")");
@@ -229,19 +229,19 @@ void print_statement(stmt* s)
         break;
         case STMT_BLOCK:
         {
-            print_statement_block(s->statements_block);
+            print_stmt_block(s->block);
         }
         break;
         case STMT_ASSIGN:
         {
             printf("(");
-            print_token_kind(s->assign_statement.operation);
+            print_token_kind(s->assign.operation);
             printf(" ");
-            print_expression(s->assign_statement.assigned_var_expr);
-            if (s->assign_statement.value_expr)
+            print_expr(s->assign.assigned_var_expr);
+            if (s->assign.value_expr)
             {
                 printf(" ");
-                print_expression(s->assign_statement.value_expr);
+                print_expr(s->assign.value_expr);
             }
             printf(")");
         }
@@ -249,13 +249,13 @@ void print_statement(stmt* s)
         case STMT_FOR:
         {
             printf("(for ");
-            print_declaration(s->for_statement.init_decl);
+            print_decl(s->for_stmt.init_decl);
             printf(" ");
-            print_expression(s->for_statement.cond_expr);
+            print_expr(s->for_stmt.cond_expr);
             printf(" ");
-            print_statement(s->for_statement.incr_stmt);
+            print_statement(s->for_stmt.incr_stmt);
            
-            print_statement_block(s->for_statement.statements);
+            print_stmt_block(s->for_stmt.stmts);
             
             print_newline();
             printf(")");
@@ -264,19 +264,19 @@ void print_statement(stmt* s)
         case STMT_SWITCH:
         {
             printf("(switch ");
-            print_expression(s->switch_statement.var_expr);
+            print_expr(s->switch_stmt.var_expr);
 
             indent++;
 
-            for (size_t i = 0; i < s->switch_statement.cases_num; i++)
+            for (size_t i = 0; i < s->switch_stmt.cases_num; i++)
             {
                 print_newline();
                 printf("(case ");
-                switch_case* c = s->switch_statement.cases[i];
+                switch_case* c = s->switch_stmt.cases[i];
                 for (size_t j = 0; j < c->cond_exprs_num; j++)
                 {
                     expr* e = c->cond_exprs[j];
-                    print_expression(e);
+                    print_expr(e);
                     if (j != c->cond_exprs_num - 1)
                     {
                         printf(" ");
@@ -292,7 +292,7 @@ void print_statement(stmt* s)
                 }
 
                 
-                print_statement_block(c->statements);
+                print_stmt_block(c->stmts);
                 
                 print_newline();
                 printf(")");
@@ -305,24 +305,24 @@ void print_statement(stmt* s)
         break;
         case STMT_DECL:
         {
-            print_declaration(s->decl_statement.decl);
+            print_decl(s->decl.decl);
         }
         break;
         case STMT_EXPR:
         {
-            print_expression(s->return_statement.expression);
+            print_expr(s->return_stmt.ret_expr);
         }
         break;
     }
 }
 
-void print_statement_block(stmt_block block)
+void print_stmt_block(stmt_block block)
 {
     indent++;
-    for (int index = 0; index < block.statements_count; index++)
+    for (int index = 0; index < block.stmts_count; index++)
     {
         print_newline();
-        print_statement(block.statements[index]);        
+        print_statement(block.stmts[index]);        
     }
     indent--;
 }
@@ -343,7 +343,7 @@ void print_typespec(typespec* t)
                 printf("(array ");
                 print_typespec(t->array.base_type);
                 printf(" ");
-                print_expression(t->array.size_expr);
+                print_expr(t->array.size_expr);
                 printf(")");
             };
             break;
@@ -357,20 +357,20 @@ void print_typespec(typespec* t)
             case TYPESPEC_FUNCTION:
             {
                 printf("(function (");                
-                for (size_t i = 0; i < t->function.parameter_count; i++)
+                for (size_t i = 0; i < t->function.param_count; i++)
                 {
-                    typespec* p = t->function.parameter_types[i];
+                    typespec* p = t->function.param_types[i];
                     print_typespec(p);
-                    if (i != t->function.parameter_count - 1)
+                    if (i != t->function.param_count - 1)
                     {
                         printf(" ");
                     }
                 }
                 printf(")");
-                if (t->function.returned_type)
+                if (t->function.ret_type)
                 {
                     printf(" ");
-                    print_typespec(t->function.returned_type);
+                    print_typespec(t->function.ret_type);
                 }
                 printf(")");
             };
@@ -379,47 +379,47 @@ void print_typespec(typespec* t)
     }
 }
 
-void print_declaration(decl* declaration)
+void print_decl(decl* d)
 {
-    if (declaration == NULL)
+    if (d == NULL)
     {
         return;
     }
 
-    switch (declaration->kind)
+    switch (d->kind)
     {
         case DECL_FUNCTION:
         {
             printf("(fn-decl ");
-            if (declaration->name)
+            if (d->name)
             {
-                printf("%s", declaration->name);
+                printf("%s", d->name);
             }
 
-            if (declaration->function_declaration.parameters.param_count > 0)
+            if (d->function.params.param_count > 0)
             {
                 printf(" ");
-                for (int index = 0; index < declaration->function_declaration.parameters.param_count; index++)
+                for (int index = 0; index < d->function.params.param_count; index++)
                 {
-                    function_param* p = &declaration->function_declaration.parameters.params[index];
+                    function_param* p = &d->function.params.params[index];
                     printf("(%s ", p->name);
                     print_typespec(p->type);
                     printf(")");
 
-                    if (index < declaration->function_declaration.parameters.param_count - 1)
+                    if (index < d->function.params.param_count - 1)
                     {
                         printf(" ");
                     }
                 }
             }
 
-            if (declaration->function_declaration.return_type)
+            if (d->function.return_type)
             {
                 printf(" ");
-                print_typespec(declaration->function_declaration.return_type);
+                print_typespec(d->function.return_type);
             }
             
-            print_statement_block(declaration->function_declaration.statements);
+            print_stmt_block(d->function.stmts);
 
             print_newline();
             printf(")");
@@ -429,21 +429,21 @@ void print_declaration(decl* declaration)
         {
             printf("(var-decl ");
 
-            if (declaration->name)
+            if (d->name)
             {
-                printf("%s", declaration->name);
+                printf("%s", d->name);
             }
 
-            if (declaration->variable_declaration.type)
+            if (d->variable.type)
             {
                 printf(" ");
-                print_typespec(declaration->variable_declaration.type);
+                print_typespec(d->variable.type);
             }
 
-            if (declaration->variable_declaration.expression)
+            if (d->variable.expr)
             {
                 printf(" ");
-                print_expression(declaration->variable_declaration.expression);
+                print_expr(d->variable.expr);
             }
 
             printf(")");
@@ -452,14 +452,14 @@ void print_declaration(decl* declaration)
         case DECL_CONST:
         {
             printf("(const-decl ");
-            if (declaration->name)
+            if (d->name)
             {
-                printf("%s", declaration->name);
+                printf("%s", d->name);
             }          
-            if (declaration->const_declaration.expression)
+            if (d->const_decl.expr)
             {
                 printf(" ");
-                print_expression(declaration->const_declaration.expression);
+                print_expr(d->const_decl.expr);
             }
             printf(")");
         }
@@ -467,7 +467,7 @@ void print_declaration(decl* declaration)
         case DECL_STRUCT:
         case DECL_UNION:
         {
-            if (declaration->kind == DECL_UNION)
+            if (d->kind == DECL_UNION)
             {
                 printf("(union-decl");
             }
@@ -476,21 +476,21 @@ void print_declaration(decl* declaration)
                 printf("(struct-decl");
             }
 
-            if (declaration->name)
+            if (d->name)
             {
-                printf(" %s", declaration->name);
+                printf(" %s", d->name);
             }
 
             indent++;
 
             for (size_t index = 0;
-                index < declaration->aggregate_declaration.fields_count;
+                index < d->aggregate.fields_count;
                 index++)
             {
                 print_newline();
-                printf("(%s", declaration->aggregate_declaration.fields[index].name);
+                printf("(%s", d->aggregate.fields[index].name);
                 printf(" ");
-                print_typespec(declaration->aggregate_declaration.fields[index].type);
+                print_typespec(d->aggregate.fields[index].type);
                 printf(")");
             }
 
@@ -506,11 +506,11 @@ void print_declaration(decl* declaration)
             indent++;
 
             for (size_t index = 0;
-                index < declaration->enum_declaration.values_count;
+                index < d->enum_decl.values_count;
                 index++)
             {
                 print_newline();
-                enum_value* value = &declaration->enum_declaration.values[index];
+                enum_value* value = &d->enum_decl.values[index];
                 printf("(%s", value->name);
                 if (value->value_set)
                 {
@@ -526,9 +526,9 @@ void print_declaration(decl* declaration)
         break;
         case DECL_TYPEDEF:
         {
-            printf("(typedef-decl %s", declaration->typedef_declaration.name);
+            printf("(typedef-decl %s", d->typedef_decl.name);
             printf(" ");
-            print_typespec(declaration->typedef_declaration.type);
+            print_typespec(d->typedef_decl.type);
             printf(")");
         }
         break;

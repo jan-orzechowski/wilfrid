@@ -36,9 +36,9 @@ typedef struct type_pointer
 
 typedef struct type_function
 {
-    type* returned_type;
-    type** parameter_types;
-    size_t parameter_count;
+    type* ret_type;
+    type** param_types;
+    size_t param_count;
 } type_function;
 
 typedef struct type_aggregate_field
@@ -132,8 +132,8 @@ symbol** ordered_symbols;
 void complete_type(type* t);
 void resolve_symbol(symbol* s);
 type* resolve_typespec(typespec* t);
-resolved_expr* resolve_expression(expr* e);
-void resolve_statement(stmt* st, type* opt_ret_type);
+resolved_expr* resolve_expr(expr* e);
+void resolve_stmt(stmt* st, type* opt_ret_type);
 
 symbol* get_symbol(char* name)
 {
@@ -222,14 +222,14 @@ type* get_pointer_type(type* base_type)
     return type;
 }
 
-type* get_function_type(type** parameter_types, size_t parameter_types_count, type* return_type)
+type* get_function_type(type** param_types, size_t param_types_count, type* return_type)
 {
     type* type = get_new_type(TYPE_FUNCTION);
     type->size = POINTER_SIZE;
     type->align = POINTER_ALIGN;
-    type->function.parameter_types = parameter_types;
-    type->function.parameter_count = parameter_types_count;
-    type->function.returned_type = return_type;
+    type->function.param_types = param_types;
+    type->function.param_count = param_types_count;
+    type->function.ret_type = return_type;
     return type;
 }
 
@@ -349,9 +349,9 @@ void complete_type(type* t)
     
     // idziemy po kolei po polach
     type_aggregate_field** fields = NULL;
-    for (size_t i = 0; i < d->aggregate_declaration.fields_count; i++)
+    for (size_t i = 0; i < d->aggregate.fields_count; i++)
     {
-        aggregate_field field = d->aggregate_declaration.fields[i];
+        aggregate_field field = d->aggregate.fields[i];
         type* field_type = resolve_typespec(field.type);
         complete_type(field_type); // wszystkie muszą być completed, ponieważ musimy znać ich rozmiar
 
@@ -416,8 +416,8 @@ type* resolve_typespec(typespec* t)
             {                                
 
                 type* element = resolve_typespec(t->array.base_type);
-                resolved_expr* size_expr = resolve_expression(t->array.size_expr);
-                // teraz trzeba czegoś w rodzaju evalutate expression...
+                resolved_expr* size_expr = resolve_expr(t->array.size_expr);
+                // teraz trzeba czegoś w rodzaju evalutate expr...
 
                 result = get_array_type(element, size_expr->val);
             }
@@ -430,7 +430,7 @@ type* resolve_typespec(typespec* t)
             break;
             case TYPESPEC_FUNCTION:
             {
-                //result = resolve_typespec(t->function.returned_type);
+                //result = resolve_typespec(t->function.ret_type);
             }
             break;
         }
@@ -490,9 +490,9 @@ resolved_expr* resolve_expr_unary(expr* expr)
     resolved_expr* result = 0;
 
     assert(expr->kind == EXPR_UNARY);
-    resolved_expr* operand = resolve_expression(expr->unary_expr_value.operand);
+    resolved_expr* operand = resolve_expr(expr->unary.operand);
     type* type = operand->type;
-    switch (expr->unary_expr_value.operator)
+    switch (expr->unary.operator)
     {
         case TOKEN_MUL:
         {
@@ -517,11 +517,11 @@ resolved_expr* resolve_expr_unary(expr* expr)
         {
             if (type->kind != TYPE_INT)
             {
-                fatal("Can only use unary %s with ints", get_token_kind_name(expr->unary_expr_value.operator));
+                fatal("Can only use unary %s with ints", get_token_kind_name(expr->unary.operator));
             }
             if (operand->is_const)
             {
-                int64_t value = eval_int_unary_op(expr->unary_expr_value.operator, operand->val);
+                int64_t value = eval_int_unary_op(expr->unary.operator, operand->val);
                 result = get_resolved_const_expr(value);
             }
             else
@@ -539,8 +539,8 @@ resolved_expr* resolve_expr_binary(expr* expr)
     resolved_expr* result = 0;
 
     assert(expr->kind == EXPR_BINARY);
-    resolved_expr* left = resolve_expression(expr->binary_expr_value.left_operand);
-    resolved_expr* right = resolve_expression(expr->binary_expr_value.right_operand);
+    resolved_expr* left = resolve_expr(expr->binary.left);
+    resolved_expr* right = resolve_expr(expr->binary.right);
     
     if (left->type != type_int)
     {
@@ -553,7 +553,7 @@ resolved_expr* resolve_expr_binary(expr* expr)
 
     if (left->is_const && right->is_const)
     {   
-        int64_t const_value = eval_int_binary_op(expr->binary_expr_value.operator, left->val, right->val);
+        int64_t const_value = eval_int_binary_op(expr->binary.operator, left->val, right->val);
         result = get_resolved_const_expr(const_value);
     }
     else
@@ -564,7 +564,7 @@ resolved_expr* resolve_expr_binary(expr* expr)
     return result;
 }
 
-resolved_expr* resolve_expression(expr* e)
+resolved_expr* resolve_expr(expr* e)
 {
     resolved_expr* result = 0;
     switch (e->kind)
@@ -601,15 +601,15 @@ resolved_expr* resolve_expression(expr* e)
         break;
         case EXPR_CALL:
         {
-            resolved_expr* fn_expr = resolve_expression(e->call_expr_value.function_expr);
-            size_t arg_param_count = fn_expr->type->function.parameter_count;
-            if (arg_param_count == e->call_expr_value.args_num)
+            resolved_expr* fn_expr = resolve_expr(e->call.function_expr);
+            size_t arg_param_count = fn_expr->type->function.param_count;
+            if (arg_param_count == e->call.args_num)
             {
                 for (size_t i = 0; i < arg_param_count; i++)
                 {
-                    expr* arg_expr = e->call_expr_value.args[i];
-                    resolved_expr* resolved_arg_expr = resolve_expression(arg_expr);
-                    type* param_type = fn_expr->type->function.parameter_types[i];                    
+                    expr* arg_expr = e->call.args[i];
+                    resolved_expr* resolved_arg_expr = resolve_expr(arg_expr);
+                    type* param_type = fn_expr->type->function.param_types[i];                    
                     if (param_type != resolved_arg_expr->type)
                     {
                         fatal("argument has invalid type");
@@ -620,7 +620,7 @@ resolved_expr* resolve_expression(expr* e)
             {
                 fatal("invalid number of arguments");
             }
-            result = get_resolved_rvalue_expr(fn_expr->type->function.returned_type);
+            result = get_resolved_rvalue_expr(fn_expr->type->function.ret_type);
         }
         break;
         case EXPR_BINARY:
@@ -635,13 +635,13 @@ resolved_expr* resolve_expression(expr* e)
         break;
         case EXPR_TERNARY:
         {
-            fatal("ternary expressions not allowed as constants");
+            fatal("ternary exprs not allowed as constants");
         }
         break;
         case EXPR_SIZEOF:
         {
             // może być albo typ, albo całe wyrażenie
-            resolved_expr* expr = resolve_expression(e->sizeof_expr_value.expr);
+            resolved_expr* expr = resolve_expr(e->size_of.expr);
             type* expr_type = expr->type;
             complete_type(expr_type);
             int64_t size = get_type_size(expr_type);
@@ -650,8 +650,8 @@ resolved_expr* resolve_expression(expr* e)
         break;
         case EXPR_FIELD:
         {           
-            resolved_expr* aggregate_expr = resolve_expression(e->field_expr_value.expr);
-            char* field_name = str_intern(e->field_expr_value.field_name);
+            resolved_expr* aggregate_expr = resolve_expr(e->field.expr);
+            char* field_name = str_intern(e->field.field_name);
             type* t = aggregate_expr->type;
             complete_type(t);
 
@@ -675,13 +675,13 @@ resolved_expr* resolve_expression(expr* e)
         break;
         case EXPR_INDEX:
         {
-            resolved_expr* operand_expr = resolve_expression(e->index_expr_value.array_expr);
+            resolved_expr* operand_expr = resolve_expr(e->index.array_expr);
             if (pointer_decay(operand_expr)->type->kind != TYPE_POINTER)
             {
                 fatal("can only index arrays or pointers");
             }
             
-            resolved_expr* index_expr = resolve_expression(e->index_expr_value.index_expr);
+            resolved_expr* index_expr = resolve_expr(e->index.index_expr);
 
 
             if (index_expr->type->kind != TYPE_INT)
@@ -694,10 +694,10 @@ resolved_expr* resolve_expression(expr* e)
         break;
         case EXPR_COMPOUND_LITERAL:
         {
-            for (size_t i = 0; i < e->compound_literal_expr_value.fields_count; i++)
+            for (size_t i = 0; i < e->compound_literal.fields_count; i++)
             {
-                compound_literal_field* field = e->compound_literal_expr_value.fields[i];
-                resolved_expr* field_expr = resolve_expression(field->expr);
+                compound_literal_field* field = e->compound_literal.fields[i];
+                resolved_expr* field_expr = resolve_expr(field->expr);
 
                 // co dalej z tym robić?
             }
@@ -714,7 +714,7 @@ resolved_expr* resolve_expression(expr* e)
 
 resolved_expr* resolve_expected_expr(expr* e, type* expected_type)
 {
-    resolved_expr* result = resolve_expression(e);
+    resolved_expr* result = resolve_expr(e);
     if (result->type != expected_type)
     {
         fatal("type different than expected");
@@ -725,8 +725,8 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type)
 type* resolve_const_decl(decl* d)
 {
     type* result = 0;
-    assert(d->const_declaration.expression);
-    resolved_expr* expr = resolve_expression(d->const_declaration.expression);
+    assert(d->const_decl.expr);
+    resolved_expr* expr = resolve_expr(d->const_decl.expr);
     if (expr)
     {
         result = expr->type;
@@ -741,14 +741,14 @@ type* resolve_variable_decl(decl* d)
     // musi być albo typ, albo wyrażenie
     // mogą być oba, ale wtedy muszą się zgadzać
 
-    if (d->variable_declaration.type)
+    if (d->variable.type)
     {
-        result = resolve_typespec(d->variable_declaration.type);
+        result = resolve_typespec(d->variable.type);
     }
 
-    if (d->variable_declaration.expression)
+    if (d->variable.expr)
     {
-        resolved_expr* expr = resolve_expression(d->variable_declaration.expression);
+        resolved_expr* expr = resolve_expr(d->variable.expr);
         if (expr)
         {
             result = expr->type;
@@ -763,7 +763,7 @@ type* resolve_type_decl(decl* d)
     assert(d->kind == DECL_TYPEDEF); 
     // jedyny rodzaj, jaki tu trzeba obsłużyć
     // unions i structs są resolved od razu
-    type* result = resolve_typespec(d->typedef_declaration.type);
+    type* result = resolve_typespec(d->typedef_decl.type);
     return result;
 }
 
@@ -772,13 +772,13 @@ type* resolve_function_decl(decl* d)
     assert(d->kind == DECL_FUNCTION);
 
     type* resolved_return_type = type_void;
-    if (d->function_declaration.return_type)
+    if (d->function.return_type)
     {
-        resolved_return_type = resolve_typespec(d->function_declaration.return_type);
+        resolved_return_type = resolve_typespec(d->function.return_type);
     }
     
     type** resolved_args = 0;
-    function_param_list* args = &d->function_declaration.parameters;
+    function_param_list* args = &d->function.params;
     for (size_t i = 0; i < args->param_count; i++)
     {
         function_param* p = &args->params[i];
@@ -840,16 +840,16 @@ void resolve_symbol(symbol* s)
     buf_push(ordered_symbols, s);
 }
 
-void resolve_statement_block(stmt_block st_block)
+void resolve_stmt_block(stmt_block st_block)
 {
-    for (size_t i = 0; i < st_block.statements_count; i++)
+    for (size_t i = 0; i < st_block.stmts_count; i++)
     {
-        stmt* st = st_block.statements[i];
-        resolve_statement(st, NULL);
+        stmt* st = st_block.stmts[i];
+        resolve_stmt(st, NULL);
     }
 }
 
-void resolve_statement(stmt* st, type* opt_ret_type)
+void resolve_stmt(stmt* st, type* opt_ret_type)
 {
     switch (st->kind)
     {
@@ -860,9 +860,9 @@ void resolve_statement(stmt* st, type* opt_ret_type)
         break;
         case STMT_RETURN:
         {
-            if (st->expression)
+            if (st->expr)
             {
-                resolved_expr* result = resolve_expected_expr(st->expression, opt_ret_type);
+                resolved_expr* result = resolve_expected_expr(st->expr, opt_ret_type);
                 if (result->type != opt_ret_type)
                 {
                     fatal("return type mismatch");
@@ -872,7 +872,7 @@ void resolve_statement(stmt* st, type* opt_ret_type)
             {
                 if (opt_ret_type != type_void)
                 {
-                    fatal("empty return expression for function with non-void return type");
+                    fatal("empty return expr for function with non-void return type");
                 }
             }
             break;
@@ -880,43 +880,43 @@ void resolve_statement(stmt* st, type* opt_ret_type)
         break;
         case STMT_IF_ELSE:
         {
-            resolve_expression(st->if_else_statement.cond_expr);
-            resolve_statement_block(st->if_else_statement.then_block);
-            resolve_statement(st->if_else_statement.else_stmt, NULL);
+            resolve_expr(st->if_else.cond_expr);
+            resolve_stmt_block(st->if_else.then_block);
+            resolve_stmt(st->if_else.else_stmt, NULL);
         }
         break;
         case STMT_WHILE:
         {
-            resolve_expression(st->while_statement.cond_expr);
-            resolve_statement_block(st->while_statement.statements);
+            resolve_expr(st->while_stmt.cond_expr);
+            resolve_stmt_block(st->while_stmt.stmts);
         }
         break;
         case STMT_DO_WHILE:
         {
-            resolve_expression(st->do_while_statement.cond_expr);
-            resolve_statement_block(st->do_while_statement.statements);
+            resolve_expr(st->do_while_stmt.cond_expr);
+            resolve_stmt_block(st->do_while_stmt.stmts);
         }
         break;
         case STMT_FOR:
         {
-            resolve_type_decl(st->for_statement.init_decl);
-            resolve_expression(st->for_statement.cond_expr);
-            resolve_statement(st->for_statement.incr_stmt, NULL);
+            resolve_type_decl(st->for_stmt.init_decl);
+            resolve_expr(st->for_stmt.cond_expr);
+            resolve_stmt(st->for_stmt.incr_stmt, NULL);
 
-            resolve_statement_block(st->for_statement.statements);
+            resolve_stmt_block(st->for_stmt.stmts);
         }
         break;
         case STMT_DECL:
         {
-            push_symbol_from_decl(st->decl_statement.decl);
+            push_symbol_from_decl(st->decl.decl);
         }
         break;
         case STMT_ASSIGN:
         {
-            resolved_expr* left = resolve_expression(st->assign_statement.assigned_var_expr);
-            if (st->assign_statement.value_expr)
+            resolved_expr* left = resolve_expr(st->assign.assigned_var_expr);
+            if (st->assign.value_expr)
             {                
-                resolved_expr* right = resolve_expected_expr(st->assign_statement.value_expr, left->type);
+                resolved_expr* right = resolve_expected_expr(st->assign.value_expr, left->type);
                 if (left->type != right->type)
                 {
                     fatal("types do not match in assignment statement");
@@ -926,7 +926,7 @@ void resolve_statement(stmt* st, type* opt_ret_type)
             {
                 fatal("cannot assign to non-lvalue");
             }
-            if (st->assign_statement.operation != TOKEN_ASSIGN && left->type != type_int)
+            if (st->assign.operation != TOKEN_ASSIGN && left->type != type_int)
             {
                 fatal("for now can only use assignment operators with type int");
             }
@@ -934,12 +934,12 @@ void resolve_statement(stmt* st, type* opt_ret_type)
         break; 
         case STMT_EXPR:
         {
-            resolve_expression(st->expression);
+            resolve_expr(st->expr);
         }
         break;
         case STMT_BLOCK:
         {
-            resolve_statement_block(st->statements_block);
+            resolve_stmt_block(st->block);
         }
         break;
         case STMT_BREAK:
@@ -957,13 +957,13 @@ void resolve_statement(stmt* st, type* opt_ret_type)
 void resolve_function_body(symbol* s)
 {
     assert(s->state == SYMBOL_RESOLVED);
-    type* ret_type = s->type->function.returned_type;
+    type* ret_type = s->type->function.ret_type;
 
     // temporary hack
     {
-        for (size_t i = 0; i < s->decl->function_declaration.parameters.param_count; i++)
+        for (size_t i = 0; i < s->decl->function.params.param_count; i++)
         {
-            function_param* p = &s->decl->function_declaration.parameters.params[i];
+            function_param* p = &s->decl->function.params.params[i];
             symbol* sym = get_new_symbol(SYMBOL_VARIABLE, p->name, NULL);
             sym->type = resolve_typespec(p->type);
             sym->state = SYMBOL_RESOLVED;
@@ -971,11 +971,11 @@ void resolve_function_body(symbol* s)
         }
     }
 
-    size_t count = s->decl->function_declaration.statements.statements_count;
+    size_t count = s->decl->function.stmts.stmts_count;
     for (size_t i = 0; i < count; i++)
     {
-        stmt* st = s->decl->function_declaration.statements.statements[i];
-        resolve_statement(st, ret_type);        
+        stmt* st = s->decl->function.stmts.stmts[i];
+        resolve_stmt(st, ret_type);        
     }
 }
 
@@ -1032,7 +1032,7 @@ void resolve_test(void)
     {
         char* str = test_strs[i];
         decl* d = parse_decl(str);
-        print_declaration(d);
+        print_decl(d);
         printf("\n");
 
         push_symbol_from_decl(d);
@@ -1052,7 +1052,7 @@ void resolve_test(void)
         symbol* sym = *it;
         if (sym->decl)
         {
-            print_declaration(sym->decl);
+            print_decl(sym->decl);
         }
         else
         {

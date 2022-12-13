@@ -113,7 +113,7 @@ void parse_expr0(void)
     }
 }
 
-void parse_expression(void)
+void parse_expr(void)
 {
     parse_expr0();
 }

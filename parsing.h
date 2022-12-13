@@ -29,9 +29,9 @@ typedef struct typespec_pointer
 
 typedef struct typespec_function
 {
-    typespec* returned_type;
-    typespec** parameter_types;
-    size_t parameter_count;
+    typespec* ret_type;
+    typespec** param_types;
+    size_t param_count;
 } typespec_function;
 
 typedef struct symbol symbol;
@@ -80,8 +80,8 @@ struct unary_expr
 struct binary_expr
 {
     token_kind operator;
-    expr* left_operand;
-    expr* right_operand;
+    expr* left;
+    expr* right;
 };
 
 struct ternary_expr
@@ -135,21 +135,21 @@ struct expr
         int number_value;
         const char* name;
         const char* string_value;
-        unary_expr unary_expr_value;
-        binary_expr binary_expr_value;
-        ternary_expr ternary_expr_value;
-        call_expr call_expr_value;
-        index_expr index_expr_value;
-        field_expr field_expr_value;
-        compound_literal_expr compound_literal_expr_value;
-        sizeof_expr sizeof_expr_value;
+        unary_expr unary;
+        binary_expr binary;
+        ternary_expr ternary;
+        call_expr call;
+        index_expr index;
+        field_expr field;
+        compound_literal_expr compound_literal;
+        sizeof_expr size_of;
     };
 };
 
 typedef struct stmt_block
 {
-    stmt** statements;
-    size_t statements_count;
+    stmt** stmts;
+    size_t stmts_count;
 } stmt_block;
 
 typedef enum stmt_kind
@@ -159,8 +159,6 @@ typedef enum stmt_kind
     STMT_BREAK,
     STMT_CONTINUE,
     STMT_DECL,
-    //STMT_PRINT,
-    //STMT_LIST,
     STMT_IF_ELSE,
     STMT_WHILE,
     STMT_DO_WHILE,
@@ -181,7 +179,7 @@ struct if_else_stmt
 
 typedef struct return_stmt
 {
-    expr* expression;
+    expr* ret_expr;
 } return_stmt;
 
 typedef struct decl_stmt
@@ -192,7 +190,7 @@ typedef struct decl_stmt
 typedef struct while_stmt
 {
     expr* cond_expr;
-    stmt_block statements;    
+    stmt_block stmts;    
 } while_stmt;
 
 typedef struct for_stmt
@@ -200,7 +198,7 @@ typedef struct for_stmt
     decl* init_decl;
     expr* cond_expr;
     stmt* incr_stmt;
-    stmt_block statements;
+    stmt_block stmts;
 } for_stmt;
 
 typedef struct assign_stmt
@@ -214,7 +212,7 @@ typedef struct switch_case
 {
     expr** cond_exprs;
     size_t cond_exprs_num;
-    stmt_block statements;
+    stmt_block stmts;
     bool is_default;
     bool fallthrough;
 } switch_case;
@@ -231,17 +229,16 @@ struct stmt
     stmt_kind kind;
     union
     {
-        return_stmt return_statement;
-        //stmt* statement_list;
-        if_else_stmt if_else_statement;
-        decl_stmt decl_statement;
-        for_stmt for_statement;
-        assign_stmt assign_statement;
-        expr* expression;
-        stmt_block statements_block;
-        while_stmt while_statement;
-        while_stmt do_while_statement;
-        switch_stmt switch_statement;
+        return_stmt return_stmt;
+        if_else_stmt if_else;
+        decl_stmt decl;
+        for_stmt for_stmt;
+        assign_stmt assign;
+        expr* expr;
+        stmt_block block;
+        while_stmt while_stmt;
+        while_stmt do_while_stmt;
+        switch_stmt switch_stmt;
     };
 };
 
@@ -271,12 +268,12 @@ typedef struct aggregate_decl
 typedef struct variable_decl
 {
     typespec* type; 
-    expr* expression;
+    expr* expr;
 } variable_decl;
 
 typedef struct const_decl
 {
-    expr* expression;
+    expr* expr;
 } const_decl;
 
 typedef struct function_param
@@ -293,9 +290,9 @@ typedef struct function_param_list
 
 typedef struct function_decl
 {
-    function_param_list parameters;
+    function_param_list params;
     typespec* return_type;
-    stmt_block statements;
+    stmt_block stmts;
 } function_decl;
 
 typedef struct enum_value
@@ -323,11 +320,11 @@ struct decl
     decl_kind kind;
     union
     {
-        function_decl function_declaration;
-        variable_decl variable_declaration;
-        aggregate_decl aggregate_declaration;
-        enum_decl enum_declaration;
-        typedef_decl typedef_declaration;
-        const_decl const_declaration;
+        function_decl function;
+        variable_decl variable;
+        aggregate_decl aggregate;
+        enum_decl enum_decl;
+        typedef_decl typedef_decl;
+        const_decl const_decl;
     };
 };
