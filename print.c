@@ -229,7 +229,10 @@ void print_statement(stmt* s)
         break;
         case STMT_BLOCK:
         {
+            printf("(");
             print_stmt_block(s->block);
+            print_newline();
+            printf(")");
         }
         break;
         case STMT_ASSIGN:
@@ -514,7 +517,7 @@ void print_decl(decl* d)
                 printf("(%s", value->name);
                 if (value->value_set)
                 {
-                    printf(" %d", value->value);
+                    printf(" %lld", value->value);
                 }
                 printf(")");
             }
