@@ -118,7 +118,7 @@ typedef struct compound_literal_field
 
 typedef struct compound_literal_expr
 {
-    const char* type;
+    typespec* type;
     compound_literal_field** fields;
     size_t fields_count;
 } compound_literal_expr;

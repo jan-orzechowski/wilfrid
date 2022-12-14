@@ -10,6 +10,7 @@ void print_newline(void)
 
 void print_decl(decl* d);
 void print_stmt_block(stmt_block block);
+void print_typespec(typespec* t);
 
 void print_expr(expr* e)
 {
@@ -119,9 +120,8 @@ void print_expr(expr* e)
             printf("(compound ");
             if (e->compound.type)
             {
-                printf("(");
-                printf("%s", e->name);
-                printf(") ");
+                print_typespec(e->compound.type);
+                printf(" ");
             }
 
             for (size_t i = 0; i < e->compound.fields_count; i++)

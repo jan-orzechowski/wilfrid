@@ -156,8 +156,6 @@ typespec* parse_basic_typespec(void)
         if (match_token_kind(TOKEN_COLON))
         {
             t->function.ret_type = parse_typespec();
-
-            debug_breakpoint;
         }        
     }
     else if (match_token_kind(TOKEN_LEFT_PAREN))
@@ -287,9 +285,18 @@ expr* parse_base_expr(void)
         
         if (is_token_kind(TOKEN_LEFT_BRACE))
         {
-            expr* type_expr = result;
+            if (result->kind != EXPR_NAME)
+            {
+                fatal("only names supported as explicit compound literal types");
+            }
+
+            const char* type_name = result->name;
             result = parse_compound_literal();
-            result->compound.type = type_expr->name;
+            
+            typespec* t = push_struct(arena, typespec);
+            result->compound.type = t;
+            t->kind = TYPESPEC_NAME;
+            t->name = type_name;
         }
     }
     else
@@ -1212,6 +1219,7 @@ void parse_test(void)
         "typedef vectors = vector[1+2]",
         "typedef t = (fn(int*[2], int):int)[16]",
 #endif
+        "let x: int[4] = {1, 2, 3, 4}",
         "let x = (v3){1, 2, 3}",
         "let y = f(1, {1, 2}, (v2){1,2})",
         "fn f(x: int, y: int) : vec2 { return (v2){x + 1, y - 1} }",

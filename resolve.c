@@ -141,6 +141,7 @@ void complete_type(type* t);
 void resolve_symbol(symbol* s);
 type* resolve_typespec(typespec* t);
 resolved_expr* resolve_expr(expr* e);
+resolved_expr* resolve_expected_expr(expr* e, type* expected_type);
 void resolve_stmt(stmt* st, type* opt_ret_type);
 
 symbol* get_symbol(const char* name)
@@ -455,7 +456,6 @@ type* resolve_typespec(typespec* t)
             break;
             case TYPESPEC_ARRAY:
             {                                
-
                 type* element = resolve_typespec(t->array.base_type);
                 resolved_expr* size_expr = resolve_expr(t->array.size_expr);
                 // teraz trzeba czegoś w rodzaju evalutate expr...
@@ -605,7 +605,82 @@ resolved_expr* resolve_expr_binary(expr* expr)
     return result;
 }
 
-resolved_expr* resolve_expr(expr* e)
+resolved_expr* resolve_compound_expr(expr* e, type* expected_type)
+{
+    resolved_expr* result = 0;
+
+    assert(e->kind == EXPR_COMPOUND_LITERAL);
+
+    if (e->compound.type == 0 && expected_type == 0)
+    {
+        fatal("implicitly typed compound literal in context without expected type");
+    }
+
+    type* t = NULL;
+    if (e->compound.type)
+    {        
+        t = resolve_typespec(e->compound.type);
+        if (expected_type && t != expected_type)
+        {
+            fatal("compound literal has different type than expected");
+        }
+    }
+    else
+    {
+        t = expected_type;
+    }
+    
+    complete_type(t);
+    
+    if (t->kind != TYPE_STRUCT 
+        && t->kind != TYPE_UNION 
+        && t->kind != TYPE_ARRAY)
+    {
+        fatal("compound literals can only be used with struct and array types");
+    }
+
+    for (size_t i = 0; i < e->compound.fields_count; i++)
+    {
+        compound_literal_field* field = e->compound.fields[i];
+        resolved_expr* field_expr = resolve_expr(field->expr);
+    }
+
+    if (t->kind == TYPE_STRUCT 
+        || t->kind == TYPE_UNION)
+    {
+        size_t index = 0;
+        for (size_t i = 0; i < e->compound.fields_count; i++)
+        {
+            compound_literal_field* field = e->compound.fields[i];
+            type* expected_type = t->aggregate.fields[index]->type;
+            resolved_expr* init_expr = resolve_expected_expr(field->expr, expected_type);
+            if (init_expr->type != expected_type)
+            {
+                fatal("compound literal field type mismatch");
+            }
+        }
+    }
+    else
+    {
+        assert(t->kind == TYPE_ARRAY);
+        size_t index = 0;
+        for (size_t i = 0; i < e->compound.fields_count; i++)
+        {
+            compound_literal_field* field = e->compound.fields[i];
+            type* expected_type = t->array.base_type;
+            resolved_expr* init_expr = resolve_expected_expr(field->expr, expected_type);
+            if (init_expr->type != expected_type)
+            {
+                fatal("compound literal element type mismatch");
+            }
+        }
+    }
+    
+   result = get_resolved_rvalue_expr(t);
+   return result;
+}
+
+resolved_expr* resolve_expected_expr(expr* e, type* expected_type)
 {
     resolved_expr* result = 0;
     switch (e->kind)
@@ -641,18 +716,14 @@ resolved_expr* resolve_expr(expr* e)
         case EXPR_CALL:
         {
             resolved_expr* fn_expr = resolve_expr(e->call.function_expr);
-            size_t arg_param_count = fn_expr->type->function.param_count;
-            if (arg_param_count == e->call.args_num)
+            size_t count = fn_expr->type->function.param_count;
+            if (count == e->call.args_num)
             {
-                for (size_t i = 0; i < arg_param_count; i++)
+                for (size_t i = 0; i < count; i++)
                 {
                     expr* arg_expr = e->call.args[i];
-                    resolved_expr* resolved_arg_expr = resolve_expr(arg_expr);
-                    type* param_type = fn_expr->type->function.param_types[i];                    
-                    if (param_type != resolved_arg_expr->type)
-                    {
-                        fatal("argument has invalid type");
-                    }
+                    type* param_type = fn_expr->type->function.param_types[i];
+                    resolved_expr* resolved_arg_expr = resolve_expected_expr(arg_expr, param_type);
                 }
             }
             else
@@ -732,11 +803,7 @@ resolved_expr* resolve_expr(expr* e)
         break;
         case EXPR_COMPOUND_LITERAL:
         {
-            for (size_t i = 0; i < e->compound.fields_count; i++)
-            {
-                compound_literal_field* field = e->compound.fields[i];
-                resolved_expr* field_expr = resolve_expr(field->expr);
-            }
+            result = resolve_compound_expr(e, expected_type);
         }
         break;
         default:
@@ -748,13 +815,9 @@ resolved_expr* resolve_expr(expr* e)
     return result;
 }
 
-resolved_expr* resolve_expected_expr(expr* e, type* expected_type)
+resolved_expr* resolve_expr(expr* e)
 {
-    resolved_expr* result = resolve_expr(e);
-    if (result->type != expected_type)
-    {
-        fatal("type different than expected");
-    }
+    resolved_expr* result = resolve_expected_expr(e, NULL);
     return result;
 }
 
@@ -784,7 +847,7 @@ type* resolve_variable_decl(decl* d)
 
     if (d->variable.expr)
     {
-        resolved_expr* expr = resolve_expr(d->variable.expr);
+        resolved_expr* expr = resolve_expected_expr(d->variable.expr, result);
         if (expr)
         {
             result = expr->type;
@@ -1061,7 +1124,6 @@ void resolve_test(void)
         "let a: int[3] = {1, 2, 3}",
         "struct S { t: int, c: char }",        
         "let x = fun(1, 2)",
-#endif
         "let i: int = 1",
         "fn fun2(vec: v2): int {\
             let local = fun(i, 2)\
@@ -1069,7 +1131,12 @@ void resolve_test(void)
             vec.x = local\
             return vec.x } ",
         "fn fun(i: int, j: int): int { j++ i++ return i + j }",
+#endif
         "struct v2 { x: int, y: int }",
+        "let x: v2 = {1, 2}",
+        "let y = fuu(fuu(7, x), {3, 4})",
+        "fn fzz(x: int, y: int) : v2 { return {x + 1, y - 1} }",
+        "fn fuu(x: int, v: v2) : int { return v.x + x } "
     };
 
     printf("original:\n\n");
