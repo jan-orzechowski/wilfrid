@@ -255,7 +255,7 @@ typedef enum decl_kind
 
 typedef struct aggregate_field
 {
-    char* name;
+    const char* name;
     typespec* type;
 } aggregate_field;
 
@@ -278,7 +278,7 @@ typedef struct const_decl
 
 typedef struct function_param
 {
-    char* name;
+    const char* name;
     typespec* type;
 } function_param;
 
@@ -297,7 +297,7 @@ typedef struct function_decl
 
 typedef struct enum_value
 {
-    char* name;
+    const char* name;
     bool value_set;
     int64_t value;
 } enum_value;
@@ -316,7 +316,7 @@ typedef struct typedef_decl
 
 struct decl
 {
-    char* name;
+    const char* name;
     decl_kind kind;
     union
     {

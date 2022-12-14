@@ -264,7 +264,7 @@ expr* parse_base_expr(void)
     }
     else if (is_token_kind(TOKEN_KEYWORD))
     {
-        char* keyword = str_intern(token.name);
+        const char* keyword = str_intern(token.name);
         if (keyword == sizeof_keyword)
         {
             next_lexed_token();
@@ -560,7 +560,7 @@ void parse_switch_cases(switch_stmt* switch_stmt)
 
             if (is_token_kind(TOKEN_KEYWORD))
             {
-                char* keyword = str_intern(token.name);
+                const char* keyword = str_intern(token.name);
                 if (keyword == case_keyword)
                 {               
                     next_lexed_token();
@@ -968,7 +968,7 @@ decl* parse_declaration_optional(void)
     decl* declaration = NULL;
     if (is_token_kind(TOKEN_KEYWORD))
     {
-        char* decl_keyword = str_intern(token.name);
+        const char* decl_keyword = str_intern(token.name);
         if (decl_keyword == let_keyword)
         {
             declaration = push_struct(arena, decl);

@@ -48,7 +48,7 @@ const char* default_keyword;
 
 const char* first_keyword;
 const char* last_keyword;
-char** keywords_list;
+const char** keywords_list;
 
 #define KEYWORD(name) name##_keyword = str_intern(#name); buf_push(keywords_list, name##_keyword)
 

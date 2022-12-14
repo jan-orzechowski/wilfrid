@@ -43,7 +43,7 @@ typedef struct type_function
 
 typedef struct type_aggregate_field
 {
-    char* name;
+    const char* name;
     type* type;
 } type_aggregate_field;
 
@@ -135,7 +135,7 @@ type* resolve_typespec(typespec* t);
 resolved_expr* resolve_expr(expr* e);
 void resolve_stmt(stmt* st, type* opt_ret_type);
 
-symbol* get_symbol(char* name)
+symbol* get_symbol(const char* name)
 {
     symbol* result = 0;
     // do zastąpienia hash table
@@ -233,7 +233,7 @@ type* get_function_type(type** param_types, size_t param_types_count, type* retu
     return type;
 }
 
-symbol* get_new_symbol(symbol_kind kind, char* name, decl* decl)
+symbol* get_new_symbol(symbol_kind kind, const char* name, decl* decl)
 {
     symbol* sym = xcalloc(sizeof(symbol));
     sym->kind = kind;
@@ -314,7 +314,7 @@ symbol* get_symbol_from_decl(decl* d)
     return sym;
 }
 
-symbol* push_installed_symbol(char* name, type* type)
+symbol* push_installed_symbol(const char* name, type* type)
 {
     symbol* sym = get_new_symbol(SYMBOL_TYPE, name, NULL);
     sym->state = SYMBOL_RESOLVED;
@@ -379,7 +379,7 @@ void complete_type(type* t)
     buf_push(ordered_symbols, t->symbol);
 }
 
-symbol* resolve_name(char* name)
+symbol* resolve_name(const char* name)
 {    
     symbol* s = get_symbol(name);
     if (!s)
@@ -582,9 +582,7 @@ resolved_expr* resolve_expr(expr* e)
             }
             else if (sym->kind == SYMBOL_FUNCTION)
             {                  
-                result = get_resolved_lvalue_expr(sym->type);
-               
-                debug_breakpoint;
+                result = get_resolved_lvalue_expr(sym->type);             
             }
             else
             {
@@ -640,7 +638,6 @@ resolved_expr* resolve_expr(expr* e)
         break;
         case EXPR_SIZEOF:
         {
-            // może być albo typ, albo całe wyrażenie
             resolved_expr* expr = resolve_expr(e->size_of.expr);
             type* expr_type = expr->type;
             complete_type(expr_type);
@@ -651,7 +648,7 @@ resolved_expr* resolve_expr(expr* e)
         case EXPR_FIELD:
         {           
             resolved_expr* aggregate_expr = resolve_expr(e->field.expr);
-            char* field_name = str_intern(e->field.field_name);
+            const char* field_name = str_intern(e->field.field_name);
             type* t = aggregate_expr->type;
             complete_type(t);
 
