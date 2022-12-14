@@ -939,14 +939,14 @@ void resolve_symbol(symbol* s)
     buf_push(ordered_global_symbols, s);
 }
 
-void resolve_stmt_block(stmt_block st_block)
+void resolve_stmt_block(stmt_block st_block, type* opt_ret_type)
 {
     symbol* marker = enter_local_scope();
 
     for (size_t i = 0; i < st_block.stmts_count; i++)
     {
         stmt* st = st_block.stmts[i];
-        resolve_stmt(st, NULL);
+        resolve_stmt(st, opt_ret_type);
     }
 
     leave_local_scope(marker);
@@ -984,29 +984,38 @@ void resolve_stmt(stmt* st, type* opt_ret_type)
         case STMT_IF_ELSE:
         {
             resolve_expr(st->if_else.cond_expr);
-            resolve_stmt_block(st->if_else.then_block);
-            resolve_stmt(st->if_else.else_stmt, NULL);
+            resolve_stmt_block(st->if_else.then_block, opt_ret_type);
+            if (st->if_else.else_stmt)
+            {
+                resolve_stmt(st->if_else.else_stmt, opt_ret_type);
+            }
         }
         break;
         case STMT_WHILE:
         {
             resolve_expr(st->while_stmt.cond_expr);
-            resolve_stmt_block(st->while_stmt.stmts);
+            resolve_stmt_block(st->while_stmt.stmts, opt_ret_type);
         }
         break;
         case STMT_DO_WHILE:
         {
             resolve_expr(st->do_while_stmt.cond_expr);
-            resolve_stmt_block(st->do_while_stmt.stmts);
+            resolve_stmt_block(st->do_while_stmt.stmts, opt_ret_type);
         }
         break;
         case STMT_FOR:
         {
-            resolve_type_decl(st->for_stmt.init_decl);
+            symbol* marker = enter_local_scope();
+
+            type* t = resolve_variable_decl(st->for_stmt.init_decl);
+            push_local_symbol(st->for_stmt.init_decl->name, t);
+
             resolve_expr(st->for_stmt.cond_expr);
             resolve_stmt(st->for_stmt.incr_stmt, NULL);
 
-            resolve_stmt_block(st->for_stmt.stmts);
+            resolve_stmt_block(st->for_stmt.stmts, opt_ret_type);
+
+            leave_local_scope(marker);
         }
         break;
         case STMT_DECL:
@@ -1044,13 +1053,31 @@ void resolve_stmt(stmt* st, type* opt_ret_type)
         break;
         case STMT_BLOCK:
         {
-            resolve_stmt_block(st->block);
+            resolve_stmt_block(st->block, opt_ret_type);
         }
         break;
+        case STMT_SWITCH:
+        {
+            resolve_expr(st->switch_stmt.var_expr);
+
+            for (size_t i = 0; i < st->switch_stmt.cases_num; i++)
+            {
+                switch_case* cas = st->switch_stmt.cases[i];               
+                for (size_t k = 0; k < cas->cond_exprs_num; k++)
+                {
+                    expr* cond = cas->cond_exprs[k];
+                    assert(cond->kind == EXPR_INT);
+                }
+
+                resolve_stmt_block(cas->stmts, opt_ret_type);
+            }
+        }
+        break;
+
         case STMT_BREAK:
         case STMT_CONTINUE:
         break;
-        case STMT_SWITCH:
+        
         default:
         {
             fatal("stmt kind not implemented");
@@ -1131,12 +1158,17 @@ void resolve_test(void)
             vec.x = local\
             return vec.x } ",
         "fn fun(i: int, j: int): int { j++ i++ return i + j }",
-#endif
         "struct v2 { x: int, y: int }",
         "let x: v2 = {1, 2}",
         "let y = fuu(fuu(7, x), {3, 4})",
         "fn fzz(x: int, y: int) : v2 { return {x + 1, y - 1} }",
-        "fn fuu(x: int, v: v2) : int { return v.x + x } "
+        "fn fuu(x: int, v: v2) : int { return v.x + x } ",
+#endif
+        "fn ftest1(x: int): int { if (x) { return -x } else if (x % 2 == 0) { return x } else { return 0 } }",
+        "fn ftest2(x: int): int { let p := 1 while (x) { p *= 2 x-- } return p }",
+        "fn ftest3(x: int): int { let p := 1 do { p *= 2 x-- } while (x) return p }",
+        "fn ftest4(x: int): int { for (let i := 0; i < x; i++) { if (i % 3 == 0) { return x } } return 0 }",
+        "fn ftest5(x: int): int { switch(x) { case 0: case 1: { return 5 } case 3: default: { return -1 } } }",
     };
 
     printf("original:\n\n");
