@@ -241,8 +241,8 @@ expr* parse_compound_literal(void)
 
         if (buf_len(fields) > 0)
         {
-            e->compound_literal.fields = copy_buf_to_arena(arena, fields);
-            e->compound_literal.fields_count = buf_len(fields);
+            e->compound.fields = copy_buf_to_arena(arena, fields);
+            e->compound.fields_count = buf_len(fields);
             buf_free(fields);
         }
 
@@ -284,6 +284,13 @@ expr* parse_base_expr(void)
     {
         result = parse_expr();
         expect_token_kind(TOKEN_RIGHT_PAREN);
+        
+        if (is_token_kind(TOKEN_LEFT_BRACE))
+        {
+            expr* type_expr = result;
+            result = parse_compound_literal();
+            result->compound.type = type_expr->name;
+        }
     }
     else
     {
@@ -1157,6 +1164,7 @@ void parse_test(void)
     char* test_str = 0;
 
     char* test_strs[] = {
+#if 1
         "const x = a + -b << c + -d + e >> f",
         "let x := a ^ *b + c * -d + e | -f & g",
         "let x := a >= b || -c * d < e && -f",
@@ -1203,8 +1211,10 @@ void parse_test(void)
         "fn f() { x.y = {z = 2, w = 3, p = 44, q = z, 22} }",
         "typedef vectors = vector[1+2]",
         "typedef t = (fn(int*[2], int):int)[16]",
-        /*
-        */
+#endif
+        "let x = (v3){1, 2, 3}",
+        "let y = f(1, {1, 2}, (v2){1,2})",
+        "fn f(x: int, y: int) : vec2 { return (v2){x + 1, y - 1} }",
     };
 
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);

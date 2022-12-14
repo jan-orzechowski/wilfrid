@@ -732,12 +732,10 @@ resolved_expr* resolve_expr(expr* e)
         break;
         case EXPR_COMPOUND_LITERAL:
         {
-            for (size_t i = 0; i < e->compound_literal.fields_count; i++)
+            for (size_t i = 0; i < e->compound.fields_count; i++)
             {
-                compound_literal_field* field = e->compound_literal.fields[i];
+                compound_literal_field* field = e->compound.fields[i];
                 resolved_expr* field_expr = resolve_expr(field->expr);
-
-                // co dalej z tym robić?
             }
         }
         break;

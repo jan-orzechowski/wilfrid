@@ -117,9 +117,16 @@ void print_expr(expr* e)
         case EXPR_COMPOUND_LITERAL:
         {
             printf("(compound ");
-            for (size_t i = 0; i < e->compound_literal.fields_count; i++)
+            if (e->compound.type)
             {
-                compound_literal_field* f = e->compound_literal.fields[i];
+                printf("(");
+                printf("%s", e->name);
+                printf(") ");
+            }
+
+            for (size_t i = 0; i < e->compound.fields_count; i++)
+            {
+                compound_literal_field* f = e->compound.fields[i];
                 if (f->field_name)
                 {
                     printf("(%s ", f->field_name);
@@ -131,7 +138,7 @@ void print_expr(expr* e)
                     print_expr(f->expr);
                 }           
 
-                if (i != e->compound_literal.fields_count - 1)
+                if (i != e->compound.fields_count - 1)
                 {
                     printf(" ");
                 }
