@@ -126,8 +126,16 @@ type* type_float = &(type) { .name = "float", .kind = TYPE_FLOAT, .size = 4, .al
 const size_t POINTER_SIZE = 8;
 const size_t POINTER_ALIGN = 8;
 
-symbol** symbols;
-symbol** ordered_symbols;
+symbol** global_symbols;
+symbol** ordered_global_symbols;
+
+enum
+{
+    MAX_LOCAL_SYMBOLS = 1024
+};
+
+symbol local_symbols[MAX_LOCAL_SYMBOLS];
+symbol* last_local_symbol = local_symbols;
 
 void complete_type(type* t);
 void resolve_symbol(symbol* s);
@@ -137,18 +145,26 @@ void resolve_stmt(stmt* st, type* opt_ret_type);
 
 symbol* get_symbol(const char* name)
 {
-    symbol* result = 0;
     // do zastąpienia hash table
-    for (symbol** it = symbols; it < buf_end(symbols); it++)
+    for (symbol* it = last_local_symbol; it != local_symbols; it--)
+    {
+        symbol* sym = it - 1;
+        if (sym->name == name)
+        {
+            return sym;
+        }
+    }
+
+    for (symbol** it = global_symbols; it != buf_end(global_symbols); it++)
     {
         symbol* sym = *it;
         if (sym->name == name)
         {
-            result = sym;
-            break;
+            return sym;
         }
     }
-    return result;
+
+    return 0;
 }
 
 type* get_new_type(type_kind kind)
@@ -156,6 +172,31 @@ type* get_new_type(type_kind kind)
     type* t = xcalloc(sizeof(type));
     t->kind = kind;
     return t;
+}
+
+symbol* enter_local_scope(void)
+{
+    symbol* marker = last_local_symbol;
+    return marker;
+}
+
+void leave_local_scope(symbol* marker)
+{
+    assert(marker >= local_symbols && marker <= last_local_symbol);
+    last_local_symbol = marker;
+    // dalszych nie czyścimy - nie będziemy ich nigdy odczytywać
+}
+
+void push_local_symbol(const char* name, type* type)
+{
+    int64_t symbols_count = last_local_symbol - local_symbols;
+    assert(symbols_count + 1 < MAX_LOCAL_SYMBOLS);
+    *last_local_symbol++ = (symbol){
+      .name = name,
+      .kind = SYMBOL_VARIABLE,
+      .state = SYMBOL_RESOLVED,
+      .type = type,
+    };
 }
 
 void get_complete_struct_type(type* type, type_aggregate_field** fields, size_t fields_count)
@@ -319,14 +360,14 @@ symbol* push_installed_symbol(const char* name, type* type)
     symbol* sym = get_new_symbol(SYMBOL_TYPE, name, NULL);
     sym->state = SYMBOL_RESOLVED;
     sym->type = type;
-    buf_push(symbols, sym);
+    buf_push(global_symbols, sym);
     return sym;
 }
 
 void push_symbol_from_decl(decl* d)
 {
     symbol* s = get_symbol_from_decl(d);
-    buf_push(symbols, s);
+    buf_push(global_symbols, s);
 }
 
 void complete_type(type* t)
@@ -376,7 +417,7 @@ void complete_type(type* t)
         get_complete_union_type(t, fields, buf_len(fields));
     }
 
-    buf_push(ordered_symbols, t->symbol);
+    buf_push(ordered_global_symbols, t->symbol);
 }
 
 symbol* resolve_name(const char* name)
@@ -834,16 +875,20 @@ void resolve_symbol(symbol* s)
     }
 
     s->state = SYMBOL_RESOLVED;
-    buf_push(ordered_symbols, s);
+    buf_push(ordered_global_symbols, s);
 }
 
 void resolve_stmt_block(stmt_block st_block)
 {
+    symbol* marker = enter_local_scope();
+
     for (size_t i = 0; i < st_block.stmts_count; i++)
     {
         stmt* st = st_block.stmts[i];
         resolve_stmt(st, NULL);
     }
+
+    leave_local_scope(marker);
 }
 
 void resolve_stmt(stmt* st, type* opt_ret_type)
@@ -904,8 +949,10 @@ void resolve_stmt(stmt* st, type* opt_ret_type)
         }
         break;
         case STMT_DECL:
-        {
-            push_symbol_from_decl(st->decl.decl);
+        {            
+            assert(st->decl.decl->kind == DECL_VARIABLE);
+            type* t = resolve_variable_decl(st->decl.decl);
+            push_local_symbol(st->decl.decl->name, t);
         }
         break;
         case STMT_ASSIGN:
@@ -956,24 +1003,22 @@ void resolve_function_body(symbol* s)
     assert(s->state == SYMBOL_RESOLVED);
     type* ret_type = s->type->function.ret_type;
 
-    // temporary hack
-    {
-        for (size_t i = 0; i < s->decl->function.params.param_count; i++)
-        {
-            function_param* p = &s->decl->function.params.params[i];
-            symbol* sym = get_new_symbol(SYMBOL_VARIABLE, p->name, NULL);
-            sym->type = resolve_typespec(p->type);
-            sym->state = SYMBOL_RESOLVED;
-            buf_push(symbols, sym);
-        }
-    }
+    symbol* marker = enter_local_scope();
 
+    for (size_t i = 0; i < s->decl->function.params.param_count; i++)
+    {
+        function_param* p = &s->decl->function.params.params[i];
+        push_local_symbol(p->name, resolve_typespec(p->type));
+    }
+    
     size_t count = s->decl->function.stmts.stmts_count;
     for (size_t i = 0; i < count; i++)
     {
         stmt* st = s->decl->function.stmts.stmts[i];
         resolve_stmt(st, ret_type);        
     }
+
+    leave_local_scope(marker);
 }
 
 void complete_symbol(symbol* sym)
@@ -1018,10 +1063,15 @@ void resolve_test(void)
         "let a: int[3] = {1, 2, 3}",
         "struct S { t: int, c: char }",        
         "let x = fun(1, 2)",
+#endif
+        "let i: int = 1",
+        "fn fun2(vec: v2): int {\
+            let local = fun(i, 2)\
+                { let scoped = 1 }\
+            vec.x = local\
+            return vec.x } ",
         "fn fun(i: int, j: int): int { j++ i++ return i + j }",
         "struct v2 { x: int, y: int }",
-        "fn fun2(vec: v2): int { return vec.x + 1 } ",
-#endif
     };
 
     printf("original:\n\n");
@@ -1035,8 +1085,8 @@ void resolve_test(void)
         push_symbol_from_decl(d);
     }
 
-    for (symbol** it = symbols + installed_count; 
-        it != buf_end(symbols); 
+    for (symbol** it = global_symbols + installed_count; 
+        it != buf_end(global_symbols); 
         it++)
     {
         symbol* sym = *it;        
@@ -1044,7 +1094,7 @@ void resolve_test(void)
     }
    
     printf("\nordered:\n\n");
-    for (symbol** it = ordered_symbols; it != buf_end(ordered_symbols); it++)
+    for (symbol** it = ordered_global_symbols; it != buf_end(ordered_global_symbols); it++)
     {
         symbol* sym = *it;
         if (sym->decl)
