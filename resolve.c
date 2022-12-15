@@ -1122,16 +1122,74 @@ void complete_symbol(symbol* sym)
     }
 }
 
-void resolve_test(void)
+symbol** resolve(char** decl_arr, size_t decl_arr_count, bool print)
 {
     arena = allocate_memory_arena(megabytes(50));
-    
-    size_t installed_count = 3;
+
+    size_t installed_count = 4;
     push_installed_symbol(str_intern("void"), type_void);
     push_installed_symbol(str_intern("char"), type_char);
     push_installed_symbol(str_intern("int"), type_int);
     push_installed_symbol(str_intern("float"), type_float);
 
+    if (print)
+    {
+        printf("original:\n\n");
+    }
+
+    for (size_t i = 0; i < decl_arr_count; i++)
+    {
+        char* str = decl_arr[i];
+        decl* d = parse_decl(str);
+        if (print)
+        {
+            print_decl(d);
+            printf("\n");
+        }
+
+        push_symbol_from_decl(d);
+    }
+
+    for (symbol** it = global_symbols + installed_count;
+        it != buf_end(global_symbols);
+        it++)
+    {
+        symbol* sym = *it;
+        complete_symbol(sym);
+    }
+
+    if (print)
+    {
+        printf("\nordered:\n\n");
+        for (symbol** it = ordered_global_symbols; it != buf_end(ordered_global_symbols); it++)
+        {
+            symbol* sym = *it;
+            if (sym->decl)
+            {
+                print_decl(sym->decl);
+            }
+            else
+            {
+                printf("%s", sym->name);
+            }
+            printf("\n");
+        }
+    }
+
+    //buf_free(ordered_global_symbols);
+    //buf_free(global_symbols);
+    //for (symbol* it = last_local_symbol; it != local_symbols; it--)
+    //{
+    //    *it = (symbol){ 0 };
+    //}
+
+    //free_memory_arena(arena);
+
+    return ordered_global_symbols;
+}
+
+void resolve_test(void)
+{
     char* test_strs[] = {
 #if 1
         "let f := g[1 + 3]",
@@ -1170,44 +1228,13 @@ void resolve_test(void)
         "fn ftest4(x: int): int { for (let i := 0; i < x; i++) { if (i % 3 == 0) { return x } } return 0 }",
         "fn ftest5(x: int): int { switch(x) { case 0: case 1: { return 5 } case 3: default: { return -1 } } }",
     };
+    size_t str_count = sizeof(test_strs) / sizeof(test_strs[0]);
 
-    printf("original:\n\n");
-    for (size_t i = 0; i < sizeof(test_strs)/sizeof(test_strs[0]); i++)
-    {
-        char* str = test_strs[i];
-        decl* d = parse_decl(str);
-        print_decl(d);
-        printf("\n");
+    symbol** result = resolve(test_strs, str_count, true);
 
-        push_symbol_from_decl(d);
-    }
+    debug_breakpoint; 
 
-    for (symbol** it = global_symbols + installed_count; 
-        it != buf_end(global_symbols); 
-        it++)
-    {
-        symbol* sym = *it;        
-        complete_symbol(sym);
-    }
-   
-    printf("\nordered:\n\n");
-    for (symbol** it = ordered_global_symbols; it != buf_end(ordered_global_symbols); it++)
-    {
-        symbol* sym = *it;
-        if (sym->decl)
-        {
-            print_decl(sym->decl);
-        }
-        else
-        {
-            printf("%s", sym->name);
-        }
-        printf("\n");
-    }
-
-    debug_breakpoint;
-
-    free_memory_arena(arena);
+    buf_free(result);
 }
 
 

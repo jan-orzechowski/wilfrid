@@ -12,6 +12,8 @@
 #include "print.c"
 #include "parsing.c"
 #include "resolve.c"
+#include "cgen.c"
+
 #include "vm.h"
 #include "vm.c"
 
@@ -28,10 +30,11 @@ int main(int argc, char** argv)
 
     stack_vm_test(code);
     
+    //parse_test();
 #if 0
-    parse_test();
-#else
     resolve_test();
+#else
+    cgen_test();
 #endif
 
     return 1;
