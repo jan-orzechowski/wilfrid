@@ -812,6 +812,14 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type)
         }
         break;
     }
+
+    // przyda nam się podczas generowania kodu
+    if (result->type)
+    {
+        assert(e->resolved_type == NULL || e->resolved_type == result->type);
+        e->resolved_type = result->type;
+    }
+
     return result;
 }
 

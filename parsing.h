@@ -5,6 +5,7 @@
 typedef struct expr expr;
 typedef struct stmt stmt;
 typedef struct decl decl;
+typedef struct type type;
 typedef struct typespec typespec;
 
 typedef enum typespec_kind
@@ -131,6 +132,7 @@ typedef struct sizeof_expr
 struct expr
 {
     expr_kind kind;
+    type* resolved_type; // dodawany po parsowaniu
     union
     {
         int number_value;
