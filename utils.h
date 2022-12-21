@@ -108,6 +108,23 @@ void fatal(const char* fmt, ...)
     exit(1);
 }
 
+char* xprintf(const char* fmt, ...)
+{
+    va_list args;
+
+    va_start(args, fmt);
+    size_t length = 1 + vsnprintf(NULL, 0, fmt, args);
+    va_end(args);
+
+    char* str = xmalloc(length);
+    
+    va_start(args, fmt);
+    vsnprintf(str, length, fmt, args);
+    va_end(args);
+    
+    return str;
+}
+
 typedef struct buffer_header
 {
     size_t len;
@@ -158,9 +175,36 @@ void* __buf_grow(const void* buf, size_t new_len, size_t elem_size)
     return new_hdr->buf;
 }
 
+#define buf_printf(b, ...) ((b) = __buf_printf((b), __VA_ARGS__))
+
+char* __buf_printf(char* buf, const char* format, ...)
+{
+    va_list args;
+
+    va_start(args, format);
+    size_t current_cap = buf_cap(buf) - buf_len(buf);
+    size_t str_length = 1 + vsnprintf(buf_end(buf), current_cap, format, args);
+    va_end(args);
+
+    if (str_length > current_cap)
+    {
+        __buf_fit(buf, str_length + buf_len(buf));
+
+        va_start(args, format);
+        size_t new_cap = buf_cap(buf) - buf_len(buf);
+        str_length = 1 + vsnprintf(buf_end(buf), new_cap, format, args);
+        assert(str_length <= new_cap);
+        va_end(args);
+    }
+
+    __buf_header(buf)->len += str_length - 1;
+    
+    return buf;
+}
+
 #define copy_buf_to_arena(arena, buf) __copy_buf_to_arena((arena), (buf), sizeof(*(buf)))
 
-void copy_test();
+void copy_test(void);
 
 void* __copy_buf_to_arena(memory_arena* arena, const void* buf, size_t elem_size)
 {
@@ -175,7 +219,7 @@ void* __copy_buf_to_arena(memory_arena* arena, const void* buf, size_t elem_size
     return dest;
 }
 
-void copy_test()
+void copy_test(void)
 {
     memory_arena* test = allocate_memory_arena(kilobytes(1));
 
@@ -236,7 +280,7 @@ const char* str_intern(const char* str)
     return str_intern_range(str, str + strlen(str));
 }
 
-void intern_str_test()
+void intern_str_test(void)
 {
     char x[] = "hello";
     char y[] = "hello";
@@ -252,7 +296,7 @@ void intern_str_test()
     assert(pz != px);
 }
 
-void stretchy_buffers_test()
+void stretchy_buffers_test(void)
 {
     intern_str* str = 0;
 
@@ -273,5 +317,11 @@ void stretchy_buffers_test()
     buf_free(str);
 
     assert(buf_len(str) == 0);
+
+    char* char_buf = 0;
+    buf_printf(char_buf, "One: %d\n", 1);
+    assert(strcmp(char_buf, "One: 1\n") == 0);
+    buf_printf(char_buf, "Hex: 0x%x\n", 0x12345678);
+    assert(strcmp(char_buf, "One: 1\nHex: 0x12345678\n") == 0);
 }
 
