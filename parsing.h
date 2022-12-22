@@ -200,7 +200,7 @@ typedef struct for_stmt
 {
     decl* init_decl;
     expr* cond_expr;
-    stmt* incr_stmt;
+    stmt* next_stmt;
     stmt_block stmts;
 } for_stmt;
 

@@ -263,7 +263,7 @@ void print_statement(stmt* s)
             printf(" ");
             print_expr(s->for_stmt.cond_expr);
             printf(" ");
-            print_statement(s->for_stmt.incr_stmt);
+            print_statement(s->for_stmt.next_stmt);
            
             print_stmt_block(s->for_stmt.stmts);
             

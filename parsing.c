@@ -715,7 +715,7 @@ stmt* parse_statement(void)
 
             expect_token_kind(TOKEN_SEMICOLON);
 
-            s->for_stmt.incr_stmt = parse_statement();
+            s->for_stmt.next_stmt = parse_statement();
 
             expect_token_kind(TOKEN_RIGHT_PAREN);
 
