@@ -7,15 +7,11 @@ int gen_indent;
 char* gen_buf = NULL;
 
 #define gen_printf(...) buf_printf(gen_buf, __VA_ARGS__)
+#define gen_printf_newline(...) (_gen_printf_newline(), gen_printf(__VA_ARGS__))
 
-void gen_printf_newline(const char* fmt, ...)
+void _gen_printf_newline()
 {
-    printf("\n%.*s", 2 * gen_indent, "                                                                               ");
-    
-    va_list args;
-    va_start(fmt, args);
-    vprintf(fmt, args);
-    va_end(args);
+    gen_printf("\n%.*s", 2 * gen_indent, "                                                                               ");
 }
 
 const char* parenthesize(const char* str, bool parenthesize)
@@ -150,10 +146,7 @@ char* typespec_to_cdecl(typespec* t, const char* name)
             result = typespec_to_cdecl(t->function.ret_type, result);
         }
         break;
-        default:
-        {
-            fatal("typespec not implemented");            
-        }
+        invalid_default_case;
     }
     return result;
 }
@@ -189,11 +182,62 @@ void gen_simple_stmt(stmt* stmt)
     switch (stmt->kind)
     {
         case STMT_EXPR:
-        gen_expr(stmt->expr);
+        {
+            gen_expr(stmt->expr);
+        }
         break;
         case STMT_DECL:
-        //gen_printf("%s = ", type_to_cdecl(stmt->init.expr->type, stmt->init.name));
-        //gen_expr(stmt->decl.decl.);
+        {
+            switch (stmt->decl_stmt.decl->kind)
+            {
+                case DECL_VARIABLE:
+                {
+                    if (stmt->decl_stmt.decl->variable.type == 0)
+                    {
+                        if (stmt->decl_stmt.decl->variable.expr->resolved_type)
+                        {
+                            char* decl_str = type_to_cdecl(
+                                stmt->decl_stmt.decl->variable.expr->resolved_type,
+                                stmt->decl_stmt.decl->name);
+                            gen_printf_newline(decl_str);
+                            debug_breakpoint;                        
+                        }
+                        else
+                        {
+                            fatal("no type in variable declaration");
+                        }
+                    }
+                    else
+                    {
+                        char* decl_str = typespec_to_cdecl(
+                            stmt->decl_stmt.decl->variable.type,
+                            stmt->decl_stmt.decl->name);
+                        gen_printf_newline(decl_str);
+                        debug_breakpoint;
+                    }                  
+
+                    if (stmt->decl_stmt.decl->variable.expr)
+                    {
+                        gen_printf(" = ");
+                        gen_expr(stmt->decl_stmt.decl->variable.expr);
+                        gen_printf(";");
+                    }
+                    else
+                    {
+                        // czy powinniśmy na to pozwalać?
+                        // może to powinno być rozwiązane na poziomie resolving
+                        gen_printf(";");
+                    }
+                }
+                break;
+                case DECL_CONST:
+                default:
+                {
+                    fatal("only variable declarations allowed in statements");
+                }
+                break;
+            }    
+        }
         break;
         case STMT_ASSIGN:
         {
@@ -209,8 +253,7 @@ void gen_simple_stmt(stmt* stmt)
             }
         }      
         break;
-        default:
-        assert(0);
+        invalid_default_case;
     }
 }
 
@@ -219,23 +262,31 @@ void gen_stmt(stmt* stmt)
     switch (stmt->kind)
     {
         case STMT_RETURN:
-        gen_printf_newline("return");
-        if (stmt->expr)
         {
-            gen_printf(" ");
-            gen_expr(stmt->expr);
+            gen_printf_newline("return");
+            if (stmt->expr)
+            {
+                gen_printf(" ");
+                gen_expr(stmt->expr);
+            }
+            gen_printf(";");
         }
-        gen_printf(";");
         break;
         case STMT_BREAK:
-        gen_printf_newline("break;");
+        {
+            gen_printf_newline("break;");
+        }
         break;
         case STMT_CONTINUE:
-        gen_printf_newline("continue;");
+        {
+            gen_printf_newline("continue;");
+        }
         break;
         case STMT_BLOCK:
-        gen_printf_newline("");
-        gen_stmt_block(stmt->block);
+        {
+            gen_printf_newline("");
+            gen_stmt_block(stmt->block);
+        }
         break;
         case STMT_IF_ELSE:
         {
@@ -322,9 +373,7 @@ void gen_stmt(stmt* stmt)
         break;
         default:
         {
-            gen_printf_newline("");
             gen_simple_stmt(stmt);
-            gen_printf(";");
         }      
         break;
     }
@@ -443,10 +492,7 @@ void gen_expr(expr* e)
         }
         break;
         case EXPR_NONE:
-        default:
-        {
-            fatal("unimplemented expr kind");
-        }
+        invalid_default_case;
     }
 }
 
@@ -532,12 +578,14 @@ void gen_func_decl(decl* d)
     assert(d->kind == DECL_FUNCTION);
     if (d->function.return_type)
     {
-        gen_printf_newline("%s(", typespec_to_cdecl(d->function.return_type, d->name));
+        char* decl_str = typespec_to_cdecl(d->function.return_type, d->name);
+        gen_printf_newline("%s(", decl_str);
     }
     else
     {
         gen_printf_newline("void %s(", d->name);
     }
+
     if (d->function.params.param_count == 0)
     {
         gen_printf("void");
@@ -551,10 +599,12 @@ void gen_func_decl(decl* d)
             {
                 gen_printf(", ");
             }
-            gen_printf("%s", typespec_to_cdecl(param.type, param.name));
+
+            char* decl_str = typespec_to_cdecl(param.type, param.name);
+            gen_printf("%s", decl_str);
         }
     }
-    gen_printf(")");
+    gen_printf(")"); // bez średnika, bo potem może być ciało
 }
 
 void gen_forward_decls(symbol** resolved)
@@ -580,11 +630,16 @@ void gen_forward_decls(symbol** resolved)
                 case DECL_FUNCTION:
                 {
                     gen_func_decl(sym->decl);
+                    gen_printf(";");
                 }
-                gen_printf(";");
                 break;
+                case DECL_CONST:
+                case DECL_ENUM:
+                case DECL_TYPEDEF:
                 default:
-                // Do nothing.
+                {
+                    // nie potrzeba forward declaration
+                };
                 break;
             }
         }
@@ -595,8 +650,10 @@ void gen_forward_decls(symbol** resolved)
     }
 }
 
-void gen_symbol(symbol* sym)
+void gen_symbol_decl(symbol* sym)
 {
+    // zakładamy, że forward declarations zostały już wygenerowane
+
     assert(sym);
 
     decl* decl = sym->decl;
@@ -622,6 +679,8 @@ void gen_symbol(symbol* sym)
         case DECL_FUNCTION:
         {
             gen_func_decl(decl);
+            gen_stmt_block(decl->function.stmts);
+            gen_printf(";");
         }
         break;
         case DECL_STRUCT:
@@ -655,18 +714,51 @@ void cgen_test(void)
     char* test_strs[] = {
         "const x = 10",
         "fn power_2(n:int):int{return n*n}",        
-        "fn main(){\
+        "fn _main(){\
             let i : int = 5\
             let j = power_2(i)\
         }",
+        "struct vec3 { x: int, y: int, z: int }"
     };
     
     symbol** resolved = resolve(test_strs, sizeof(test_strs) / sizeof(test_strs[0]), false);
 
+    gen_printf_newline("// FORWARD DECLARATIONS\n");
+
+    gen_forward_decls(resolved);
+
+    gen_printf_newline("\n// DECLARATIONS\n");
+
     for (size_t i = 0; i < buf_len(resolved); i++)
     {
-        gen_symbol(resolved[i]);
+        gen_symbol_decl(resolved[i]);
     }
 
     debug_breakpoint;
+
+    printf("%s\n", gen_buf);
+
+    debug_breakpoint;
 }
+
+// TEST
+#if 0
+// FORWARD DECLARATIONS
+
+int power_2(int n);
+void _main(void);
+typedef struct vec3 vec3;
+
+// DECLARATIONS
+
+enum { x = 10 };
+int power_2(int n)
+{
+    return (n) * (n);
+};
+void _main(void)
+{
+    int i = 5;
+    int j = power_2(i);
+};
+#endif

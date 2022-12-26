@@ -315,7 +315,7 @@ void print_statement(stmt* s)
         break;
         case STMT_DECL:
         {
-            print_decl(s->decl.decl);
+            print_decl(s->decl_stmt.decl);
         }
         break;
         case STMT_EXPR:

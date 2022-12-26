@@ -6,7 +6,8 @@
 #include <assert.h>
 #include <string.h>
 
-#define debug_breakpoint {int x = 0;}
+#define debug_breakpoint { int x = 0; }
+#define invalid_default_case default: { assert(0); } break;
 
 #define is_power_of_2(x) (((x) != 0) && ((x) & ((x) - 1)) == 0)
 #define align_down(num, align) ((num) & ~((align) - 1))
@@ -92,13 +93,13 @@ void* push_size(memory_arena* arena, size_t size)
     return result;
 }
 
-void fatal(const char* fmt, ...)
+void fatal(const char* format, ...)
 {
     va_list args;
-    va_start(args, fmt);
+    va_start(args, format);
 
     printf("FATAL: ");
-    vprintf(fmt, args);
+    vprintf(format, args);
     printf("\n");
 
     va_end(args);
@@ -108,18 +109,18 @@ void fatal(const char* fmt, ...)
     exit(1);
 }
 
-char* xprintf(const char* fmt, ...)
+char* xprintf(const char* format, ...)
 {
     va_list args;
 
-    va_start(args, fmt);
-    size_t length = 1 + vsnprintf(NULL, 0, fmt, args);
+    va_start(args, format);
+    size_t length = 1 + vsnprintf(NULL, 0, format, args);
     va_end(args);
 
     char* str = xmalloc(length);
     
-    va_start(args, fmt);
-    vsnprintf(str, length, fmt, args);
+    va_start(args, format);
+    vsnprintf(str, length, format, args);
     va_end(args);
     
     return str;

@@ -730,6 +730,7 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type)
             {
                 fatal("invalid number of arguments");
             }
+
             result = get_resolved_rvalue_expr(fn_expr->type->function.ret_type);
         }
         break;
@@ -791,7 +792,6 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type)
             }
             
             resolved_expr* index_expr = resolve_expr(e->index.index_expr);
-
 
             if (index_expr->type->kind != TYPE_INT)
             {
@@ -1028,9 +1028,10 @@ void resolve_stmt(stmt* st, type* opt_ret_type)
         break;
         case STMT_DECL:
         {            
-            assert(st->decl.decl->kind == DECL_VARIABLE);
-            type* t = resolve_variable_decl(st->decl.decl);
-            push_local_symbol(st->decl.decl->name, t);
+            // na razie w blokach możemy deklarować tylko zmienne ('let')
+            assert(st->decl_stmt.decl->kind == DECL_VARIABLE);
+            type* t = resolve_variable_decl(st->decl_stmt.decl);
+            push_local_symbol(st->decl_stmt.decl->name, t);
         }
         break;
         case STMT_ASSIGN:
@@ -1094,7 +1095,7 @@ void resolve_stmt(stmt* st, type* opt_ret_type)
     }
 }
 
-void resolve_function_body(symbol* s)
+void complete_function_body(symbol* s)
 {
     assert(s->state == SYMBOL_RESOLVED);
     type* ret_type = s->type->function.ret_type;
@@ -1126,7 +1127,7 @@ void complete_symbol(symbol* sym)
     }
     else if (sym->kind == SYMBOL_FUNCTION)
     {
-        resolve_function_body(sym);
+        complete_function_body(sym);
     }
 }
 
@@ -1229,14 +1230,18 @@ void resolve_test(void)
         "let y = fuu(fuu(7, x), {3, 4})",
         "fn fzz(x: int, y: int) : v2 { return {x + 1, y - 1} }",
         "fn fuu(x: int, v: v2) : int { return v.x + x } ",
-#endif
         "fn ftest1(x: int): int { if (x) { return -x } else if (x % 2 == 0) { return x } else { return 0 } }",
         "fn ftest2(x: int): int { let p := 1 while (x) { p *= 2 x-- } return p }",
         "fn ftest3(x: int): int { let p := 1 do { p *= 2 x-- } while (x) return p }",
         "fn ftest4(x: int): int { for (let i := 0; i < x; i++) { if (i % 3 == 0) { return x } } return 0 }",
         "fn ftest5(x: int): int { switch(x) { case 0: case 1: { return 5 } case 3: default: { return -1 } } }",
+#endif
+        "fn return_value_test(arg: int):int{\
+            if(arg>0){let i := return_value_test(arg - 2) return i } else { return 0 } }}",
     };
     size_t str_count = sizeof(test_strs) / sizeof(test_strs[0]);
+
+    debug_breakpoint;
 
     symbol** result = resolve(test_strs, str_count, true);
 

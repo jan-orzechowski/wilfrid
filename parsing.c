@@ -696,7 +696,7 @@ stmt* parse_statement(void)
         {
             decl* d = parse_declaration();
             s = push_struct(arena, stmt);
-            s->decl.decl = d;
+            s->decl_stmt.decl = d;
             s->kind = STMT_DECL;
         }
         else if (keyword == for_keyword)
@@ -786,7 +786,7 @@ stmt* parse_statement(void)
         {
             s = push_struct(arena, stmt);
             s->kind = STMT_DECL;
-            s->decl.decl = d;
+            s->decl_stmt.decl = d;
 
             debug_breakpoint;
         }

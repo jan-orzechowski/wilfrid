@@ -7,6 +7,7 @@ typedef struct stmt stmt;
 typedef struct decl decl;
 typedef struct type type;
 typedef struct typespec typespec;
+typedef struct symbol symbol;
 
 typedef enum typespec_kind
 {
@@ -34,8 +35,6 @@ typedef struct typespec_function
     typespec** param_types;
     size_t param_count;
 } typespec_function;
-
-typedef struct symbol symbol;
 
 struct typespec
 {
@@ -149,12 +148,6 @@ struct expr
     };
 };
 
-typedef struct stmt_block
-{
-    stmt** stmts;
-    size_t stmts_count;
-} stmt_block;
-
 typedef enum stmt_kind
 {
     STMT_NONE,
@@ -172,13 +165,18 @@ typedef enum stmt_kind
     STMT_BLOCK,    
 } stmt_kind;
 
-typedef struct if_else_stmt if_else_stmt;
-struct if_else_stmt
+typedef struct stmt_block
+{
+    stmt** stmts;
+    size_t stmts_count;
+} stmt_block;
+
+typedef struct if_else_stmt
 {
     expr* cond_expr;
     stmt_block then_block;
     stmt* else_stmt;
-};
+} if_else_stmt;
 
 typedef struct return_stmt
 {
@@ -234,7 +232,7 @@ struct stmt
     {
         return_stmt return_stmt;
         if_else_stmt if_else;
-        decl_stmt decl;
+        decl_stmt decl_stmt;
         for_stmt for_stmt;
         assign_stmt assign;
         expr* expr;
