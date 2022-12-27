@@ -210,6 +210,25 @@ void next_token(void)
                 token.kind = TOKEN_DIV_ASSIGN;
                 token.name = str_intern_range(token.start, stream);
             }
+            else if (*(stream + 1) == '*')
+            {
+                discard_token = true;
+                stream += 2;
+                for (;;)
+                {
+                    stream++;
+                    if (*(stream) == 0)
+                    {
+                        break;
+                    }
+
+                    if (*(stream) == '*' && *(stream + 1) == '/')
+                    {
+                        stream += 2;
+                        break;
+                    }
+                }
+            }
             else
             {
                 token.kind = TOKEN_DIV;
@@ -499,6 +518,8 @@ void next_token(void)
             token.name = str_intern_range(token.start, stream);
         }
         break;
+        case '\n':
+        case '\r':
         case ' ':
         {
             discard_token = true;
