@@ -1152,16 +1152,19 @@ void parse_text_and_print_s_exprs(char* test)
     
     // musimy najpierw zamienić na ciąg tokenów
     init_stream(test);
-    while (token.kind)
-    {
-        next_token();
-    }
+    while (next_token());
 
     get_first_lexed_token();
 
-    decl* result = parse_declaration();
-    print_decl(result);
-    printf("\n\n");
+    printf("/// PARSING ///\n\n");
+    decl* result = 0;
+    do
+    {
+        result = parse_declaration_optional();
+        print_decl(result);
+        printf("\n\n");
+    }
+    while (result);
   
     free_memory_arena(arena);
 }

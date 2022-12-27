@@ -93,7 +93,7 @@ tok token;
 tok** all_tokens;
 int lexed_token_index;
 
-void next_token(void)
+bool next_token(void)
 {
     bool discard_token = false;
     token.start = stream;
@@ -541,6 +541,9 @@ void next_token(void)
         memcpy(new_tok, &token, sizeof(token));
         buf_push(all_tokens, new_tok);
     }
+
+    bool is_at_end = (token.kind == TOKEN_EOF && false == discard_token);
+    return (false == is_at_end);
 }
 
 void init_stream(char* str)
