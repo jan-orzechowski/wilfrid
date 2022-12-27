@@ -795,6 +795,11 @@ stmt* parse_statement(void)
             s = parse_simple_statement();
         }
     }
+    else if (is_token_kind(TOKEN_MUL)) // pointer dereference
+    {
+        next_lexed_token();
+        s = parse_simple_statement();
+    }
     else if (is_token_kind(TOKEN_LEFT_BRACE))
     {
         next_lexed_token();
