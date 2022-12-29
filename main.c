@@ -54,14 +54,33 @@ string_ref read_file(char* filename)
         {
             fclose(src);
             free(str_buf);
-            return (string_ref) { 0 };;
+            return (string_ref) { 0 };
         }
     }
     else
     {
         fclose(src);
-        return (string_ref) { 0 };;
+        return (string_ref) { 0 };
     }
+}
+
+bool write_file(const char* path, const char* buf, size_t len)
+{
+    FILE* file;
+    errno_t err = fopen_s(&file, path, "w");
+    if (err != 0)
+    {
+        // błąd
+        return false;
+    }
+
+    if (!file)
+    {
+        return false;
+    }
+    size_t elements_written = fwrite(buf, len, 1, file);
+    fclose(file);
+    return (elements_written == 1);
 }
 
 void compile_and_run(void)
@@ -78,10 +97,27 @@ void compile_and_run(void)
             file_buf.str[1] = 0x20; // 0xbb;
             file_buf.str[2] = 0x20; // 0xbf;
         }
+       
+        symbol** resolved = resolve(file_buf.str, true);
 
-        parse_text_and_print_s_exprs(file_buf.str);
+        size_t debug_count = buf_len(resolved);
+
+        gen_printf_newline("// FORWARD DECLARATIONS\n");
+
+        gen_forward_decls(resolved);
+
+        gen_printf_newline("\n// DECLARATIONS\n");
+
+        for (size_t i = 0; i < buf_len(resolved); i++)
+        {
+            gen_symbol_decl(resolved[i]);
+        }
 
         debug_breakpoint;
+
+        printf("/// C OUTPUT:\n\n%s\n", gen_buf);
+
+        write_file("test/testcode.c", gen_buf, buf_len(gen_buf));
 
         free(file_buf.str);
     }

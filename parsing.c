@@ -1175,19 +1175,14 @@ void parse_text_and_print_s_exprs(char* test)
 {
     arena = allocate_memory_arena(megabytes(50));
     
-    // musimy najpierw zamienić na ciąg tokenów
-    init_stream(test);
-    while (next_token());
+    lex(test);
 
-    get_first_lexed_token();
-
-    printf("/// PARSING ///\n\n");
     decl* result = 0;
     do
     {
         result = parse_declaration_optional();
         print_decl(result);
-        printf("\n\n");
+        printf("\n");       
     }
     while (result);
   
@@ -1261,4 +1256,36 @@ void parse_test(void)
     }
 
     debug_breakpoint;
+}
+
+decl** parse(char* source, bool print_s_expressions)
+{
+    free_memory_arena(arena);
+    arena = allocate_memory_arena(megabytes(50));
+
+    lex(source);
+
+    if (print_s_expressions)
+    {
+        printf("/// PARSING ///\n\n");
+    }
+    
+    decl** decl_array = 0;
+    decl* d = 0;
+    do
+    {
+        d = parse_declaration_optional();
+        if (d)
+        {
+            buf_push(decl_array, d);
+            if (print_s_expressions)
+            {
+                print_decl(d);
+                printf("\n\n");
+            }
+        }
+    }
+    while (d);
+
+    return decl_array;
 }

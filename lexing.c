@@ -598,3 +598,10 @@ void next_lexed_token(void)
         token.kind = TOKEN_EOF;
     }
 }
+
+void lex(char* test)
+{
+    init_stream(test);
+    while (next_token());
+    get_first_lexed_token();
+}

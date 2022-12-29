@@ -1131,15 +1131,18 @@ void complete_symbol(symbol* sym)
     }
 }
 
-symbol** resolve(char** decl_arr, size_t decl_arr_count, bool print)
-{
-    arena = allocate_memory_arena(megabytes(50));
-
-    size_t installed_count = 4;
+void init_before_resolve()
+{    
     push_installed_symbol(str_intern("void"), type_void);
     push_installed_symbol(str_intern("char"), type_char);
     push_installed_symbol(str_intern("int"), type_int);
     push_installed_symbol(str_intern("float"), type_float);
+}
+
+symbol** resolve_test_decls(char** decl_arr, size_t decl_arr_count, bool print)
+{
+    arena = allocate_memory_arena(megabytes(50));
+    init_before_resolve();
 
     if (print)
     {
@@ -1159,7 +1162,7 @@ symbol** resolve(char** decl_arr, size_t decl_arr_count, bool print)
         push_symbol_from_decl(d);
     }
 
-    for (symbol** it = global_symbols + installed_count;
+    for (symbol** it = global_symbols;
         it != buf_end(global_symbols);
         it++)
     {
@@ -1184,15 +1187,6 @@ symbol** resolve(char** decl_arr, size_t decl_arr_count, bool print)
             printf("\n");
         }
     }
-
-    //buf_free(ordered_global_symbols);
-    //buf_free(global_symbols);
-    //for (symbol* it = last_local_symbol; it != local_symbols; it--)
-    //{
-    //    *it = (symbol){ 0 };
-    //}
-
-    //free_memory_arena(arena);
 
     return ordered_global_symbols;
 }
@@ -1243,13 +1237,40 @@ void resolve_test(void)
 
     debug_breakpoint;
 
-    symbol** result = resolve(test_strs, str_count, true);
+    symbol** result = resolve_test_decls(test_strs, str_count, true);
 
     debug_breakpoint; 
 
     buf_free(result);
 }
 
+symbol** resolve(char* source, bool print_s_expressions)
+{
+    if (arena == 0)
+    {
+        arena = allocate_memory_arena(megabytes(50));
+    }
+    init_before_resolve();
 
+    decl** declarations = parse(source, print_s_expressions);
+
+    size_t debug_decl_count = buf_len(declarations);
+
+    for (size_t i = 0; i < buf_len(declarations); i++)
+    {
+        decl* d = declarations[i];
+        push_symbol_from_decl(d);
+    }
+
+    for (symbol** it = global_symbols;
+        it != buf_end(global_symbols);
+        it++)
+    {
+        symbol* sym = *it;
+        complete_symbol(sym);
+    }
+
+    return global_symbols;
+}
 
 

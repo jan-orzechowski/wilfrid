@@ -720,7 +720,7 @@ void cgen_test(void)
         "struct vec3 { x: int, y: int, z: int }"
     };
     
-    symbol** resolved = resolve(test_strs, sizeof(test_strs) / sizeof(test_strs[0]), false);
+    symbol** resolved = resolve_test_decls(test_strs, sizeof(test_strs) / sizeof(test_strs[0]), false);
 
     gen_printf_newline("// FORWARD DECLARATIONS\n");
 
