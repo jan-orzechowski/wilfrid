@@ -55,6 +55,7 @@ typedef enum expr_kind
     EXPR_INT,
     EXPR_FLOAT,
     EXPR_CHAR,
+    EXPR_STRING,
 
     EXPR_NAME,
     EXPR_UNARY,

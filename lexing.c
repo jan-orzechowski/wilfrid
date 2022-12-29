@@ -237,6 +237,27 @@ bool next_token(void)
             }
         }
         break;
+        case '"':
+        {
+            token.kind = TOKEN_STRING;
+            stream++;
+            for (;;)
+            {
+                stream++;
+                if (*(stream) == 0)
+                {
+                    break;
+                }
+
+                if (*(stream) == '"')
+                {
+                    token.string_val = str_intern_range(token.start + 1, stream);
+                    stream++;
+                    break;
+                }
+            }
+        }
+        break;
         case '(':
         {
             token.kind = TOKEN_LEFT_PAREN;

@@ -31,6 +31,11 @@ void print_expr(expr* e)
             printf("%s", e->name);
         }
         break;
+        case EXPR_STRING:
+        {
+            printf("\"%s\"", e->string_value);
+        }
+        break;
         case EXPR_SIZEOF:
         {
             printf("(sizeof ");

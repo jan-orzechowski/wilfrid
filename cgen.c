@@ -393,12 +393,11 @@ void gen_expr(expr* e)
             gen_printf("%f", e->number_value);
         }
         break;
-        //case EXPR_CHAR:
-        //{
-        //    // TODO: proper quoted string escaping
-        //    gen_printf("\"%s\"", e->str_val);
-        //}
-        //break;
+        case EXPR_STRING:
+        {
+            gen_printf("\"%s\"", e->string_value);
+        }
+        break;
         case EXPR_NAME:
         {
             gen_printf("%s", e->name);

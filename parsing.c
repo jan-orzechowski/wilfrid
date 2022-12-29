@@ -82,6 +82,15 @@ expr* push_sizeof_expr(expr* e)
     return result;
 }
 
+expr* push_string_expr(const char* str_value)
+{
+    expr* result = push_struct(arena, expr);
+    result->kind = EXPR_STRING;
+    result->string_value = str_value;
+    next_lexed_token();
+    return result;
+}
+
 expr* push_unary_expr(token_kind operator, expr* operand)
 {
     expr* result = push_struct(arena, expr);
@@ -259,6 +268,10 @@ expr* parse_base_expr(void)
     else if (is_token_kind(TOKEN_NAME))
     {
         result = push_name_expr(token.name);
+    }
+    else if (is_token_kind(TOKEN_STRING))
+    {
+        result = push_string_expr(token.string_val);
     }
     else if (is_token_kind(TOKEN_KEYWORD))
     {

@@ -23,7 +23,7 @@ typedef enum token_kind
     TOKEN_KEYWORD,
     TOKEN_INT,
     TOKEN_FLOAT,
-    TOKEN_STR,
+    TOKEN_STRING,
     TOKEN_NAME,
 
     // multiplicative precedence
@@ -101,7 +101,7 @@ const char* token_kind_names[] = {
     [TOKEN_KEYWORD] = "keyword",
     [TOKEN_INT] = "int",
     [TOKEN_FLOAT] = "float",
-    [TOKEN_STR] = "string",
+    [TOKEN_STRING] = "string",
     [TOKEN_NAME] = "name",
 
     [TOKEN_MUL] = "*",
@@ -154,6 +154,7 @@ typedef struct tok
     {
         int val;
         const char* name;
+        const char* string_val;
     };
 }
 tok;
