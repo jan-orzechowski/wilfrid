@@ -554,12 +554,9 @@ stmt* parse_simple_statement(void)
     }
     else 
     {
-        next_lexed_token();
-
         s = push_struct(arena, stmt);
-        expr* e = parse_expr();
         s->kind = STMT_EXPR;
-        s->expr = e;
+        s->expr = left_expr;
     }
    
     return s;
@@ -620,9 +617,15 @@ void parse_switch_cases(switch_stmt* switch_stmt)
         }
 
         buf_free(case_exprs);
-        
-        if (c)
+                
+        if (c || case_is_default)
         {
+            if (c == 0) // przypadek, kiedy mieliśmy samo default
+            {
+                c = push_struct(arena, switch_case);
+                c->is_default = true;
+            }
+
             expect_token_kind(TOKEN_LEFT_BRACE);
             c->stmts = parse_statement_block();
             expect_token_kind(TOKEN_RIGHT_BRACE);
@@ -1023,6 +1026,10 @@ decl* parse_declaration_optional(void)
                 if (match_token_kind(TOKEN_COLON))
                 {
                     declaration->variable.type = parse_typespec();
+                    if (declaration->variable.type == 0)
+                    {
+                        fatal("expected typespec after colon");
+                    }
                 }
 
                 if (match_token_kind(TOKEN_ASSIGN))
@@ -1217,13 +1224,14 @@ void parse_test(void)
         "fn f(ind: int) { x.arr[ind] = y[ind] }",
         "fn f(): int { let y = fun_1()\
              let z: int = fun_2(y[0], y[y[0] + 1])\
-             return y * z }"
+             return y * z }",
         "fn f() { if (*x == 1) { return y } else { return z } }",
         "fn f() {if (function(x)) { return y } else if (y == 2) { return z }}",
         "fn f() { if (x) { x = y } else if (y) {} else if (z) { z = x } else { y = z } }",
         "fn f() { if (sizeof(x) == 4) { return x } }"
         "fn f() { while (x > y) { x = x + 1 } }",
-        "fn f() { do { x[index] = x - 1 } while (x < y) }"
+#endif
+        "fn f() { do { x[index] = x - 1 } while (x < y) }",
         "fn f() {\
             switch (x){\
             case 1: {let x: int = 1 return x } break\
@@ -1239,7 +1247,6 @@ void parse_test(void)
         "fn f() { x.y = {z = 2, w = 3, p = 44, q = z, 22} }",
         "typedef vectors = vector[1+2]",
         "typedef t = (fn(int*[2], int):int)[16]",
-#endif
         "let x: int[4] = {1, 2, 3, 4}",
         "let x = (v3){1, 2, 3}",
         "let y = f(1, {1, 2}, (v2){1,2})",
