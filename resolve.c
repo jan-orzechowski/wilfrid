@@ -118,13 +118,24 @@ size_t get_type_align(type* type)
     return type->align;
 }
 
-type* type_void =  &(type) { .name = "void",  .kind = TYPE_VOID, .size = 0, .align = 0 };
-type* type_char =  &(type) { .name = "char",  .kind = TYPE_CHAR, .size = 1, .align = 1 };
-type* type_int =   &(type) { .name = "int",   .kind = TYPE_INT, .size = 4, .align = 4 };
-type* type_float = &(type) { .name = "float", .kind = TYPE_FLOAT, .size = 4, .align = 4 };
-
 const size_t POINTER_SIZE = 8;
 const size_t POINTER_ALIGN = 8;
+
+type* type_void =  &(type) { .name = "void",    .kind = TYPE_VOID,    .size = 0, .align = 0 };
+type* type_char =  &(type) { .name = "char",    .kind = TYPE_CHAR,    .size = 1, .align = 1 };
+type* type_int =   &(type) { .name = "int",     .kind = TYPE_INT,     .size = 4, .align = 4 };
+type* type_float = &(type) { .name = "float",   .kind = TYPE_FLOAT,   .size = 4, .align = 4 };
+
+// funkcje c
+type* type_printf = &(type) { .name = "printf", .kind = TYPE_FUNCTION };
+
+void complete_c_functions()
+{
+    type_printf->function.param_count = 2;
+    type_printf->function.param_types = xmalloc(2 * sizeof(type));
+    type_printf->function.param_types[0] = type_char;
+    type_printf->function.param_types[1] = type_int;
+}
 
 symbol** global_symbols;
 symbol** ordered_global_symbols;
@@ -255,12 +266,30 @@ type* get_incomplete_type(symbol* sym)
     return type;
 }
 
+type** cached_pointer_types = 0;
+
 type* get_pointer_type(type* base_type)
 {
+    size_t ptr_count = buf_len(cached_pointer_types);
+    if (ptr_count > 0)
+    {
+        for (size_t i = 0; i < ptr_count; i++)
+        {
+            type* ptr_type = cached_pointer_types[i];
+            assert(ptr_type->kind == TYPE_POINTER);
+
+            if (ptr_type->pointer.base_type->name == base_type->name)
+            {
+                return ptr_type;
+            }
+        }
+    }
+
     type* type = get_new_type(TYPE_POINTER);
     type->size = POINTER_SIZE;
     type->align = POINTER_ALIGN;
     type->pointer.base_type = base_type;
+    buf_push(cached_pointer_types, type);
     return type;
 }
 
@@ -359,6 +388,15 @@ symbol* get_symbol_from_decl(decl* d)
 symbol* push_installed_symbol(const char* name, type* type)
 {
     symbol* sym = get_new_symbol(SYMBOL_TYPE, name, NULL);
+    sym->state = SYMBOL_RESOLVED;
+    sym->type = type;
+    buf_push(global_symbols, sym);
+    return sym;
+}
+
+symbol* push_installed_function(const char* name, type* type)
+{
+    symbol* sym = get_new_symbol(SYMBOL_FUNCTION, name, NULL);
     sym->state = SYMBOL_RESOLVED;
     sym->type = type;
     buf_push(global_symbols, sym);
@@ -521,7 +559,7 @@ resolved_expr* pointer_decay(resolved_expr* e)
 {        
     if (e->type->kind == TYPE_ARRAY)
     {
-        e = get_resolved_rvalue_expr(get_pointer_type(e->type->array.base_type));
+        e = get_resolved_lvalue_expr(get_pointer_type(e->type->array.base_type));
     }
     return e;
 }
@@ -583,13 +621,14 @@ resolved_expr* resolve_expr_binary(expr* expr)
     resolved_expr* left = resolve_expr(expr->binary.left);
     resolved_expr* right = resolve_expr(expr->binary.right);
     
-    if (left->type != type_int)
+    if ((left->type == type_int || left->type->kind == TYPE_POINTER)
+        && (right->type == type_int || right->type->kind == TYPE_POINTER))
     {
-        fatal("left operand of + must be int");
+        // ok
     }
-    if (right->type != left->type)
+    else
     {
-        fatal("left and right operand of + must have same type");
+        fatal("operands of +- must be both ints or pointers");
     }
 
     if (left->is_const && right->is_const)
@@ -654,9 +693,18 @@ resolved_expr* resolve_compound_expr(expr* e, type* expected_type)
             compound_literal_field* field = e->compound.fields[i];
             type* expected_type = t->aggregate.fields[index]->type;
             resolved_expr* init_expr = resolve_expected_expr(field->expr, expected_type);
+
             if (init_expr->type != expected_type)
             {
-                fatal("compound literal field type mismatch");
+                if (init_expr->type == type_int
+                    && expected_type->kind == TYPE_POINTER)
+                {
+                    // wyjątek
+                }
+                else
+                {
+                    fatal("compound literal field type mismatch");
+                }
             }
         }
     }
@@ -713,6 +761,13 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type)
             result->val = e->number_value;
         }
         break;
+        case EXPR_STRING:
+        {
+            type* t = get_pointer_type(type_char);
+            result = get_resolved_rvalue_expr(t);
+            result->is_const = true;
+        }
+        break;
         case EXPR_CALL:
         {
             resolved_expr* fn_expr = resolve_expr(e->call.function_expr);
@@ -761,8 +816,15 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type)
         case EXPR_FIELD:
         {           
             resolved_expr* aggregate_expr = resolve_expr(e->field.expr);
-            const char* field_name = str_intern(e->field.field_name);
             type* t = aggregate_expr->type;
+
+            // zawsze uzyskujemy dostęp za pomocą x.y, nawet gdy x jest wskaźnikiem do wskaźnika itd.
+            while (t->kind == TYPE_POINTER)
+            {
+                t = t->pointer.base_type;
+            }
+
+            const char* field_name = str_intern(e->field.field_name);
             complete_type(t);
 
             type* found = 0;
@@ -976,7 +1038,15 @@ void resolve_stmt(stmt* st, type* opt_ret_type)
                 resolved_expr* result = resolve_expected_expr(st->expr, opt_ret_type);
                 if (result->type != opt_ret_type)
                 {
-                    fatal("return type mismatch");
+                    if (result->type == type_int
+                        && opt_ret_type->kind == TYPE_POINTER)
+                    {
+                        // pozwalamy na to, przynajmniej na razie
+                    }
+                    else
+                    {
+                        fatal("return type mismatch");
+                    }
                 }
             }
             else
@@ -1127,6 +1197,11 @@ void complete_symbol(symbol* sym)
     }
     else if (sym->kind == SYMBOL_FUNCTION)
     {
+        // wyjątek - zewnętrzna funkcja
+        if (sym->name == str_intern("printf"))
+        {
+            return;
+        }
         complete_function_body(sym);
     }
 }
@@ -1137,6 +1212,10 @@ void init_before_resolve()
     push_installed_symbol(str_intern("char"), type_char);
     push_installed_symbol(str_intern("int"), type_int);
     push_installed_symbol(str_intern("float"), type_float);
+    
+    complete_c_functions();
+
+    push_installed_function(str_intern("printf"), type_printf);
 }
 
 symbol** resolve_test_decls(char** decl_arr, size_t decl_arr_count, bool print)

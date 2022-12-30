@@ -70,20 +70,24 @@ char* type_to_cdecl(type* type, const char* name)
         case TYPE_STRUCT:
         case TYPE_UNION:
         {
-            return xprintf("%s%s%s", cdecl_name(type), *name ? " " : "", name);
+            return xprintf("%s%s%s", cdecl_name(type), name ? " " : "", name);
         }
+        break;
         case TYPE_POINTER:
         {
-            return type_to_cdecl(type->pointer.base_type, parenthesize(xprintf("*%s", name), *name));
+            return type_to_cdecl(type->pointer.base_type, parenthesize(xprintf("*%s", name), name));
         }
+        break;
         case TYPE_ARRAY:
         {
-            return type_to_cdecl(type->array.base_type, parenthesize(xprintf("%s[%llu]", name, type->array.size), *name));
+            return type_to_cdecl(type->array.base_type, parenthesize(xprintf("%s[%llu]", name, type->array.size), name));
         }
+        break;
         case TYPE_FUNCTION:
         {
             char* result = NULL;
-            buf_printf(result, "%s(", parenthesize(xprintf("*%s", name), *name));
+            //buf_printf(result, "%s(", parenthesize(xprintf("*%s", name), name));
+            buf_printf(result, "%s(", xprintf("*%s", name));
             if (type->function.param_count == 0)
             {
                 buf_printf(result, "void");
@@ -99,6 +103,7 @@ char* type_to_cdecl(type* type, const char* name)
             buf_printf(result, ")");
             return type_to_cdecl(type->function.ret_type, result);
         }
+        break;
         default:
         assert(0);
         return NULL;
@@ -113,12 +118,14 @@ char* typespec_to_cdecl(typespec* t, const char* name)
         case TYPESPEC_NAME:
         {
             // środkowe s to spacja, jeśli zostało podane name
-            result = xprintf("%s%s%s", t->name, *name ? " " : "", name);
+            result = xprintf("%s%s%s", t->name, name ? " " : "", name);
+            debug_breakpoint;
         }
         break;
         case TYPESPEC_POINTER:
         {
-            const char* wrapped_name = parenthesize(xprintf("*%s", name), (bool)* name);
+            // false podane zamiast name tymczasowo
+            const char* wrapped_name = parenthesize(xprintf("*%s", name), false); 
             result = typespec_to_cdecl(t->pointer.base_type, wrapped_name);
         }
         break;
@@ -130,7 +137,8 @@ char* typespec_to_cdecl(typespec* t, const char* name)
         break;
         case TYPESPEC_FUNCTION:
         {
-            buf_printf(result, "%s(", parenthesize(xprintf("*%s", name), *name));
+            //buf_printf(result, "%s(", parenthesize(xprintf("*%s", name), *name));
+            buf_printf(result, "%s(", parenthesize(xprintf("*%s", name), name));
             if (t->function.param_count == 0)
             {
                 buf_printf(result, "void");
@@ -199,7 +207,7 @@ void gen_simple_stmt(stmt* stmt)
                             char* decl_str = type_to_cdecl(
                                 stmt->decl_stmt.decl->variable.expr->resolved_type,
                                 stmt->decl_stmt.decl->name);
-                            gen_printf_newline(decl_str);
+                            gen_printf(decl_str);
                             debug_breakpoint;                        
                         }
                         else
@@ -212,7 +220,7 @@ void gen_simple_stmt(stmt* stmt)
                         char* decl_str = typespec_to_cdecl(
                             stmt->decl_stmt.decl->variable.type,
                             stmt->decl_stmt.decl->name);
-                        gen_printf_newline(decl_str);
+                        gen_printf(decl_str);
                         debug_breakpoint;
                     }                  
 
@@ -220,13 +228,11 @@ void gen_simple_stmt(stmt* stmt)
                     {
                         gen_printf(" = ");
                         gen_expr(stmt->decl_stmt.decl->variable.expr);
-                        gen_printf(";");
                     }
                     else
                     {
                         // czy powinniśmy na to pozwalać?
                         // może to powinno być rozwiązane na poziomie resolving
-                        gen_printf(";");
                     }
                 }
                 break;
@@ -294,8 +300,11 @@ void gen_stmt(stmt* stmt)
             gen_expr(stmt->if_else.cond_expr);
             gen_printf(") ");
             gen_stmt_block(stmt->if_else.then_block);
-
-            gen_stmt(stmt->if_else.else_stmt);
+            if (stmt->if_else.else_stmt)
+            {
+                gen_printf_newline("else ");
+                gen_stmt(stmt->if_else.else_stmt);
+            }
         }        
         break;
         case STMT_WHILE:
@@ -373,7 +382,9 @@ void gen_stmt(stmt* stmt)
         break;
         default:
         {
+            gen_printf_newline("");
             gen_simple_stmt(stmt);
+            gen_printf(";");
         }      
         break;
     }
@@ -448,7 +459,15 @@ void gen_expr(expr* e)
         case EXPR_FIELD:
         {
             gen_expr(e->field.expr);
-            gen_printf(".%s", e->field.field_name);
+            if (e->field.expr->resolved_type->kind == TYPE_POINTER)
+            {
+                gen_printf("->%s", e->field.field_name);
+                debug_breakpoint;
+            }
+            else
+            {
+                gen_printf(".%s", e->field.field_name);
+            }
         }
         break;
         case EXPR_INDEX:
@@ -474,8 +493,7 @@ void gen_expr(expr* e)
             }
             else
             {
-                // todo
-                //gen_printf("(%s){", type_to_cdecl(e->type, ""));
+                gen_printf("(%s){", type_to_cdecl(e->resolved_type, ""));
             }
             for (size_t i = 0; i < e->compound.fields_count; i++)
             {
@@ -483,8 +501,13 @@ void gen_expr(expr* e)
                 {
                     gen_printf(", ");
                 }
+
                 compound_literal_field* field = e->compound.fields[i];
-                gen_printf(".%s = ", field->field_name);                
+                if (field->field_name)
+                {
+                    gen_printf(".%s = ", field->field_name);                
+                }
+
                 gen_expr(field->expr);
             }
             gen_printf("}");
@@ -633,6 +656,7 @@ void gen_forward_decls(symbol** resolved)
                 }
                 break;
                 case DECL_CONST:
+                case DECL_VARIABLE:
                 case DECL_ENUM:
                 case DECL_TYPEDEF:
                 default:
@@ -685,7 +709,7 @@ void gen_symbol_decl(symbol* sym)
         case DECL_STRUCT:
         case DECL_UNION:
         {
-            gen_aggregate_decl(sym);
+            gen_aggregate(sym->decl);
         }
         break;
         case DECL_ENUM:
@@ -706,6 +730,11 @@ void gen_symbol_decl(symbol* sym)
         }
         break;
     }
+}
+
+void gen_common_includes(void)
+{
+    gen_printf("#include \"stdio.h\"");
 }
 
 void cgen_test(void)

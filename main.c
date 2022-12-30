@@ -98,11 +98,13 @@ void compile_and_run(void)
             file_buf.str[2] = 0x20; // 0xbf;
         }
        
-        symbol** resolved = resolve(file_buf.str, true);
+        symbol** resolved = resolve(file_buf.str, false);
 
         size_t debug_count = buf_len(resolved);
 
-        gen_printf_newline("// FORWARD DECLARATIONS\n");
+        gen_common_includes();
+
+        gen_printf_newline("\n// FORWARD DECLARATIONS\n");
 
         gen_forward_decls(resolved);
 
@@ -115,7 +117,9 @@ void compile_and_run(void)
 
         debug_breakpoint;
 
-        printf("/// C OUTPUT:\n\n%s\n", gen_buf);
+        //printf("/// C OUTPUT:\n\n%s\n", gen_buf);
+
+        gen_printf_newline("int main(int argc, char** argv) { tree_test(); }");
 
         write_file("test/testcode.c", gen_buf, buf_len(gen_buf));
 
@@ -123,6 +127,7 @@ void compile_and_run(void)
     }
 }
 
+#if 1
 int main(int argc, char** argv)
 {
     string_arena = allocate_memory_arena(megabytes(10));
@@ -151,3 +156,4 @@ int main(int argc, char** argv)
 
     return 1;
 }
+#endif

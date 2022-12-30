@@ -123,8 +123,8 @@ const char* token_kind_names[] = {
     [TOKEN_LEQ] = "<=",
     [TOKEN_GEQ] = ">=",
 
-    [TOKEN_AND] = "AND",
-    [TOKEN_OR] = "OR",
+    [TOKEN_AND] = "&&",
+    [TOKEN_OR] = "||",
 
     [TOKEN_ASSIGN] = "=",
     [TOKEN_ADD_ASSIGN] = "+=",
