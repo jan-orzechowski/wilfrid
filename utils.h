@@ -3,8 +3,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <assert.h>
 #include <string.h>
+
+#define assert(condition) { if (!(condition)) { int x = 0; int y = 1 / x; } }
 
 #define debug_breakpoint { int x = 0; }
 #define invalid_default_case default: { assert(0); } break;
