@@ -135,7 +135,7 @@ int main(int argc, char** argv)
     intern_str_test();
 
     copy_test();
-
+    map_test();
     stack_vm_test(code);
     
     //parse_test();
