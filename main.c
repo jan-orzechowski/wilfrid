@@ -17,6 +17,7 @@
 #include "vm.c"
 
 #include "main.h"
+#include "gc_test.c"
 
 typedef struct string_ref
 {
@@ -133,7 +134,7 @@ int main(int argc, char** argv)
 
     stretchy_buffers_test();
     intern_str_test();
-
+   
     copy_test();
     map_test();
     stack_vm_test(code);
@@ -145,13 +146,16 @@ int main(int argc, char** argv)
     //cgen_test();
 #endif
 
-    compile_and_run();
+    //compile_and_run();
 
     //for (size_t i = 1; i < argc; i++)
     //{
     //    char* arg = argv[i];
     //    compile_and_run(arg);
     //}
+
+    gc_init();
+    gc_test();
 
     return 1;
 }
