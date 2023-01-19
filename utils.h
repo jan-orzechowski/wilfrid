@@ -152,6 +152,7 @@ buffer_header;
 
 #define buf_push(b, x) (__buf_fit((b), 1), (b)[__buf_header(b)->len++] = (x))
 #define buf_free(b) ((b) ? (free(__buf_header(b)), (b) = NULL) : 0)
+#define buf_remove_at(b, i) ((b) && buf_len(b) > (i) ? ((b)[i] = (b)[buf_len(b) - 1], (b)[buf_len(b) - 1] = 0, __buf_header(b)->len--) : 0) 
 
 // do debugowania - w watch window makra nie działają...
 buffer_header* __get_buf_header(void* ptr)
@@ -246,6 +247,26 @@ void copy_test(void)
 
     free(test);
     buf_free(buffer);
+}
+
+void buf_remove_at_test()
+{
+    int* integers = 0;
+    assert(buf_len(integers) == 0);
+    buf_push(integers, 0);
+    buf_push(integers, 1);
+    buf_push(integers, 2);
+    assert(buf_len(integers) == 3);
+    buf_remove_at(integers, 1);
+    assert(buf_len(integers) == 2);
+    assert(integers[2] == 0);
+    assert(integers[1] == 2);
+    buf_remove_at(integers, 1);
+    assert(buf_len(integers) == 1);
+    assert(integers[1] == 0);
+    buf_remove_at(integers, 0);
+    assert(buf_len(integers) == 0);
+    buf_remove_at(integers, 0);
 }
 
 uint64_t hash_uint64(uint64_t x)
@@ -462,5 +483,7 @@ void stretchy_buffers_test(void)
     assert(strcmp(char_buf, "One: 1\n") == 0);
     buf_printf(char_buf, "Hex: 0x%x\n", 0x12345678);
     assert(strcmp(char_buf, "One: 1\nHex: 0x12345678\n") == 0);
+
+    buf_remove_at_test();
 }
 
