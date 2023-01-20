@@ -13,29 +13,19 @@ define_struct(something_to_gc)
     something_to_gc* gc_obj_ptr;
 };
 
-int first;
-uintptr_t __begin = (uintptr_t)&first;
+// numer z __begin i __end niestety nie działa...
+// ale mam inny pomysł: skoro generuję kod C sam, mogę wszystkie
+// zmienne globalne umieścić w jednym strukcie - to już zadziała
 
-// porządek zmiennych globalnych, jeśli polegają na sobie, może być
-// rozwiązany tak samo jak porządek deklaracji - wystarczy, że 
-// begin i end będą na właściwych miejscach
-int costam0 = 2;
-something_to_gc* static_gc_to_save;
-int costam1 = 3;
-int costam2 = 4;
-int costam3 = 5;
-int costam4 = 6;
-int costam5 = 7;
-int costam6 = 8;
-int costam7 = 9;
-int costam8 = 10;
-int costam9 = 11;
-int costam10 = 12;
-int costam11 = 13;
-int costam12 = 14;
+typedef struct globals_wrapper
+{
+    something_to_gc* static_gc_to_save_1;
+    something_to_gc* static_gc_to_save_2;
+    something_to_gc* static_gc_to_save_3;
+} globals_wrapper;
+struct globals_wrapper globals = {(something_to_gc*)666,(something_to_gc*)777,(something_to_gc*)888};
 
-int __last;
-uintptr_t __end = (uintptr_t)&__last;
+uintptr_t test_gc_ptr;
 
 uintptr_t stack_approximate_beginning;
 
@@ -56,13 +46,14 @@ allocation_metadata** allocations;
 allocation_metadata** gc_allocations;
 
 // dwie cyfry heksadecymalne - np. 0xFF -> jeden bajt, 0-255, więc 64 bity, czyli 8 bajtów -> 16 cyfr
-//#define ptr_tag 0x0000000000002137
 #define alive_tag 0x1000000000000000
 #define tag(v, t) ((v) = ((v) | (t)))
 #define untag(v, t) ((v) = ((v) & (~0 & ~(t))))
 
 uintptr_t min_ptr = UINT64_MAX;
 uintptr_t max_ptr = 0;
+
+#define get_obj_ptr(hdr_ptr) (uintptr_t)((char*)(hdr_ptr) + sizeof(allocation_metadata))
 
 void* alloc_wrapper(size_t num_bytes, bool garbage_collect)
 {
@@ -75,7 +66,7 @@ void* alloc_wrapper(size_t num_bytes, bool garbage_collect)
 
     assert((hdr->size & alive_tag) == 0);
 
-    uintptr_t obj_ptr = (uintptr_t)((char*)memory + sizeof(allocation_metadata));
+    uintptr_t obj_ptr = get_obj_ptr(memory);
 
     if (garbage_collect)
     {
@@ -101,8 +92,8 @@ void* alloc_wrapper(size_t num_bytes, bool garbage_collect)
 
 typedef enum garbage_collected
 {
-    GARBAGE_COLLECT_TRUE,
-    GARBAGE_COLLECT_FALSE
+    GARBAGE_COLLECT_TRUE = 1,
+    GARBAGE_COLLECT_FALSE = 0
 } garbage_collected;
 
 void* gc_alloc(size_t num_bytes)
@@ -141,26 +132,32 @@ void scan_for_pointers(uintptr_t memory_block_begin, size_t byte_count)
 
         for (uintptr_t ptr = memory_block_begin;
             ptr < memory_block_end;
-            ptr++)
+            ptr += sizeof(uintptr_t))
         {
             uintptr_t potential_managed_ptr = *((uintptr_t*)ptr);
-            if (potential_managed_ptr <= max_ptr 
-                && potential_managed_ptr >= min_ptr)
+            if (potential_managed_ptr > max_ptr || potential_managed_ptr < min_ptr)
             {
-                for (size_t i = 0; i < gc_count; i++)
-                {
-                    // to koniecznie trzeba zastąpić hash tablicą...
-                    allocation_metadata* hdr = gc_allocations[i];
-                    uintptr_t obj_ptr = (uintptr_t)((char*)hdr + sizeof(allocation_metadata));
-                    if (potential_managed_ptr == obj_ptr)
-                    {
-                        debug_breakpoint;
-                        scan_for_pointers(obj_ptr, hdr->size);
-                        tag(hdr->size, alive_tag);
-                        break;
-                    }
-                }
+                continue;
             }
+            
+            for (size_t i = 0; i < gc_count; i++)
+            {
+                // to koniecznie trzeba zastąpić hash tablicą...
+                allocation_metadata* hdr = gc_allocations[i];
+                uintptr_t obj_ptr = get_obj_ptr(hdr);
+                if (obj_ptr == test_gc_ptr)
+                {
+                    debug_breakpoint;
+                }
+                    
+                if (potential_managed_ptr == obj_ptr)
+                {
+                    debug_breakpoint;
+                    scan_for_pointers(obj_ptr, hdr->size);
+                    tag(hdr->size, alive_tag);
+                    break;
+                }
+            }           
         }
     }  
 }
@@ -181,14 +178,14 @@ void mark(void)
     scan_range_for_pointers(stack_approximate_end, stack_approximate_beginning);
 
     // zmienne statycznie zaalokowane
-    scan_range_for_pointers(__begin, __end);
+    scan_for_pointers((uintptr_t)&globals, sizeof(globals_wrapper));
 
     // no i to, co sami zaalokowaliśmy
     size_t allocations_count = buf_len(allocations);
     for (size_t i = 0; i < allocations_count; i++)
     {
         allocation_metadata* hdr = allocations[i];
-        uintptr_t obj_ptr = (uintptr_t)((char*)hdr + sizeof(allocation_metadata));
+        uintptr_t obj_ptr = get_obj_ptr(hdr);
         scan_for_pointers(obj_ptr, hdr->size);
     }
 }
@@ -227,7 +224,7 @@ void print_values_from_list(bool gc)
     {
         int value = 0;
         allocation_metadata* hdr = buf[i];
-        void* obj_ptr = (void*)((char*)hdr + sizeof(allocation_metadata));
+        void* obj_ptr = (void*)get_obj_ptr(hdr);
         if (gc)
         {
             value = ((something_to_gc*)obj_ptr)->value;
@@ -243,10 +240,11 @@ void print_values_from_list(bool gc)
 
 void gc_test(void)
 {
-    something_to_gc* gc_to_save = null;
+    something_to_gc* stack_gc_to_save = null;
 
-    uintptr_t gc_to_save_addr = (uintptr_t)&gc_to_save;
+    
 
+#if 1
     for (size_t i = 0; i < 1000; i++)
     {
         non_gc_object* nongc = alloc(sizeof(non_gc_object));
@@ -272,17 +270,38 @@ void gc_test(void)
             break;
             case 2:
             {
-                gc_to_save = gc;
+                stack_gc_to_save = gc;
+                test_gc_ptr = (uintptr_t)stack_gc_to_save;
+                globals.static_gc_to_save_1 = gc;
                 gc->value = i;
 
-                if (static_gc_to_save == 0)
+                if (globals.static_gc_to_save_1 == 0)
                 {
-                    static_gc_to_save = gc;
+                    globals.static_gc_to_save_1 = gc;
+                }
+                else if (globals.static_gc_to_save_2 == 0)
+                {
+                    globals.static_gc_to_save_2 = gc;
+                }
+                else if (globals.static_gc_to_save_3 == 0)
+                {
+                    globals.static_gc_to_save_3 = gc;
                 }
             }
             break;
         }       
     }
+#endif
+
+#if 0
+    non_gc_object* nongc = alloc(sizeof(non_gc_object));
+    nongc->value = 555;
+    something_to_gc* gcobj = gc_alloc(sizeof(something_to_gc));
+    globals.static_gc_to_save_1 = gcobj;
+    stack_gc_to_save = gcobj;
+
+    test_gc_ptr = (uintptr_t)stack_gc_to_save;
+#endif
 
     size_t gc_count_before = buf_len(gc_allocations);
 
