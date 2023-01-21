@@ -403,36 +403,46 @@ void map_test(void)
     debug_breakpoint;
 }
 
-typedef struct intern_str
+typedef struct intern_str intern_str;
+struct intern_str
 {
     size_t len;
-    char* ptr;
-}
-intern_str;
+    intern_str* next;
+    char str[];
+};
 
-intern_str* interns;
+hashmap* interns;
 memory_arena* string_arena;
 
 const char* str_intern_range(const char* start, const char* end)
 {
     size_t len = end - start;
-    for (size_t i = 0; i < buf_len(interns); i++)
+
+    uint64_t hash = hash_bytes(start, len);
+    // wartość 0 jest zarezerwowana jako sentinel - na niej przerwiemy wyszukiwanie
+    void* key = (void*)(uintptr_t)(hash ? hash : 1);
+
+    intern_str* intern = map_get(interns, key);
+    for (intern_str* it = intern; it; it = it->next)
     {
-        // musimy wcześniej sprawdzić len, by uniknąć sytuacji, w której tylko prefix się zgadza - strncmp nie sprawdza długości
-        if (interns[i].len == len && strncmp(interns[i].ptr, start, len) == 0)
+        // musimy wcześniej sprawdzić długość, by uniknąć sytuacji, w której 
+        // tylko prefix się zgadza - strncmp nie sprawdza długości
+        if (it->len == len && strncmp(it->str, start, len) == 0)
         {
-            return interns[i].ptr;
+            return it->str;
         }
     }
 
     // jeśli nie znaleźliśmy
-    char* new_str = (char*)push_size(string_arena, len + 1);
-    memcpy(new_str, start, len);
-    new_str[len] = 0; // upewniamy się, że mamy null terminator
+    intern_str* new_intern = push_size(string_arena, offsetof(intern_str, str) + len + 1);
+    new_intern->len = len;
+    new_intern->next = intern;
 
-    buf_push(interns, ((intern_str){.len = len, .ptr = new_str}));
+    memcpy(new_intern->str, start, len);
+    new_intern->str[len] = 0;
+    map_put(interns, key, new_intern);
 
-    return new_str;
+    return new_intern->str;
 }
 
 const char* str_intern(const char* str)
@@ -442,6 +452,9 @@ const char* str_intern(const char* str)
 
 void intern_str_test(void)
 {
+    interns = xcalloc(sizeof(hashmap));
+    map_grow(interns, 16);
+
     char x[] = "hello";
     char y[] = "hello";
 
