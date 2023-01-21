@@ -117,7 +117,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard_C>stdc11</LanguageStandard_C>
-      <AdditionalOptions>/we4024 /we4013 /we4133 /we4047 /we4087 /we4020 /we4715 /we4716 /Tc %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/we4024 /we4022 /we4013 /we4133 /we4047 /we4087 /we4020 /we4715 /we4716 /Tc %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -133,7 +133,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard_C>stdc11</LanguageStandard_C>
-      <AdditionalOptions>/we4024 /we4013 /we4133 /we4047 /we4087 /we4020 /we4715 /we4716 /Tc %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/we4024 /we4022 /we4013 /we4133 /we4047 /we4087 /we4020 /we4715 /we4716 /Tc %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
