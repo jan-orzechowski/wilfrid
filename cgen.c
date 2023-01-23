@@ -5,6 +5,7 @@
 int gen_indent;
 
 char* gen_buf = NULL;
+source_pos gen_pos;
 
 #define gen_printf(...) buf_printf(gen_buf, __VA_ARGS__)
 #define gen_printf_newline(...) (_gen_printf_newline(), gen_printf(__VA_ARGS__))
@@ -12,12 +13,23 @@ char* gen_buf = NULL;
 void _gen_printf_newline()
 {
     gen_printf("\n%.*s", 2 * gen_indent, "                                                                               ");
+    gen_pos.line++;
 }
 
 const char* parenthesize(const char* str, bool parenthesize)
 {
     const char* result = parenthesize ? xprintf("(%s)", str) : str;
     return result;
+}
+
+void gen_line_hint(source_pos pos)
+{
+    if (gen_pos.line != pos.line || gen_pos.filename != pos.filename)
+    {
+        gen_printf_newline("#line %d ", pos.line);
+        gen_printf("\"%s\" ", pos.filename);
+        gen_pos = pos;
+    }
 }
 
 void gen_stmt(stmt* s);
@@ -167,6 +179,7 @@ void gen_aggregate(decl* decl)
     for (size_t i = 0; i < decl->aggregate.fields_count; i++)
     {
         aggregate_field item = decl->aggregate.fields[i];
+        gen_line_hint(item.pos);
         gen_printf_newline("%s;", typespec_to_cdecl(item.type, item.name));        
     }
     gen_indent--;
@@ -265,6 +278,7 @@ void gen_simple_stmt(stmt* stmt)
 
 void gen_stmt(stmt* stmt)
 {
+    gen_line_hint(stmt->pos);
     switch (stmt->kind)
     {
         case STMT_RETURN:
@@ -639,6 +653,7 @@ void gen_forward_decls(symbol** resolved)
         {
             switch (d->kind)
             {
+                gen_line_hint(d->pos);
                 case DECL_STRUCT:
                 {
                     gen_printf_newline("typedef struct %s %s;", sym->name, sym->name);
@@ -685,6 +700,7 @@ void gen_symbol_decl(symbol* sym)
         return;
     }
 
+    gen_line_hint(decl->pos);
     switch (decl->kind)
     {
         case DECL_VARIABLE:
