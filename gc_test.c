@@ -168,12 +168,12 @@ void mark(void)
     // no i to, co sami zaalokowaliśmy
     for (size_t i = 0; i < allocations->capacity; i++)
     {
-        hashmap_value* val = gc_allocations->values[i];
+        hashmap_value* val = allocations->values[i];
         while (val)
         {
             allocation_header* hdr = get_hdr_ptr(val->value);
+            assert(~(hdr->size & alive_tag));
             scan_for_pointers((uintptr_t)val->value, hdr->size);
-
             val = val->next;            
         }
     }
