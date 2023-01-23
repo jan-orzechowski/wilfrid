@@ -1323,7 +1323,7 @@ void resolve_test(void)
     buf_free(result);
 }
 
-symbol** resolve(char* source, bool print_s_expressions)
+symbol** resolve(char* filename, char* source, bool print_s_expressions)
 {
     if (arena == 0)
     {
@@ -1331,7 +1331,7 @@ symbol** resolve(char* source, bool print_s_expressions)
     }
     init_before_resolve();
 
-    decl** declarations = parse(source, print_s_expressions);
+    decl** declarations = parse(filename, source, print_s_expressions);
 
     size_t debug_decl_count = buf_len(declarations);
 

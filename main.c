@@ -98,7 +98,7 @@ void compile_and_run(void)
             file_buf.str[2] = 0x20; // 0xbf;
         }
        
-        symbol** resolved = resolve(file_buf.str, false);
+        symbol** resolved = resolve(test_file, file_buf.str, false);
 
         size_t debug_count = buf_len(resolved);
 
@@ -146,7 +146,7 @@ int main(int argc, char** argv)
     //cgen_test();
 #endif
 
-    //compile_and_run();
+    compile_and_run();
 
     //for (size_t i = 1; i < argc; i++)
     //{
@@ -154,8 +154,8 @@ int main(int argc, char** argv)
     //    compile_and_run(arg);
     //}
 
-    gc_init();
-    gc_test();
+    //gc_init();
+    //gc_test();
 
     return 1;
 }

@@ -542,8 +542,14 @@ bool next_token(void)
         case '\n':
         case '\r':
         case ' ':
+        case '\t': 
+        case '\v':
         {
-            discard_token = true;
+            discard_token = true;            
+            if (*stream == '\n')
+            {
+                token.pos.line++;
+            }
             stream++;
         }
         break;       
@@ -567,11 +573,12 @@ bool next_token(void)
     return (false == is_at_end);
 }
 
-void init_stream(char* str)
+void init_stream(char* filename, char* str)
 {
-    init_keywords();
-
+    init_keywords(); 
     stream = str;
+    token.pos.filename = filename ? filename : "<string>";
+    token.pos.line = 1;
     buf_free(all_tokens);
     next_token();
 }
@@ -599,9 +606,9 @@ void next_lexed_token(void)
     }
 }
 
-void lex(char* test)
+void lex(char* filename, char* test)
 {
-    init_stream(test);
+    init_stream(filename, test);
     while (next_token());
     get_first_lexed_token();
 }

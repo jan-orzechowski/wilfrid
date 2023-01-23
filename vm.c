@@ -100,7 +100,7 @@ void stack_vm_test(int* code)
 
 void parsing_and_vm_test(char* expr, int value)
 {
-    init_stream(expr);
+    init_stream(null, expr);
     while (token.kind)
     {
         next_token();

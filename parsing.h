@@ -39,6 +39,7 @@ typedef struct typespec_function
 struct typespec
 {
     typespec_kind kind;
+    source_pos pos;
     union
     {
         const char* name;
@@ -133,6 +134,7 @@ struct expr
 {
     expr_kind kind;
     type* resolved_type; // dodawany po parsowaniu
+    source_pos pos;
     union
     {
         int number_value;
@@ -229,6 +231,7 @@ typedef struct switch_stmt
 struct stmt
 {
     stmt_kind kind;
+    source_pos pos;
     union
     {
         return_stmt return_stmt;
@@ -259,6 +262,7 @@ typedef struct aggregate_field
 {
     const char* name;
     typespec* type;
+    source_pos pos;
 } aggregate_field;
 
 typedef struct aggregate_decl
@@ -282,6 +286,7 @@ typedef struct function_param
 {
     const char* name;
     typespec* type;
+    source_pos pos;
 } function_param;
 
 typedef struct function_param_list
@@ -302,6 +307,7 @@ typedef struct enum_value
     const char* name;
     bool value_set;
     int64_t value;
+    source_pos pos;
 } enum_value;
 
 typedef struct enum_decl
@@ -320,6 +326,7 @@ struct decl
 {
     const char* name;
     decl_kind kind;
+    source_pos pos;
     union
     {
         function_decl function;
