@@ -1,21 +1,15 @@
 ﻿#include "utils.h"
 
-#define define_struct(name) typedef struct name name; struct name
-
-define_struct(allocation_metadata)
+define_struct(allocation_header)
 {
     size_t size; // najwyższy bit jest tagged
 };
 
 define_struct(something_to_gc)
 {
-    int value;
+    int test_number;
     something_to_gc* gc_obj_ptr;
 };
-
-// numer z __begin i __end niestety nie działa...
-// ale mam inny pomysł: skoro generuję kod C sam, mogę wszystkie
-// zmienne globalne umieścić w jednym strukcie - to już zadziała
 
 typedef struct globals_wrapper
 {
@@ -37,13 +31,10 @@ void gc_init()
 
 define_struct(non_gc_object)
 {
-    int value;
+    int test_number;
     non_gc_object* non_gc_obj_ptr;
     something_to_gc* gc_obj_ptr;
 };
-
-allocation_metadata** allocations;
-allocation_metadata** gc_allocations;
 
 // dwie cyfry heksadecymalne - np. 0xFF -> jeden bajt, 0-255, więc 64 bity, czyli 8 bajtów -> 16 cyfr
 #define alive_tag 0x1000000000000000
@@ -53,20 +44,24 @@ allocation_metadata** gc_allocations;
 uintptr_t min_ptr = UINT64_MAX;
 uintptr_t max_ptr = 0;
 
-#define get_obj_ptr(hdr_ptr) (uintptr_t)((char*)(hdr_ptr) + sizeof(allocation_metadata))
+#define get_obj_ptr(hdr_ptr) (void*)((char*)(hdr_ptr) + sizeof(allocation_header))
+#define get_hdr_ptr(obj_ptr) (allocation_header*)((char*)(obj_ptr) - sizeof(allocation_header))
+
+chained_hashmap* allocations;
+chained_hashmap* gc_allocations;
 
 void* alloc_wrapper(size_t num_bytes, bool garbage_collect)
 {
     assert(num_bytes <= 0x7FFFFFFFFFFFFFFF);
 
-    void* memory = xcalloc(num_bytes + sizeof(allocation_metadata));
+    void* memory = xcalloc(num_bytes + sizeof(allocation_header));
 
-    allocation_metadata* hdr = (allocation_metadata*)memory;
+    allocation_header* hdr = (allocation_header*)memory;
     hdr->size = num_bytes;
 
     assert((hdr->size & alive_tag) == 0);
 
-    uintptr_t obj_ptr = get_obj_ptr(memory);
+    uintptr_t obj_ptr = (uintptr_t)get_obj_ptr(memory);
 
     if (garbage_collect)
     {
@@ -80,11 +75,11 @@ void* alloc_wrapper(size_t num_bytes, bool garbage_collect)
             max_ptr = obj_ptr;
         }
 
-        buf_push(gc_allocations, hdr);
+        map_add_to_chain(gc_allocations, (void*)obj_ptr, (void*)obj_ptr);
     }
     else
     {
-        buf_push(allocations, hdr);
+        map_add_to_chain(allocations, (void*)obj_ptr, (void*)obj_ptr);
     }
 
     return (void*)obj_ptr;
@@ -106,21 +101,13 @@ void* alloc(size_t num_bytes)
     return alloc_wrapper(num_bytes, GARBAGE_COLLECT_FALSE);
 }
 
-void free_wrapper(void* ptr)
-{
-    if (ptr)
-    {
-        free(ptr);
-        for (size_t i = 0; i < buf_len(allocations); i++)
-        {
-            if (allocations[i] == ptr)
-            {
-                buf_remove_at(allocations, i);
-                break;
-            }
-        }
-    }
-}
+//void free_wrapper(void* ptr)
+//{
+//    if (ptr)
+//    {
+//        delete_from_chain(allocations, ptr);
+//    }
+//}
 
 void scan_for_pointers(uintptr_t memory_block_begin, size_t byte_count)
 {   
@@ -140,24 +127,22 @@ void scan_for_pointers(uintptr_t memory_block_begin, size_t byte_count)
                 continue;
             }
             
-            for (size_t i = 0; i < gc_count; i++)
-            {
-                // to koniecznie trzeba zastąpić hash tablicą...
-                allocation_metadata* hdr = gc_allocations[i];
-                uintptr_t obj_ptr = get_obj_ptr(hdr);
-                if (obj_ptr == test_gc_ptr)
+            uintptr_t obj_ptr = (uintptr_t)map_get_from_chain(gc_allocations, (void*)potential_managed_ptr);
+            if (obj_ptr)
+            {               
+                allocation_header* hdr = get_hdr_ptr(obj_ptr);
+                if (hdr->size & alive_tag)
                 {
+                    // mamy cykl - nie skanujemy dalej
                     debug_breakpoint;
+                    return;
                 }
-                    
-                if (potential_managed_ptr == obj_ptr)
-                {
-                    debug_breakpoint;
-                    scan_for_pointers(obj_ptr, hdr->size);
-                    tag(hdr->size, alive_tag);
-                    break;
-                }
-            }           
+
+                debug_breakpoint;
+                scan_for_pointers(obj_ptr, hdr->size);
+                tag(hdr->size, alive_tag);
+                break;
+            }
         }
     }  
 }
@@ -181,32 +166,40 @@ void mark(void)
     scan_for_pointers((uintptr_t)&globals, sizeof(globals_wrapper));
 
     // no i to, co sami zaalokowaliśmy
-    size_t allocations_count = buf_len(allocations);
-    for (size_t i = 0; i < allocations_count; i++)
+    for (size_t i = 0; i < allocations->capacity; i++)
     {
-        allocation_metadata* hdr = allocations[i];
-        uintptr_t obj_ptr = get_obj_ptr(hdr);
-        scan_for_pointers(obj_ptr, hdr->size);
+        hashmap_value* val = gc_allocations->values[i];
+        while (val)
+        {
+            allocation_header* hdr = get_hdr_ptr(val->value);
+            scan_for_pointers((uintptr_t)val->value, hdr->size);
+
+            val = val->next;            
+        }
     }
 }
 
 void sweep(void)
 {
-    size_t gc_obj_count = buf_len(gc_allocations);
-    for (size_t index = 0; index < gc_obj_count; index++)
+    for (size_t i = 0; i < gc_allocations->capacity; i++)
     {
-        allocation_metadata* hdr = gc_allocations[index];
-        if (false == (hdr->size & alive_tag))
+        hashmap_value* val = gc_allocations->values[i];
+        if (val)
         {
-            free(hdr);
-            buf_remove_at(gc_allocations, index);
-            gc_obj_count--;
-            index--; // żeby nie przeskoczyć o 1 w wyniku usunięcia
-        }
-        else
-        {
-            untag(hdr->size, alive_tag);
-        }
+            hashmap_value* next = val->next;
+            allocation_header* hdr = get_hdr_ptr(val->value);
+
+            if (false == (hdr->size & alive_tag))
+            {
+                map_delete_from_chain(gc_allocations, val->value);
+            }
+            else
+            {
+                untag(hdr->size, alive_tag);
+            }
+
+            val = next;
+        }      
     }
 }
 
@@ -218,23 +211,26 @@ void gc(void)
 
 void print_values_from_list(bool gc)
 {
-    allocation_metadata** buf = gc ? gc_allocations : allocations;
+    chained_hashmap* map = gc ? gc_allocations : allocations;
     printf(gc ? "\nGC: \n" : "\nNON GC: \n");
-    for (size_t i = 0; i < buf_len(buf); i++)
+    for (size_t i = 0; i < map->capacity; i++)
     {
-        int value = 0;
-        allocation_metadata* hdr = buf[i];
-        void* obj_ptr = (void*)get_obj_ptr(hdr);
-        if (gc)
+        if (map->values[i])
         {
-            value = ((something_to_gc*)obj_ptr)->value;
-        }
-        else
-        {
-            value = ((non_gc_object*)obj_ptr)->value;
-        }
-
-        printf("obj value: %i, %d\n", value, hdr->size);
+            hashmap_value* val = map->values[i];
+            allocation_header* hdr = get_hdr_ptr(val->value);
+            int number = 0;
+            if (gc)
+            {
+                number = ((something_to_gc*)val->value)->test_number;
+            }
+            else
+            {
+                number = ((non_gc_object*)val->value)->test_number;
+            }
+            
+            printf("obj number: %i, %zd\n", number, hdr->size);
+        }       
     }
 }
 
@@ -242,13 +238,16 @@ void gc_test(void)
 {
     something_to_gc* stack_gc_to_save = null;
 
-    
+    allocations = xcalloc(sizeof(chained_hashmap));
+    gc_allocations = xcalloc(sizeof(chained_hashmap));
+    map_chain_grow(allocations, 16);
+    map_chain_grow(gc_allocations, 16);
 
 #if 1
     for (size_t i = 0; i < 1000; i++)
     {
         non_gc_object* nongc = alloc(sizeof(non_gc_object));
-        nongc->value = i + 1;
+        nongc->test_number = i + 1;
         something_to_gc* gc = gc_alloc(sizeof(something_to_gc));
         int option = i % 3;
         switch (option)
@@ -257,14 +256,14 @@ void gc_test(void)
             {
                 // nie powinniśmy skasować
                 nongc->gc_obj_ptr = gc;                
-                gc->value = i;
+                gc->test_number = i;
             } 
             break;
             case 1:
             {
                 // tutaj też powinniśmy skasować
                 something_to_gc* gc2 = gc_alloc(sizeof(something_to_gc));
-                gc2->value = i;
+                gc2->test_number = i;
                 gc2->gc_obj_ptr = gc;
             }
             break;
@@ -273,7 +272,7 @@ void gc_test(void)
                 stack_gc_to_save = gc;
                 test_gc_ptr = (uintptr_t)stack_gc_to_save;
                 globals.static_gc_to_save_1 = gc;
-                gc->value = i;
+                gc->test_number = i;
 
                 if (globals.static_gc_to_save_1 == 0)
                 {
@@ -303,13 +302,13 @@ void gc_test(void)
     test_gc_ptr = (uintptr_t)stack_gc_to_save;
 #endif
 
-    size_t gc_count_before = buf_len(gc_allocations);
+    size_t gc_count_before = gc_allocations->total_count;
 
     debug_breakpoint;
 
     gc();
 
-    size_t gc_count_after = buf_len(gc_allocations);
+    size_t gc_count_after = gc_allocations->total_count;
 
     print_values_from_list(true);
     print_values_from_list(false);
