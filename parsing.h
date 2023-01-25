@@ -66,6 +66,7 @@ typedef enum expr_kind
     EXPR_FIELD,
     EXPR_INDEX,
     EXPR_SIZEOF,
+    EXPR_CAST,
     EXPR_COMPOUND_LITERAL
 } expr_kind;
 
@@ -130,6 +131,12 @@ typedef struct sizeof_expr
     expr* expr;
 } sizeof_expr;
 
+typedef struct cast_expr
+{
+    const char* type_name;
+    expr* expr;
+} cast_expr;
+
 struct expr
 {
     expr_kind kind;
@@ -148,6 +155,7 @@ struct expr
         field_expr field;
         compound_literal_expr compound;
         sizeof_expr size_of;
+        cast_expr cast;
     };
 };
 

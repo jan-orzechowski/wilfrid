@@ -85,6 +85,16 @@ expr* push_sizeof_expr(source_pos pos, expr* e)
     return result;
 }
 
+expr* push_cast_expr(source_pos pos, const char* type_name, expr* e)
+{
+    expr* result = push_struct(arena, expr);
+    result->kind = EXPR_CAST;
+    result->cast.type_name = type_name;
+    result->cast.expr = e;
+    result->pos = pos;
+    return result;
+}
+
 expr* push_string_expr(source_pos pos, const char* str_value)
 {
     expr* result = push_struct(arena, expr);
@@ -307,17 +317,41 @@ expr* parse_base_expr(void)
     }
     else if (match_token_kind(TOKEN_LEFT_PAREN))
     {
+        source_pos pos = token.pos;
         result = parse_expr();
+        const char* type_name = result->name;
         expect_token_kind(TOKEN_RIGHT_PAREN);
-        
-        if (is_token_kind(TOKEN_LEFT_BRACE))
+          
+        if (match_token_kind(TOKEN_LEFT_PAREN))
         {
+            if (result->kind != EXPR_NAME)
+            {
+                fatal("only names supported in casts");
+            }
+
+            expr* e = parse_expr();
+            result = push_cast_expr(pos, type_name, e);
+
+            expect_token_kind(TOKEN_RIGHT_PAREN);
+        }
+        else if (is_token_kind(TOKEN_NAME))
+        {            
+            if (result->kind != EXPR_NAME)
+            {
+                fatal("only names supported in casts");
+            }
+
+            expr* e = parse_expr();
+            result = push_cast_expr(pos, type_name, e);
+
+        }
+        else if (is_token_kind(TOKEN_LEFT_BRACE))
+        {           
             if (result->kind != EXPR_NAME)
             {
                 fatal("only names supported as explicit compound literal types");
             }
 
-            const char* type_name = result->name;
             result = parse_compound_literal();
             
             typespec* t = push_typespec_name(token.pos, type_name);
@@ -1271,7 +1305,6 @@ void parse_test(void)
         "fn f() { if (x) { x = y } else if (y) {} else if (z) { z = x } else { y = z } }",
         "fn f() { if (sizeof(x) == 4) { return x } }"
         "fn f() { while (x > y) { x = x + 1 } }",
-#endif
         "fn f() { do { x[index] = x - 1 } while (x < y) }",
         "fn f() {\
             switch (x){\
@@ -1292,6 +1325,10 @@ void parse_test(void)
         "let x = (v3){1, 2, 3}",
         "let y = f(1, {1, 2}, (v2){1,2})",
         "fn f(x: int, y: int) : vec2 { return (v2){x + 1, y - 1} }",
+#endif
+        "let x = (float)12 ",
+        "let x = (string)y ",
+        "let x = (float)(12 + 1 / (float)z)",
     };
 
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);

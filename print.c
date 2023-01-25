@@ -151,9 +151,16 @@ void print_expr(expr* e)
             printf(")");
         }
         break;
+        case EXPR_CAST:
+        {
+            printf("(cast %s ", e->cast.type_name);
+            print_expr(e->cast.expr);
+            printf(")");
+        }
+        break;
         default:
         {
-            fatal("expr kind not handled: %d", e->kind);
+            fatal("expr kind not handled in print_expr: %d", e->kind);
         }
         break;
     }
