@@ -204,7 +204,26 @@ bool next_token(void)
         break;
         case '/':
         {
-            if (*(stream + 1) == '=')
+            if (*(stream + 1) == '/')
+            {
+                discard_token = true;
+                stream += 1;
+                for (;;)
+                {
+                    stream++;
+                    if (*(stream) == 0)
+                    {
+                        break;
+                    }
+
+                    if (*(stream) == '\n')
+                    {
+                        stream += 1;
+                        break;
+                    }
+                }
+            }
+            else if (*(stream + 1) == '=')
             {
                 stream += 2;
                 token.kind = TOKEN_DIV_ASSIGN;
