@@ -1,5 +1,4 @@
-﻿#include "vm.h"
-#include "parsing.h"
+﻿#include "parsing.h"
 #include "lexing.h"
 
 memory_arena* arena;

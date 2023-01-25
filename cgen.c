@@ -553,41 +553,6 @@ void gen_func(decl* decl)
     gen_printf(" ");
     gen_stmt_block(decl->function.stmts);
 }
-//
-//void gen_function_decl(symbol* sym)
-//{
-//    assert(sym->kind == SYMBOL_FUNCTION);
-//
-//    gen_c_decl(sym->type->function.ret_type);
-//    printf(" %s(", sym->name);    
-//    if (sym->type->function.param_count == 0)
-//    {
-//        printf("void");
-//    }
-//    else
-//    {
-//        assert(sym->type->function.param_count == sym->decl->function.params.param_count);
-//        for (size_t i = 0; i < sym->type->function.param_count; i++)
-//        {
-//            type* param_type = sym->type->function.param_types[i];
-//            const char* param_name = sym->decl->function.params.params[i].name;
-//            gen_c_decl(param_type);
-//            printf(" %s", param_name);
-//            if (i != sym->type->function.param_count - 1)
-//            {
-//                printf(", ");
-//            }
-//        }
-//    }
-//    printf(")\n{");
-//    print_newline();
-//    
-//    gen_stmt_block(sym->decl->function.stmts);
-//
-//    print_newline();
-//    printf("}");
-//    print_newline();
-//}
 
 void gen_var_decl(decl* decl, symbol* sym)
 {
