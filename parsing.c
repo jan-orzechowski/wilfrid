@@ -123,9 +123,8 @@ typespec* push_typespec_name(source_pos pos, char* name)
 {
     typespec* result = push_struct(arena, typespec);
     result->kind = TYPESPEC_NAME;
-    result->name = token.name;
-    result->pos = token.pos;
-    next_lexed_token();
+    result->name = name;
+    result->pos = pos;   
     return result;
 }
 
@@ -136,6 +135,7 @@ typespec* parse_basic_typespec(void)
     if (is_token_kind(TOKEN_NAME))
     {
         t = push_typespec_name(token.pos, token.name);
+        next_lexed_token();
     }
     else if (is_token_kind(TOKEN_KEYWORD) && token.name == fn_keyword)
     {
