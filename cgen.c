@@ -685,9 +685,21 @@ void gen_symbol_decl(symbol* sym)
         break;
         case DECL_CONST:
         {
-            gen_printf_newline("enum { %s = ", sym->name);
-            gen_expr(decl->const_decl.expr);
-            gen_printf(" };");
+            if (sym->type == type_int)
+            {
+                gen_printf_newline("enum { %s = ", sym->name);
+                gen_expr(decl->const_decl.expr);
+                gen_printf(" };");
+            }
+            else
+            {            
+                char* decl_str = type_to_cdecl(
+                    sym->type, sym->name);
+                gen_printf_newline(decl_str);                
+                gen_printf(" = ");
+                gen_expr(decl->const_decl.expr);
+                gen_printf(";");
+            }
         }
         break;
         case DECL_FUNCTION:
