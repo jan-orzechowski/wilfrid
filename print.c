@@ -153,7 +153,7 @@ void print_expr(expr* e)
         break;
         case EXPR_CAST:
         {
-            printf("(cast %s ", e->cast.type_name);
+            printf("(cast %s ", e->cast.type->name);
             print_expr(e->cast.expr);
             printf(")");
         }

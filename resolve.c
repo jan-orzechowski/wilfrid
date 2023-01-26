@@ -15,6 +15,7 @@ typedef enum type_kind
     TYPE_INT,
     TYPE_CHAR,
     TYPE_FLOAT,
+    TYPE_BOOL,
     TYPE_STRUCT,
     TYPE_UNION,
     TYPE_NAME,
@@ -125,6 +126,7 @@ type* type_void =  &(type) { .name = "void",    .kind = TYPE_VOID,    .size = 0,
 type* type_char =  &(type) { .name = "char",    .kind = TYPE_CHAR,    .size = 1, .align = 1 };
 type* type_int =   &(type) { .name = "int",     .kind = TYPE_INT,     .size = 4, .align = 4 };
 type* type_float = &(type) { .name = "float",   .kind = TYPE_FLOAT,   .size = 4, .align = 4 };
+type* type_bool =  &(type) { .name = "bool",    .kind = TYPE_BOOL,    .size = 4, .align = 4 };
 
 // funkcje c
 type* type_printf = &(type) { .name = "printf", .kind = TYPE_FUNCTION };
@@ -621,14 +623,18 @@ resolved_expr* resolve_expr_binary(expr* expr)
     resolved_expr* left = resolve_expr(expr->binary.left);
     resolved_expr* right = resolve_expr(expr->binary.right);
     
-    if ((left->type == type_int || left->type->kind == TYPE_POINTER)
-        && (right->type == type_int || right->type->kind == TYPE_POINTER))
+    if (expr->binary.operator == TOKEN_ADD
+        || expr->binary.operator == TOKEN_SUB)
     {
-        // ok
-    }
-    else
-    {
-        fatal("operands of +- must be both ints or pointers");
+        if ((left->type == type_int || left->type->kind == TYPE_POINTER)
+            && (right->type == type_int || right->type->kind == TYPE_POINTER))
+        {
+            // ok
+        }
+        else
+        {
+            fatal("operands of +- must be both ints or pointers");
+        }
     }
 
     if (left->is_const && right->is_const)
@@ -748,9 +754,15 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type)
             {                  
                 result = get_resolved_lvalue_expr(sym->type);             
             }
+            else if (sym->kind == SYMBOL_TYPE)
+            {
+                // czy powinno tak być?
+                result = get_resolved_lvalue_expr(sym->type);
+            }
             else
             {
-                fatal("must be a variable name!");
+                fatal("not expected symbol kind");
+                //fatal("must be a variable name!");
             } 
         }
         break;
@@ -787,6 +799,21 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type)
             }
 
             result = get_resolved_rvalue_expr(fn_expr->type->function.ret_type);
+        }
+        break;
+        case EXPR_CAST:
+        {
+            type* t = resolve_typespec(e->cast.type);
+            resolved_expr* expr = resolve_expr(e->cast.expr);
+
+            // tutaj powinniśmy sprawdzić, czy możemy dokonać castu            
+            if (expr->type->kind == TYPE_STRUCT
+                || expr->type->kind == TYPE_UNION)
+            {
+                // nie pozwalamy na to
+            }
+
+            result = get_resolved_lvalue_expr(t);
         }
         break;
         case EXPR_BINARY:
@@ -1212,6 +1239,7 @@ void init_before_resolve()
     push_installed_symbol(str_intern("char"), type_char);
     push_installed_symbol(str_intern("int"), type_int);
     push_installed_symbol(str_intern("float"), type_float);
+    push_installed_symbol(str_intern("bool"), type_bool);
     
     complete_c_functions();
 
@@ -1299,7 +1327,7 @@ void resolve_test(void)
             return vec.x } ",
         "fn fun(i: int, j: int): int { j++ i++ return i + j }",
         "struct v2 { x: int, y: int }",
-        "let x: v2 = {1, 2}",
+        "let x := (v2){1,2}",
         "let y = fuu(fuu(7, x), {3, 4})",
         "fn fzz(x: int, y: int) : v2 { return {x + 1, y - 1} }",
         "fn fuu(x: int, v: v2) : int { return v.x + x } ",
@@ -1308,9 +1336,12 @@ void resolve_test(void)
         "fn ftest3(x: int): int { let p := 1 do { p *= 2 x-- } while (x) return p }",
         "fn ftest4(x: int): int { for (let i := 0; i < x; i++) { if (i % 3 == 0) { return x } } return 0 }",
         "fn ftest5(x: int): int { switch(x) { case 0: case 1: { return 5 } case 3: default: { return -1 } } }",
-#endif
         "fn return_value_test(arg: int):int{\
             if(arg>0){let i := return_value_test(arg - 2) return i } else { return 0 } }}",
+#endif
+        "let ooo := (bool)o && (bool)oo || ((bool)o & (bool)oo)",
+        "let oo := (int)o ",
+        "let o := (float)1",
     };
     size_t str_count = sizeof(test_strs) / sizeof(test_strs[0]);
 

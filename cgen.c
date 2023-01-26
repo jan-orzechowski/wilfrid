@@ -55,19 +55,21 @@ const char* cdecl_name(type* t)
     switch (t->kind)
     {
         case TYPE_VOID:
-        return "void";
+            return "void";
         case TYPE_CHAR:
-        return "char";
+            return "char";
         case TYPE_INT:
-        return "int";
+            return "int";
         case TYPE_FLOAT:
-        return "float";
+            return "float";
+        case TYPE_BOOL:
+            return "bool";
         case TYPE_STRUCT:
         case TYPE_UNION:
-        return t->symbol->name;
+            return t->symbol->name;
         default:
-        assert(0);
-        return NULL;
+            assert(0);
+            return NULL;
     }
 }
 
@@ -79,6 +81,7 @@ char* type_to_cdecl(type* type, const char* name)
         case TYPE_CHAR:
         case TYPE_INT:
         case TYPE_FLOAT:
+        case TYPE_BOOL:
         case TYPE_STRUCT:
         case TYPE_UNION:
         {
@@ -470,6 +473,13 @@ void gen_expr(expr* e)
             gen_printf(")");
         }
         break;
+        case EXPR_CAST:
+        {
+            gen_printf("(%s)(", typespec_to_cdecl(e->cast.type, null));
+            gen_expr(e->cast.expr);
+            gen_printf(")");
+        }
+        break;
         case EXPR_FIELD:
         {
             gen_expr(e->field.expr);
@@ -721,13 +731,19 @@ void gen_common_includes(void)
 void cgen_test(void)
 {
     char* test_strs[] = {
-        "const x = 10",
+#if 1
+        "const x = 10",        
+        "let y := (vec3){1, 2, 3}",
         "fn power_2(n:int):int{return n*n}",        
         "fn _main(){\
             let i : int = 5\
             let j = power_2(i)\
         }",
-        "struct vec3 { x: int, y: int, z: int }"
+        "struct vec3 { x: int, y: int, z: int }",
+#endif
+        "const y = (float)12",
+        "let u := (bool)(y > 11) && (y < 30)",
+        "let i := (int)12 + 1"
     };
     
     symbol** resolved = resolve_test_decls(test_strs, sizeof(test_strs) / sizeof(test_strs[0]), false);

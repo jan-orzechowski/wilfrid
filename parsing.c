@@ -1,6 +1,10 @@
 ﻿#include "parsing.h"
 #include "lexing.h"
 
+expr* parse_expr(void);
+typespec* parse_typespec(void);
+typespec* push_typespec_name(source_pos pos, const char* name);
+
 memory_arena* arena;
 
 int* code;
@@ -88,7 +92,7 @@ expr* push_cast_expr(source_pos pos, const char* type_name, expr* e)
 {
     expr* result = push_struct(arena, expr);
     result->kind = EXPR_CAST;
-    result->cast.type_name = type_name;
+    result->cast.type = push_typespec_name(pos, type_name);
     result->cast.expr = e;
     result->pos = pos;
     return result;
@@ -125,10 +129,7 @@ expr* push_binary_expr(source_pos pos, token_kind operator, expr* left, expr* ri
     return result;
 }
 
-expr* parse_expr(void);
-typespec* parse_typespec(void);
-
-typespec* push_typespec_name(source_pos pos, char* name)
+typespec* push_typespec_name(source_pos pos, const char* name)
 {
     typespec* result = push_struct(arena, typespec);
     result->kind = TYPESPEC_NAME;
@@ -320,41 +321,50 @@ expr* parse_base_expr(void)
         result = parse_expr();
         const char* type_name = result->name;
         expect_token_kind(TOKEN_RIGHT_PAREN);
-          
-        if (match_token_kind(TOKEN_LEFT_PAREN))
+        
+        if (result->kind != EXPR_NAME)
         {
-            if (result->kind != EXPR_NAME)
-            {
-                fatal("only names supported in casts");
-            }
-
-            expr* e = parse_expr();
-            result = push_cast_expr(pos, type_name, e);
-
-            expect_token_kind(TOKEN_RIGHT_PAREN);
+            // to znaczy, że to nie jest cast, tylko expression
+            debug_breakpoint;
         }
-        else if (is_token_kind(TOKEN_NAME))
-        {            
-            if (result->kind != EXPR_NAME)
+        else
+        {
+            if (match_token_kind(TOKEN_LEFT_PAREN))
             {
-                fatal("only names supported in casts");
+                if (result->kind != EXPR_NAME)
+                {
+                    fatal("only names supported in casts");
+                }
+
+                expr* e = parse_expr();
+                result = push_cast_expr(pos, type_name, e);
+
+                expect_token_kind(TOKEN_RIGHT_PAREN);
             }
-
-            expr* e = parse_expr();
-            result = push_cast_expr(pos, type_name, e);
-
-        }
-        else if (is_token_kind(TOKEN_LEFT_BRACE))
-        {           
-            if (result->kind != EXPR_NAME)
+            else if (is_token_kind(TOKEN_LEFT_BRACE))
             {
-                fatal("only names supported as explicit compound literal types");
-            }
+                if (result->kind != EXPR_NAME)
+                {
+                    fatal("only names supported as explicit compound literal types");
+                }
 
-            result = parse_compound_literal();
-            
-            typespec* t = push_typespec_name(token.pos, type_name);
-            result->compound.type = t;
+                result = parse_compound_literal();
+
+                typespec* t = push_typespec_name(token.pos, type_name);
+                result->compound.type = t;
+            }
+            else
+            {
+                if (result->kind != EXPR_NAME)
+                {
+                    fatal("only names supported in casts");
+                }
+
+                expr* e = parse_base_expr();
+                result = push_cast_expr(pos, type_name, e);
+
+                debug_breakpoint;
+            }
         }
     }
     else
@@ -1325,9 +1335,14 @@ void parse_test(void)
         "let y = f(1, {1, 2}, (v2){1,2})",
         "fn f(x: int, y: int) : vec2 { return (v2){x + 1, y - 1} }",
 #endif
-        "let x = (float)12 ",
-        "let x = (string)y ",
-        "let x = (float)(12 + 1 / (float)z)",
+        "let x := (float)12 ",
+        "let x := (string)y ",
+        "let x := (float)(12 + 1 / (float)z)",
+        "let x := (float)1",
+        "let x := (int)other_var",
+        "let x := (uint)12 + 1",
+        "let x := (bool)var1 && (bool)var2 || (bool)((bool)var3 & (bool)var4)",
+        "let x := (bool)var1 && (bool)var2 || ((bool)var3 & (bool)var4)",
     };
 
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);

@@ -133,7 +133,7 @@ typedef struct sizeof_expr
 
 typedef struct cast_expr
 {
-    const char* type_name;
+    typespec* type;
     expr* expr;
 } cast_expr;
 
