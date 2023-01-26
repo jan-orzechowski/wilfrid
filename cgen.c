@@ -2,6 +2,8 @@
 #include "parsing.h"
 #include "utils.h"
 
+bool generate_line_hints = true;
+
 int gen_indent;
 
 char* gen_buf = NULL;
@@ -24,7 +26,8 @@ const char* parenthesize(const char* str, bool parenthesize)
 
 void gen_line_hint(source_pos pos)
 {
-    if (gen_pos.line != pos.line || gen_pos.filename != pos.filename)
+    if (generate_line_hints 
+        && (gen_pos.line != pos.line || gen_pos.filename != pos.filename))
     {
         gen_printf_newline("#line %d ", pos.line);
         gen_printf("\"%s\" ", pos.filename);
@@ -742,6 +745,8 @@ void gen_common_includes(void)
 
 void cgen_test(void)
 {
+    generate_line_hints = false;
+
     char* test_strs[] = {
 #if 1
         "const x = 10",        
