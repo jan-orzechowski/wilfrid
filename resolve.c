@@ -137,7 +137,8 @@ void complete_c_functions()
     type_printf->function.param_types[1] = type_int;
 }
 
-symbol** global_symbols;
+hashmap global_symbols;
+symbol** global_symbols_list;
 symbol** ordered_global_symbols;
 
 enum
@@ -157,7 +158,6 @@ void resolve_stmt(stmt* st, type* opt_ret_type);
 
 symbol* get_symbol(const char* name)
 {
-    // do zastąpienia hash table
     for (symbol* it = last_local_symbol; it != local_symbols; it--)
     {
         symbol* sym = it - 1;
@@ -167,16 +167,13 @@ symbol* get_symbol(const char* name)
         }
     }
 
-    for (symbol** it = global_symbols; it != buf_end(global_symbols); it++)
+    void* global_symbol = map_get(&global_symbols, name);
+    if (global_symbol)
     {
-        symbol* sym = *it;
-        if (sym->name == name)
-        {
-            return sym;
-        }
+        return global_symbol;
     }
 
-    return 0;
+    return null;
 }
 
 type* get_new_type(type_kind kind)
@@ -390,7 +387,8 @@ symbol* push_installed_symbol(const char* name, type* type)
     symbol* sym = get_new_symbol(SYMBOL_TYPE, name, NULL);
     sym->state = SYMBOL_RESOLVED;
     sym->type = type;
-    buf_push(global_symbols, sym);
+    map_put(&global_symbols, name, sym);
+    buf_push(global_symbols_list, sym);
     return sym;
 }
 
@@ -399,14 +397,16 @@ symbol* push_installed_function(const char* name, type* type)
     symbol* sym = get_new_symbol(SYMBOL_FUNCTION, name, NULL);
     sym->state = SYMBOL_RESOLVED;
     sym->type = type;
-    buf_push(global_symbols, sym);
+    map_put(&global_symbols, name, sym);
+    buf_push(global_symbols_list, sym);
     return sym;
 }
 
 void push_symbol_from_decl(decl* d)
 {
-    symbol* s = get_symbol_from_decl(d);
-    buf_push(global_symbols, s);
+    symbol* sym = get_symbol_from_decl(d);
+    map_put(&global_symbols, sym->name, sym);
+    buf_push(global_symbols_list, sym);
 }
 
 void complete_type(type* t)
@@ -1241,8 +1241,8 @@ symbol** resolve_test_decls(char** decl_arr, size_t decl_arr_count, bool print)
         push_symbol_from_decl(d);
     }
 
-    for (symbol** it = global_symbols;
-        it != buf_end(global_symbols);
+    for (symbol** it = global_symbols_list;
+        it != buf_end(global_symbols_list);
         it++)
     {
         symbol* sym = *it;
@@ -1341,15 +1341,15 @@ symbol** resolve(char* filename, char* source, bool print_s_expressions)
         push_symbol_from_decl(d);
     }
 
-    for (symbol** it = global_symbols;
-        it != buf_end(global_symbols);
+    for (symbol** it = global_symbols_list;
+        it != buf_end(global_symbols_list);
         it++)
     {
         symbol* sym = *it;
         complete_symbol(sym);
     }
 
-    return global_symbols;
+    return ordered_global_symbols;
 }
 
 
