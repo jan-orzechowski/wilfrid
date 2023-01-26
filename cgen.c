@@ -136,7 +136,7 @@ char* typespec_to_cdecl(typespec* t, const char* name)
         case TYPESPEC_NAME:
         {
             // środkowe s to spacja, jeśli zostało podane name
-            result = xprintf("%s%s%s", t->name, name ? " " : "", name);
+            result = xprintf("%s%s%s", t->name, name ? " " : "", name ? name : "");
             debug_breakpoint;
         }
         break;
@@ -516,11 +516,11 @@ void gen_expr(expr* e)
         {
             if (e->compound.type)
             {
-                gen_printf("(%s){", typespec_to_cdecl(e->compound.type, ""));
+                gen_printf("(%s){", typespec_to_cdecl(e->compound.type, null));
             }
             else
             {
-                gen_printf("(%s){", type_to_cdecl(e->resolved_type, ""));
+                gen_printf("(%s){", type_to_cdecl(e->resolved_type, null));
             }
             for (size_t i = 0; i < e->compound.fields_count; i++)
             {
