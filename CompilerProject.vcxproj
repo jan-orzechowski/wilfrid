@@ -147,6 +147,7 @@
     <ClCompile Include="common_include.c" />
   </ItemGroup>
   <ItemGroup>
+    <Text Include="test\linked_lists.txt" />
     <Text Include="test\testcode.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

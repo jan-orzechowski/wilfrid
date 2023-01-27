@@ -1,0 +1,220 @@
+﻿struct node
+{
+    value: int
+    next: node*,
+}
+
+struct linked_list
+{
+    head: node*,
+    tail: node*,
+    count: int,
+}
+
+struct memory 
+{
+    address: void*,
+    size: int
+}
+
+fn main (arguments_count: int, arguments_array: char**) 
+{ 
+    linked_list_test()
+}
+
+fn linked_list_test()
+{
+    let list := new linked_list
+    
+    let list2 : linked_list* = null
+
+    add_at_tail(list, 4)
+    add_at_tail(list, 5)
+    add_at_tail(list, 6)
+    add_at_head(list, 3)
+    add_at_head(list, 2)
+    add_at_head(list, 1)
+
+    print_linked_list(list)
+
+    remove_head(list)
+    remove_tail(list)
+
+    print_linked_list(list)
+
+    add_at_position(list, 3, 9)
+    add_at_position(list, 3, 8)
+    remove_at_position(list, 4)
+
+    print_linked_list(list)
+
+    reverse(list)
+    
+    print_linked_list(list)
+}
+
+fn print_linked_list(list: linked_list*) {
+    let n := list.head
+    printf("\nlist: ", 0)
+    while (n)
+    {
+        printf("%d ", n.value)
+        n = n.next
+    }
+}
+
+fn add_at_tail(list: linked_list*, value: int)
+{	
+    if (list.tail)
+    {
+        let new_tail = new node
+        new_tail.value = value
+        list.tail.next = new_tail
+        list.tail = new_tail
+        list.count++
+    } 
+    else
+    {
+        list.head = new node
+        list.head.value = value
+        list.tail = list.head
+        list.count++
+    }
+}
+
+fn add_at_head(list: linked_list*, value: int)
+{
+    if (list.head)
+    {
+        let new_head = new node
+        new_head.value = value
+        new_head.next = list.head
+        list.head = new_head
+        list.count++	
+    } 
+    else
+    {
+        list.head = new node
+        list.head.value = value
+        list.tail = list.head
+        list.count++
+    }
+}
+
+fn add_at_position(list: linked_list*, position: int, value: int)
+{
+    if (position < list.count)
+    {
+        let counter := 0
+        let n = list.head
+        while (counter < position - 1)
+        {
+            n = n.next 
+            counter++
+        }
+
+        let node_after = n.next
+        n.next = new node
+        n.next.value = value
+        n.next.next = node_after
+        list.count++
+    }
+}
+
+fn remove_at_position(list: linked_list*, position: int)
+{
+    if (position < list.count)
+    {
+        let counter := 0
+        let n := list.head
+        let node_before : node*
+        while (counter < position)
+        {
+            node_before = n
+            n = n.next 
+            counter++
+        }
+
+        let node_after = n.next
+        node_before.next = node_after
+        delete n
+        list.count--
+    }
+}
+
+fn remove_head(list: linked_list*)
+{
+    if (list.count == 0)
+    {
+        return
+    }
+
+    if (list.count == 1)
+    {
+        delete list.head
+        list.head = null
+        list.tail = null
+        list.count = 0
+    }
+    else
+    {
+        let old_head = list.head
+        list.head = old_head.next
+        delete old_head
+        list.count--
+    }
+}
+
+fn remove_tail(list: linked_list*)
+{
+    if (list.count == 0)
+    {
+        return
+    }
+
+    if (list.count == 1)
+    {
+        delete list.tail
+        list.head = null
+        list.tail = null
+        list.count = 0
+    }
+    else
+    {
+        let n := list.head
+        let counter := 0
+        while (counter < list.count - 2)
+        {
+            n = n.next 
+            counter++
+        }
+
+        delete list.tail
+        n.next = null
+        list.tail = n
+        list.count--
+    }	
+}
+
+fn reverse(list: linked_list*) 
+{
+    if (list.count < 2)
+    {
+        return
+    }
+
+    let prev : node* = null
+    let curr : node* = list.head
+    let next : node* = null
+
+    list.head = list.tail
+    list.tail = curr
+
+    while (curr)
+    {
+        next = curr.next
+        curr.next = prev
+        prev = curr
+        curr = next
+    }    
+}

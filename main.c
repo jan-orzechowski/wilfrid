@@ -21,7 +21,7 @@
 
 void compile_and_run(void)
 {
-    char* test_file = "test/testcode.txt";
+    char* test_file = "test/linked_lists.txt";
   
     string_ref file_buf = read_file(test_file);
     if (file_buf.str)
@@ -29,12 +29,17 @@ void compile_and_run(void)
         if (file_buf.length > 3)
         {
             // pomijanie BOM
-            file_buf.str[0] = 0x20; // 0xef;
-            file_buf.str[1] = 0x20; // 0xbb;
-            file_buf.str[2] = 0x20; // 0xbf;
+            if (   file_buf.str[0] == (char)0xef
+                && file_buf.str[1] == (char)0xbb 
+                && file_buf.str[2] == (char)0xbf)
+            {
+                file_buf.str[0] = 0x20;
+                file_buf.str[1] = 0x20;
+                file_buf.str[2] = 0x20;
+            }
         }
        
-        symbol** resolved = resolve(test_file, file_buf.str, false);
+        symbol** resolved = resolve(test_file, file_buf.str, true);
 
         size_t debug_count = buf_len(resolved);
 
