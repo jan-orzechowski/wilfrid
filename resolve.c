@@ -143,6 +143,8 @@ hashmap global_symbols;
 symbol** global_symbols_list;
 symbol** ordered_global_symbols;
 
+hashmap reserved_identifiers;
+
 enum
 {
     MAX_LOCAL_SYMBOLS = 1024
@@ -160,6 +162,11 @@ void resolve_stmt(stmt* st, type* opt_ret_type);
 
 symbol* get_symbol(const char* name)
 {
+    if (map_get(&reserved_identifiers, name))
+    {
+        fatal("identifier %s is reserved", name);
+    }
+
     for (symbol* it = last_local_symbol; it != local_symbols; it--)
     {
         symbol* sym = it - 1;
@@ -386,20 +393,22 @@ symbol* get_symbol_from_decl(decl* d)
 
 symbol* push_installed_symbol(const char* name, type* type)
 {
-    symbol* sym = get_new_symbol(SYMBOL_TYPE, name, NULL);
+    const char* interned = str_intern(name);
+    symbol* sym = get_new_symbol(SYMBOL_TYPE, interned, NULL);
     sym->state = SYMBOL_RESOLVED;
     sym->type = type;
-    map_put(&global_symbols, name, sym);
+    map_put(&global_symbols, interned, sym);
     buf_push(global_symbols_list, sym);
     return sym;
 }
 
 symbol* push_installed_function(const char* name, type* type)
 {
-    symbol* sym = get_new_symbol(SYMBOL_FUNCTION, name, NULL);
+    const char* interned = str_intern(name);
+    symbol* sym = get_new_symbol(SYMBOL_FUNCTION, interned, NULL);
     sym->state = SYMBOL_RESOLVED;
     sym->type = type;
-    map_put(&global_symbols, name, sym);
+    map_put(&global_symbols, interned, sym);
     buf_push(global_symbols_list, sym);
     return sym;
 }
@@ -1233,17 +1242,30 @@ void complete_symbol(symbol* sym)
     }
 }
 
+void install_reserved_identifier(const char* identifier)
+{
+    const char* interned = str_intern(identifier);
+    map_put(&reserved_identifiers, interned, interned);
+}
+
 void init_before_resolve()
 {    
-    push_installed_symbol(str_intern("void"), type_void);
-    push_installed_symbol(str_intern("char"), type_char);
-    push_installed_symbol(str_intern("int"), type_int);
-    push_installed_symbol(str_intern("float"), type_float);
-    push_installed_symbol(str_intern("bool"), type_bool);
+    push_installed_symbol("void", type_void);
+    push_installed_symbol("char", type_char);
+    push_installed_symbol("int", type_int);
+    push_installed_symbol("float", type_float);
+    push_installed_symbol("bool", type_bool);
     
+    install_reserved_identifier("___alloc_");
+    install_reserved_identifier("___gc_alloc_");
+    install_reserved_identifier("___free_");
+    install_reserved_identifier("___push_buf_");
+    install_reserved_identifier("___del_at_buf_");
+    install_reserved_identifier("___free_buf_");
+
     complete_c_functions();
 
-    push_installed_function(str_intern("printf"), type_printf);
+    push_installed_function("printf", type_printf);
 }
 
 symbol** resolve_test_decls(char** decl_arr, size_t decl_arr_count, bool print)
