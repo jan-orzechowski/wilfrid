@@ -30,8 +30,12 @@ void gen_line_hint(source_pos pos)
         && (gen_pos.line != pos.line || gen_pos.filename != pos.filename))
     {
         gen_printf_newline("#line %d ", pos.line);
-        gen_printf("\"%s\" ", pos.filename);
+        if (gen_pos.filename != pos.filename)
+        {
+            gen_printf("\"%s\" ", pos.filename);
+        }
         gen_pos = pos;
+        gen_pos.filename = pos.filename;
     }
 }
 
