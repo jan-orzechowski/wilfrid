@@ -825,6 +825,20 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type)
             result = get_resolved_lvalue_expr(t);
         }
         break;
+        case EXPR_NEW:
+        {
+            type* t = resolve_typespec(e->new.type);
+            t = get_pointer_type(t);
+            result = get_resolved_lvalue_expr(t);
+        }
+        break;
+        case EXPR_AUTO:
+        {
+            type* t = resolve_typespec(e->auto_new.type);
+            t = get_pointer_type(t);
+            result = get_resolved_rvalue_expr(t);
+        }
+        break;
         case EXPR_BINARY:
         {
             result = resolve_expr_binary(e);
@@ -1148,7 +1162,16 @@ void resolve_stmt(stmt* st, type* opt_ret_type)
                 resolved_expr* right = resolve_expected_expr(st->assign.value_expr, left->type);
                 if (left->type != right->type)
                 {
-                    fatal("types do not match in assignment statement");
+                    if ((left->type->kind == TYPE_POINTER && right->type->kind == TYPE_INT)
+                        || (left->type->kind == TYPE_INT && right->type->kind == TYPE_POINTER))
+                    {
+                        // na to pozwalamy
+                        debug_breakpoint;
+                    }
+                    else
+                    {
+                        fatal("types do not match in assignment statement");
+                    }
                 }
             }
             if (false == left->is_lvalue)
@@ -1186,6 +1209,12 @@ void resolve_stmt(stmt* st, type* opt_ret_type)
 
                 resolve_stmt_block(cas->stmts, opt_ret_type);
             }
+        }
+        break;
+        case STMT_DELETE:
+        {
+            // TODO: powinniśmy sprawdzić czy zmienna nie jest const albo zaalokowana globalnie
+            resolved_expr* expr = resolve_expr(st->delete.expr);
         }
         break;
 
@@ -1360,10 +1389,15 @@ void resolve_test(void)
         "fn ftest5(x: int): int { switch(x) { case 0: case 1: { return 5 } case 3: default: { return -1 } } }",
         "fn return_value_test(arg: int):int{\
             if(arg>0){let i := return_value_test(arg - 2) return i } else { return 0 } }}",
-#endif
         "let ooo := (bool)o && (bool)oo || ((bool)o & (bool)oo)",
         "let oo := (int)o ",
         "let o := (float)1",
+#endif
+        "struct v2 { x: int, y: int }",
+        "let x = new v2",
+        "let y = auto v2()",
+        "fn deletetest1() { let x = new v2 x.x = 2 delete x }",
+        "fn deletetest2() { let x = auto v2 x.x = 2 delete x }",
     };
     size_t str_count = sizeof(test_strs) / sizeof(test_strs[0]);
 

@@ -282,6 +282,13 @@ void gen_simple_stmt(stmt* stmt)
             }
         }      
         break;
+        case STMT_DELETE:
+        {
+            gen_printf("___free_(");
+            gen_expr(stmt->delete.expr);
+            gen_printf(")");
+        }
+        break;
         invalid_default_case;
     }
 }
@@ -514,6 +521,18 @@ void gen_expr(expr* e)
             gen_printf("sizeof(");
             gen_expr(e->size_of.expr);
             gen_printf(")");
+        }
+        break;
+        case EXPR_NEW:
+        {
+            char* c = typespec_to_cdecl(e->new.type, null);
+            gen_printf("(%s*)___alloc_(sizeof(%s))", c, c);
+        }
+        break;
+        case EXPR_AUTO:
+        {
+            char* c = typespec_to_cdecl(e->new.type, null);
+            gen_printf("(%s*)___gc_alloc_(sizeof(%s))", c, c);
         }
         break;
         case EXPR_COMPOUND_LITERAL:

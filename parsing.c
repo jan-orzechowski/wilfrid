@@ -79,6 +79,24 @@ expr* push_name_expr(source_pos pos, const char* name)
     return result;
 }
 
+expr* push_new_expr(source_pos pos, typespec* t)
+{
+    expr* result = push_struct(arena, expr);
+    result->kind = EXPR_NEW;
+    result->new.type = t;
+    result->pos = pos;
+    return result;
+}
+
+expr* push_auto_expr(source_pos pos, typespec* t)
+{
+    expr* result = push_struct(arena, expr);
+    result->kind = EXPR_AUTO;
+    result->auto_new.type = t;
+    result->pos = pos;
+    return result;
+}
+
 expr* push_sizeof_expr(source_pos pos, expr* e)
 {
     expr* result = push_struct(arena, expr);
@@ -300,15 +318,32 @@ expr* parse_base_expr(void)
     {
         const char* keyword = str_intern(token.name);
         source_pos pos = token.pos;
-        if (keyword == sizeof_keyword)
+        if (keyword == new_keyword)
         {
             next_lexed_token();
-            expect_token_kind(TOKEN_LEFT_PAREN);
+            typespec* t = parse_typespec();
+            result = push_new_expr(pos, t);
+        }
+        else if (keyword == auto_keyword)
+        {
+            next_lexed_token();
+            typespec* t = parse_typespec();
+            result = push_auto_expr(pos, t);
+        }      
+        else if (keyword == sizeof_keyword)
+        {
+            next_lexed_token();
+            
+            //expect_token_kind(TOKEN_LEFT_PAREN);
 
             expr* e = parse_expr();
             result = push_sizeof_expr(pos, e);
 
-            expect_token_kind(TOKEN_RIGHT_PAREN);
+            //expect_token_kind(TOKEN_RIGHT_PAREN);
+        }
+        else
+        {
+            fatal("unexpected keyword");
         }
     }
     else if (is_token_kind(TOKEN_LEFT_BRACE))
@@ -869,6 +904,14 @@ stmt* parse_statement(void)
             parse_switch_cases(&s->switch_stmt);
             expect_token_kind(TOKEN_RIGHT_BRACE);
         }
+        else if (keyword == delete_keyword)
+        {
+            s = push_struct(arena, stmt);
+            s->kind = STMT_DELETE;
+            s->pos = pos;
+            next_lexed_token();
+            s->delete.expr = parse_expr();
+        }
     }
     else if (is_token_kind(TOKEN_NAME))
     {        
@@ -1334,7 +1377,6 @@ void parse_test(void)
         "let x = (v3){1, 2, 3}",
         "let y = f(1, {1, 2}, (v2){1,2})",
         "fn f(x: int, y: int) : vec2 { return (v2){x + 1, y - 1} }",
-#endif
         "let x := (float)12 ",
         "let x := (string)y ",
         "let x := (float)(12 + 1 / (float)z)",
@@ -1343,6 +1385,12 @@ void parse_test(void)
         "let x := (uint)12 + 1",
         "let x := (bool)var1 && (bool)var2 || (bool)((bool)var3 & (bool)var4)",
         "let x := (bool)var1 && (bool)var2 || ((bool)var3 & (bool)var4)",
+#endif
+        "let x: X = new X(12, 13)",
+        "let x = new X(new y(), new z())",
+        "let x = new memory(1000)",
+        "let x = auto memory(100)",
+        "fn f() { delete x }"
     };
 
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);

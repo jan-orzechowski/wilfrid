@@ -65,6 +65,8 @@ typedef enum expr_kind
     EXPR_CALL,
     EXPR_FIELD,
     EXPR_INDEX,
+    EXPR_NEW,
+    EXPR_AUTO,
     EXPR_SIZEOF,
     EXPR_CAST,
     EXPR_COMPOUND_LITERAL
@@ -126,6 +128,16 @@ typedef struct compound_literal_expr
     size_t fields_count;
 } compound_literal_expr;
 
+typedef struct new_expr
+{
+    typespec* type;
+} new_expr;
+
+typedef struct auto_expr
+{
+    typespec* type;
+} auto_expr;
+
 typedef struct sizeof_expr
 {
     expr* expr;
@@ -154,6 +166,8 @@ struct expr
         index_expr index;
         field_expr field;
         compound_literal_expr compound;
+        new_expr new;
+        auto_expr auto_new; // dlaczego MSVC skarży się na użycie 'auto' w C?
         sizeof_expr size_of;
         cast_expr cast;
     };
@@ -173,7 +187,8 @@ typedef enum stmt_kind
     STMT_ASSIGN,
     STMT_SWITCH,
     STMT_EXPR,
-    STMT_BLOCK,    
+    STMT_BLOCK,  
+    STMT_DELETE
 } stmt_kind;
 
 typedef struct stmt_block
@@ -236,6 +251,11 @@ typedef struct switch_stmt
     size_t cases_num;    
 } switch_stmt;
 
+typedef struct delete_stmt
+{
+    expr* expr;
+} delete_stmt;
+
 struct stmt
 {
     stmt_kind kind;
@@ -252,6 +272,7 @@ struct stmt
         while_stmt while_stmt;
         while_stmt do_while_stmt;
         switch_stmt switch_stmt;
+        delete_stmt delete;
     };
 };
 

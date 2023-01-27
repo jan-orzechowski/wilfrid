@@ -158,6 +158,20 @@ void print_expr(expr* e)
             printf(")");
         }
         break;
+        case EXPR_NEW:
+        {
+            printf("(new ");
+            print_typespec(e->new.type);
+            printf(")");
+        }
+        break;
+        case EXPR_AUTO:
+        {
+            printf("(auto ");
+            print_typespec(e->auto_new.type);
+            printf(")");
+        }
+        break;
         default:
         {
             fatal("expr kind not handled in print_expr: %d", e->kind);
@@ -335,6 +349,14 @@ void print_statement(stmt* s)
             print_expr(s->return_stmt.ret_expr);
         }
         break;
+        case STMT_DELETE:
+        {
+            printf("(delete ");
+            print_expr(s->delete.expr);
+            printf(")");
+        }
+        break;
+        invalid_default_case;
     }
 }
 
@@ -397,6 +419,7 @@ void print_typespec(typespec* t)
                 printf(")");
             };
             break;
+            invalid_default_case;
         }
     }
 }
@@ -554,10 +577,6 @@ void print_decl(decl* d)
             printf(")");
         }
         break;
-        default:
-        {
-            assert("invalid default case");
-        }
-        break;
+        invalid_default_case;
     }
 }
