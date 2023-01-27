@@ -1,0 +1,1 @@
+﻿#include <stddef.h>#include <stdlib.h>#include <stdio.h>void* ___alloc_(size_t num_bytes){    void* ptr = calloc(1, num_bytes);    if (!ptr)    {        perror("allocation failed");        exit(1);    }    return ptr;}void ___free_(void* ptr){    // powinniśmy sprawdzić też naszą listę alokacji    if (ptr)    {        free(ptr);    }}

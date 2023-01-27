@@ -772,7 +772,11 @@ void gen_symbol_decl(symbol* sym)
 
 void gen_common_includes(void)
 {
-    gen_printf("#include \"stdio.h\"");
+    // TODO przydałoby się usunąć wszelkie komentarze z tego pliku
+    // oraz naprawić kwestię z CRLF/CR
+    char* test_file = "common_include.c";
+    string_ref file_buf = read_file(test_file);
+    gen_printf(file_buf.str);
 }
 
 void cgen_test(void)
