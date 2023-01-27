@@ -1,4 +1,9 @@
-﻿struct tree
+﻿fn main (arguments_count: int, arguments_array: char**) 
+{ 
+   tree_test()
+}
+
+struct tree
 {
     root: node*
 }

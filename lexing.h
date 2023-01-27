@@ -165,26 +165,3 @@ typedef struct tok
     };
 }
 tok;
-
-typedef enum keywords
-{
-    KEYWORD_RETURN,
-    KEYWORD_BREAK,
-    KEYWORD_CONTINUE,
-    KEYWORD_PRINT,
-    KEYWORD_IF,
-    KEYWORD_ELSE,
-    KEYWORD_FOR,
-    KEYWORD_WHILE,
-    KEYWORD_DO,
-    KEYWORD_SIZEOF,
-    KEYWORD_SWITCH,
-    KEYWORD_CASE,
-    KEYWORD_DEFAULT,
-    KEYWORD_ENUM,
-    KEYWORD_STRUCT,
-    KEYWORD_UNION,
-    KEYWORD_TYPEDEF,
-    KEYWORD_LET,
-    KEYWORD_FN,
-} keywords;

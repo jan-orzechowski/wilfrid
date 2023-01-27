@@ -108,7 +108,6 @@ char* type_to_cdecl(type* type, const char* name)
         case TYPE_FUNCTION:
         {
             char* result = NULL;
-            //buf_printf(result, "%s(", parenthesize(xprintf("*%s", name), name));
             buf_printf(result, "%s(", xprintf("*%s", name));
             if (type->function.param_count == 0)
             {
@@ -159,7 +158,6 @@ char* typespec_to_cdecl(typespec* t, const char* name)
         break;
         case TYPESPEC_FUNCTION:
         {
-            //buf_printf(result, "%s(", parenthesize(xprintf("*%s", name), *name));
             buf_printf(result, "%s(", parenthesize(xprintf("*%s", name), name));
             if (t->function.param_count == 0)
             {
@@ -333,7 +331,7 @@ void gen_stmt(stmt* stmt)
             gen_stmt_block(stmt->if_else.then_block);
             if (stmt->if_else.else_stmt)
             {
-                gen_printf_newline("else ");
+                gen_printf(" else ");
                 gen_stmt(stmt->if_else.else_stmt);
             }
         }        
@@ -805,25 +803,3 @@ void cgen_test(void)
 
     debug_breakpoint;
 }
-
-// TEST
-#if 0
-// FORWARD DECLARATIONS
-
-int power_2(int n);
-void _main(void);
-typedef struct vec3 vec3;
-
-// DECLARATIONS
-
-enum { x = 10 };
-int power_2(int n)
-{
-    return (n) * (n);
-};
-void _main(void)
-{
-    int i = 5;
-    int j = power_2(i);
-};
-#endif

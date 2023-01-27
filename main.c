@@ -55,8 +55,6 @@ void compile_and_run(void)
 
         //printf("/// C OUTPUT:\n\n%s\n", gen_buf);
 
-        gen_printf_newline("int main(int argc, char** argv) { tree_test(); }");
-
         write_file("test/testcode.c", gen_buf, buf_len(gen_buf));
 
         free(file_buf.str);
@@ -74,15 +72,16 @@ int main(int argc, char** argv)
     copy_test();
     map_test();
     stack_vm_test(code);
-    
-    //parse_test();
-#if 0
-    resolve_test();
-#else
-    //cgen_test();
-#endif
 
+#if 0
+    parse_test();
+#elif 0
+    resolve_test();
+#elif 0
+    cgen_test();
+#else
     compile_and_run();
+#endif
 
     //for (size_t i = 1; i < argc; i++)
     //{
