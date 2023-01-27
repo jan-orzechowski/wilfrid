@@ -16,6 +16,7 @@ typedef enum type_kind
     TYPE_CHAR,
     TYPE_FLOAT,
     TYPE_BOOL,
+    TYPE_NULL,
     TYPE_STRUCT,
     TYPE_UNION,
     TYPE_NAME,
@@ -123,6 +124,7 @@ const size_t POINTER_SIZE = 8;
 const size_t POINTER_ALIGN = 8;
 
 type* type_void =  &(type) { .name = "void",    .kind = TYPE_VOID,    .size = 0, .align = 0 };
+type* type_null =  &(type) { .name = "null",    .kind = TYPE_NULL,    .size = 0, .align = 0 };
 type* type_char =  &(type) { .name = "char",    .kind = TYPE_CHAR,    .size = 1, .align = 1 };
 type* type_int =   &(type) { .name = "int",     .kind = TYPE_INT,     .size = 4, .align = 4 };
 type* type_float = &(type) { .name = "float",   .kind = TYPE_FLOAT,   .size = 4, .align = 4 };
@@ -789,6 +791,20 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type)
             result->is_const = true;
         }
         break;
+        case EXPR_BOOL:
+        {
+            type* t = type_bool;
+            result = get_resolved_rvalue_expr(t);
+            result->is_const = true;
+        }
+        break;
+        case EXPR_NULL:
+        {
+            type* t = type_null;
+            result = get_resolved_rvalue_expr(t);
+            result->is_const = true;
+        }
+        break;
         case EXPR_CALL:
         {
             resolved_expr* fn_expr = resolve_expr(e->call.function_expr);
@@ -970,7 +986,15 @@ type* resolve_variable_decl(decl* d)
         resolved_expr* expr = resolve_expected_expr(d->variable.expr, result);
         if (expr)
         {
-            result = expr->type;
+            if (expr->type == type_null)
+            {
+                // nie możemy ustalić typu
+                debug_breakpoint;
+            }
+            else
+            {
+                result = expr->type;
+            }
         }
     }
 
@@ -1162,7 +1186,12 @@ void resolve_stmt(stmt* st, type* opt_ret_type)
                 resolved_expr* right = resolve_expected_expr(st->assign.value_expr, left->type);
                 if (left->type != right->type)
                 {
-                    if ((left->type->kind == TYPE_POINTER && right->type->kind == TYPE_INT)
+                    if (left->type->kind == TYPE_POINTER && right->type->kind == TYPE_NULL)
+                    {
+                        // ok
+                        debug_breakpoint;
+                    }
+                    else if ((left->type->kind == TYPE_POINTER && right->type->kind == TYPE_INT)
                         || (left->type->kind == TYPE_INT && right->type->kind == TYPE_POINTER))
                     {
                         // na to pozwalamy
@@ -1392,12 +1421,16 @@ void resolve_test(void)
         "let ooo := (bool)o && (bool)oo || ((bool)o & (bool)oo)",
         "let oo := (int)o ",
         "let o := (float)1",
-#endif
-        "struct v2 { x: int, y: int }",
         "let x = new v2",
         "let y = auto v2()",
         "fn deletetest1() { let x = new v2 x.x = 2 delete x }",
         "fn deletetest2() { let x = auto v2 x.x = 2 delete x }",
+#endif
+        "let x : node* = null",
+        "fn f(x: node*): bool { if (x == null) { return true } else { return false } }",
+        "struct node { value: int, next: node* }",
+        "let b1 : bool = 1",
+        "let b2 : bool = (b1 == false)",
     };
     size_t str_count = sizeof(test_strs) / sizeof(test_strs[0]);
 

@@ -252,8 +252,9 @@ void gen_simple_stmt(stmt* stmt)
                     }
                     else
                     {
-                        // czy powinniśmy na to pozwalać?
-                        // może to powinno być rozwiązane na poziomie resolving
+                        // tutaj można by dać warning
+                        debug_breakpoint;
+                        gen_printf(" = {0}");
                     }
                 }
                 break;
@@ -436,6 +437,16 @@ void gen_expr(expr* e)
         case EXPR_STRING:
         {
             gen_printf("\"%s\"", e->string_value);
+        }
+        break;
+        case EXPR_NULL:
+        {
+            gen_printf("0");
+        }
+        break;
+        case EXPR_BOOL:
+        {
+            gen_printf("%s", e->bool_value ? "true" : "false");
         }
         break;
         case EXPR_NAME:

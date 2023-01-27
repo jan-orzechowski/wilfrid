@@ -126,6 +126,25 @@ expr* push_string_expr(source_pos pos, const char* str_value)
     return result;
 }
 
+expr* push_null_expr(source_pos pos)
+{
+    expr* result = push_struct(arena, expr);
+    result->kind = EXPR_NULL;
+    result->pos = pos;
+    next_lexed_token();
+    return result;
+}
+
+expr* push_bool_expr(source_pos pos, bool value)
+{
+    expr* result = push_struct(arena, expr);
+    result->kind = EXPR_BOOL;
+    result->bool_value = value;
+    result->pos = pos;
+    next_lexed_token();
+    return result;
+}
+
 expr* push_unary_expr(source_pos pos, token_kind operator, expr* operand)
 {
     expr* result = push_struct(arena, expr);
@@ -332,14 +351,21 @@ expr* parse_base_expr(void)
         }      
         else if (keyword == sizeof_keyword)
         {
-            next_lexed_token();
-            
-            //expect_token_kind(TOKEN_LEFT_PAREN);
-
+            next_lexed_token();            
             expr* e = parse_expr();
             result = push_sizeof_expr(pos, e);
-
-            //expect_token_kind(TOKEN_RIGHT_PAREN);
+        }
+        else if (keyword == null_keyword)
+        {
+            result = push_null_expr(pos);
+        }
+        else if (keyword == true_keyword)
+        {
+            result = push_bool_expr(pos, true);
+        }
+        else if (keyword == false_keyword)
+        {
+            result = push_bool_expr(pos, false);
         }
         else
         {
@@ -1385,12 +1411,14 @@ void parse_test(void)
         "let x := (uint)12 + 1",
         "let x := (bool)var1 && (bool)var2 || (bool)((bool)var3 & (bool)var4)",
         "let x := (bool)var1 && (bool)var2 || ((bool)var3 & (bool)var4)",
-#endif
-        "let x: X = new X(12, 13)",
+         "let x: X = new X(12, 13)",
         "let x = new X(new y(), new z())",
         "let x = new memory(1000)",
         "let x = auto memory(100)",
-        "fn f() { delete x }"
+        "fn f() { delete x }",
+#endif
+        "let x : node* = null",
+        "fn f(x: node*): bool { if (x == null) { return true } else { return false } }",
     };
 
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);

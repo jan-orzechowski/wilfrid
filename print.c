@@ -172,6 +172,23 @@ void print_expr(expr* e)
             printf(")");
         }
         break;
+        case EXPR_BOOL:
+        {
+            if (e->bool_value)
+            {
+                printf("true");
+            }
+            else
+            {
+                printf("false");
+            }
+        }
+        break;
+        case EXPR_NULL:
+        {
+            printf("null");
+        }
+        break;
         default:
         {
             fatal("expr kind not handled in print_expr: %d", e->kind);

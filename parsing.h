@@ -57,6 +57,8 @@ typedef enum expr_kind
     EXPR_FLOAT,
     EXPR_CHAR,
     EXPR_STRING,
+    EXPR_NULL,
+    EXPR_BOOL,
 
     EXPR_NAME,
     EXPR_UNARY,
@@ -157,6 +159,7 @@ struct expr
     union
     {
         int number_value;
+        bool bool_value;
         const char* name;
         const char* string_value;
         unary_expr unary;
