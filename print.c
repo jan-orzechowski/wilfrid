@@ -408,6 +408,13 @@ void print_typespec(typespec* t)
                 printf(")");
             };
             break;
+            case TYPESPEC_LIST:
+            {
+                printf("(list ");
+                print_typespec(t->list.base_type);
+                printf(")");
+            };
+            break;
             case TYPESPEC_POINTER:
             {
                 printf("(pointer ");

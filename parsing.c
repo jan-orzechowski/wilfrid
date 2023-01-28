@@ -249,14 +249,23 @@ typespec* parse_typespec(void)
             next_lexed_token();
         }
         else
-        {
+        {           
             typespec* base_t = t;
             t = push_struct(arena, typespec);
-            t->kind = TYPESPEC_ARRAY;
             next_lexed_token();
-            t->array.size_expr = parse_expr();
-            t->array.base_type = base_t;
-            expect_token_kind(TOKEN_RIGHT_BRACKET);
+
+            if (match_token_kind(TOKEN_RIGHT_BRACKET))
+            {
+                t->kind = TYPESPEC_LIST;
+                t->list.base_type = base_t;
+            }
+            else
+            {
+                t->kind = TYPESPEC_ARRAY;
+                t->array.size_expr = parse_expr();
+                t->array.base_type = base_t;
+                expect_token_kind(TOKEN_RIGHT_BRACKET);
+            }      
         }
     }
     return t;
@@ -1416,9 +1425,12 @@ void parse_test(void)
         "let x = new memory(1000)",
         "let x = auto memory(100)",
         "fn f() { delete x }",
-#endif
         "let x : node* = null",
         "fn f(x: node*): bool { if (x == null) { return true } else { return false } }",
+#endif
+        "let x := new int[]",
+        "let x : string[] = auto string[]",
+        "let x : int[12][] = new int[12][]",
     };
 
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);

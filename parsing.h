@@ -14,6 +14,7 @@ typedef enum typespec_kind
     TYPESPEC_NONE,
     TYPESPEC_NAME,
     TYPESPEC_ARRAY,
+    TYPESPEC_LIST,
     TYPESPEC_POINTER,
     TYPESPEC_FUNCTION
 } typespec_kind;
@@ -23,6 +24,12 @@ typedef struct typespec_array
     typespec* base_type;
     expr* size_expr;
 } typespec_array;
+
+typedef struct typespec_list
+{
+    typespec* base_type;
+    expr* size_expr;
+} typespec_list;
 
 typedef struct typespec_pointer
 {
@@ -44,6 +51,7 @@ struct typespec
     {
         const char* name;
         typespec_array array;
+        typespec_list list;
         typespec_pointer pointer;
         typespec_function function;
     };

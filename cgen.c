@@ -41,13 +41,14 @@ void gen_line_hint(source_pos pos)
 
 void gen_stmt(stmt* s);
 void gen_expr(expr* e);
+void gen_expr_assign(expr* e, const char* dynamic_list_name);
 void gen_func_decl(decl* d);
 
 const char* gen_expr_str(expr* e)
 {
     // tymczasowa podmiana, żeby wydrukował do nowego gen_buf
     char* temp = gen_buf;
-    gen_buf = NULL;
+    gen_buf = null;
 
     gen_expr(e);
 
@@ -74,10 +75,10 @@ const char* cdecl_name(type* t)
         case TYPE_STRUCT:
         case TYPE_UNION:
             return t->symbol->name;
-        default:
-            assert(0);
-            return NULL;
+        invalid_default_case;
+            
     }
+    return null;
 }
 
 char* type_to_cdecl(type* type, const char* name)
@@ -105,6 +106,11 @@ char* type_to_cdecl(type* type, const char* name)
             return type_to_cdecl(type->array.base_type, parenthesize(xprintf("%s[%llu]", name, type->array.size), name));
         }
         break;
+        case TYPE_LIST:
+        {
+            return type_to_cdecl(type->list.base_type, parenthesize(xprintf("*%s", name), name));
+        }
+        break;
         case TYPE_FUNCTION:
         {
             char* result = NULL;
@@ -125,10 +131,9 @@ char* type_to_cdecl(type* type, const char* name)
             return type_to_cdecl(type->function.ret_type, result);
         }
         break;
-        default:
-        assert(0);
-        return NULL;
+        invalid_default_case;       
     }
+    return NULL;
 }
 
 char* typespec_to_cdecl(typespec* t, const char* name)
@@ -154,6 +159,12 @@ char* typespec_to_cdecl(typespec* t, const char* name)
         {
             const char* wrapped_name = parenthesize(xprintf("%s[%s]", name, gen_expr_str(t->array.size_expr)), *name);
             result = typespec_to_cdecl(t->array.base_type, wrapped_name);
+        }
+        break;
+        case TYPESPEC_LIST:
+        {
+            const char* wrapped_name = parenthesize(xprintf("*%s", name ? name : ""), false);
+            result = typespec_to_cdecl(t->list.base_type, wrapped_name);
         }
         break;
         case TYPESPEC_FUNCTION:
@@ -247,8 +258,21 @@ void gen_simple_stmt(stmt* stmt)
 
                     if (stmt->decl_stmt.decl->variable.expr)
                     {
-                        gen_printf(" = ");
-                        gen_expr(stmt->decl_stmt.decl->variable.expr);
+                        if (stmt->decl_stmt.decl->variable.expr->kind == EXPR_NEW
+                            || stmt->decl_stmt.decl->variable.expr->kind == EXPR_AUTO)
+                        {
+                            // w przypadku dynamic array nie możemy tego zrobić w jednym statement w C
+                            // więc rozbijamy na dwa
+                            gen_printf(" = 0; ");                           
+                            gen_expr_assign(stmt->decl_stmt.decl->variable.expr,
+                                stmt->decl_stmt.decl->name);
+                            debug_breakpoint;
+                        }
+                        else
+                        {
+                            gen_printf(" = ");
+                            gen_expr(stmt->decl_stmt.decl->variable.expr);
+                        }
                     }
                     else
                     {
@@ -272,8 +296,17 @@ void gen_simple_stmt(stmt* stmt)
             gen_expr(stmt->assign.assigned_var_expr);
             if (stmt->assign.value_expr)
             {
-                gen_printf(" %s ", get_token_kind_name(stmt->assign.operation));
-                gen_expr(stmt->assign.value_expr);
+                gen_printf(" %s ", get_token_kind_name(stmt->assign.operation));                
+                if (stmt->assign.value_expr->kind == EXPR_NEW
+                    || stmt->assign.value_expr->kind == EXPR_AUTO)
+                {
+                    gen_expr_assign(stmt->assign.value_expr, stmt->assign.assigned_var_expr->name);
+                    debug_breakpoint;
+                }
+                else
+                {
+                    gen_expr(stmt->assign.value_expr);
+                }
             }
             else
             {
@@ -283,9 +316,18 @@ void gen_simple_stmt(stmt* stmt)
         break;
         case STMT_DELETE:
         {
-            gen_printf("___free_(");
-            gen_expr(stmt->delete.expr);
-            gen_printf(")");
+            if (stmt->delete.expr->resolved_type->kind == TYPE_LIST)
+            {
+                gen_printf("___list_free_(");
+                gen_expr(stmt->delete.expr);
+                gen_printf(")");
+            }
+            else
+            {
+                gen_printf("___free_(");
+                gen_expr(stmt->delete.expr);
+                gen_printf(")");
+            }
         }
         break;
         invalid_default_case;
@@ -420,6 +462,43 @@ void gen_stmt(stmt* stmt)
     }
 }
 
+void gen_expr_assign(expr* e, const char* dynamic_list_name)
+{
+    switch (e->kind)
+    {
+        case EXPR_NEW:
+        {
+            if (e->new.type->kind == TYPESPEC_LIST)
+            {
+                assert(dynamic_list_name);
+                gen_printf("___list_fit_(%s, 16)", dynamic_list_name);
+            }
+            else
+            {
+                char* c = typespec_to_cdecl(e->new.type, null);
+                gen_printf("(%s*)___alloc_(sizeof(%s))", c, c);
+            }
+        }
+        break;
+        case EXPR_AUTO:
+        {
+            if (e->new.type->kind == TYPESPEC_LIST)
+            {
+                fatal("not implemented");
+                /* char* c = typespec_to_cdecl(e->new.type->list.base_type, null);
+                 gen_printf("(%s)___list_fit_(16, sizeof(%s))", c, c);*/
+            }
+            else
+            {
+                char* c = typespec_to_cdecl(e->new.type, null);
+                gen_printf("(%s*)___gc_alloc_(sizeof(%s))", c, c);
+            }
+        }
+        break;
+        invalid_default_case;
+    }
+}
+
 void gen_expr(expr* e)
 {
     switch (e->kind)
@@ -531,19 +610,7 @@ void gen_expr(expr* e)
             gen_expr(e->size_of.expr);
             gen_printf(")");
         }
-        break;
-        case EXPR_NEW:
-        {
-            char* c = typespec_to_cdecl(e->new.type, null);
-            gen_printf("(%s*)___alloc_(sizeof(%s))", c, c);
-        }
-        break;
-        case EXPR_AUTO:
-        {
-            char* c = typespec_to_cdecl(e->new.type, null);
-            gen_printf("(%s*)___gc_alloc_(sizeof(%s))", c, c);
-        }
-        break;
+        break;        
         case EXPR_COMPOUND_LITERAL:
         {
             if (e->compound.type)
@@ -573,6 +640,8 @@ void gen_expr(expr* e)
         }
         break;
         case EXPR_NONE:
+        case EXPR_NEW: // zob gen_expr_assign
+        case EXPR_AUTO: // zob gen_expr_assign
         invalid_default_case;
     }
 }
@@ -793,10 +862,16 @@ void cgen_test(void)
             let j = power_2(i)\
         }",
         "struct vec3 { x: int, y: int, z: int }",
-#endif
         "const y = (float)12",
         "let u := (bool)(y > 11) && (y < 30)",
-        "let i := (int)12 + 1"
+        "let i := (int)12 + 1",
+#endif
+        "fn f(){\
+            let list := new int[]\
+            list[10] = 12\
+            delete list\
+        }",
+        
     };
     
     symbol** resolved = resolve_test_decls(test_strs, sizeof(test_strs) / sizeof(test_strs[0]), false);

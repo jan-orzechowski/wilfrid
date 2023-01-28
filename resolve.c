@@ -21,6 +21,7 @@ typedef enum type_kind
     TYPE_UNION,
     TYPE_NAME,
     TYPE_ARRAY,
+    TYPE_LIST,
     TYPE_POINTER,
     TYPE_FUNCTION
 } type_kind;
@@ -30,6 +31,11 @@ typedef struct type_array
     type* base_type;
     size_t size;
 } type_array;
+
+typedef struct type_list
+{
+    type* base_type;
+} type_list;
 
 typedef struct type_pointer
 {
@@ -65,6 +71,7 @@ struct type
     {
         const char* name;
         type_array array;
+        type_list list;
         type_pointer pointer;
         type_function function;
         type_aggregate aggregate;
@@ -267,6 +274,16 @@ type* get_array_type(type* element, size_t size)
     return t; 
 }
 
+type* get_list_type(type* element)
+{
+    complete_type(element);
+    type* t = get_new_type(TYPE_LIST);
+    t->size = get_type_size(element);
+    t->align = get_type_align(element);
+    t->list.base_type = element;
+    return t;
+}
+
 type* get_incomplete_type(symbol* sym)
 {
     type* type = get_new_type(TYPE_INCOMPLETE);
@@ -376,11 +393,7 @@ symbol* get_symbol_from_decl(decl* d)
             kind = SYMBOL_FUNCTION;
         } 
         break;
-        default:
-        {
-            fatal("invalid default case");
-        }
-        break;
+        invalid_default_case;
     }
     assert(kind != SYMBOL_NONE);
 
@@ -509,9 +522,19 @@ type* resolve_typespec(typespec* t)
             {                                
                 type* element = resolve_typespec(t->array.base_type);
                 resolved_expr* size_expr = resolve_expr(t->array.size_expr);
-                // teraz trzeba czegoś w rodzaju evalutate expr...
-
                 result = get_array_type(element, size_expr->val);
+            }
+            break;
+            case TYPESPEC_LIST:
+            {
+                type* element = resolve_typespec(t->list.base_type);
+
+                if (element->kind == TYPE_LIST)
+                {
+                    fatal("no dynamic lists of dynamic lists allowed yet");
+                }
+
+                result = get_list_type(element);
             }
             break;
             case TYPESPEC_POINTER:
@@ -525,6 +548,7 @@ type* resolve_typespec(typespec* t)
                 //result = resolve_typespec(t->function.ret_type);
             }
             break;
+            invalid_default_case;
         }
     }
     return result;
@@ -844,14 +868,20 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type)
         case EXPR_NEW:
         {
             type* t = resolve_typespec(e->new.type);
-            t = get_pointer_type(t);
+            if (t->kind != TYPE_LIST)
+            {
+                t = get_pointer_type(t);
+            }
             result = get_resolved_lvalue_expr(t);
         }
         break;
         case EXPR_AUTO:
         {
             type* t = resolve_typespec(e->auto_new.type);
-            t = get_pointer_type(t);
+            if (t->kind != TYPE_LIST)
+            {
+                t = get_pointer_type(t);
+            }
             result = get_resolved_rvalue_expr(t);
         }
         break;
@@ -914,7 +944,8 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type)
         case EXPR_INDEX:
         {
             resolved_expr* operand_expr = resolve_expr(e->index.array_expr);
-            if (pointer_decay(operand_expr)->type->kind != TYPE_POINTER)
+            if (operand_expr->type->kind != TYPE_LIST
+                && pointer_decay(operand_expr)->type->kind != TYPE_POINTER)
             {
                 fatal("can only index arrays or pointers");
             }
@@ -1186,7 +1217,18 @@ void resolve_stmt(stmt* st, type* opt_ret_type)
                 resolved_expr* right = resolve_expected_expr(st->assign.value_expr, left->type);
                 if (left->type != right->type)
                 {
-                    if (left->type->kind == TYPE_POINTER && right->type->kind == TYPE_NULL)
+                    if (left->type->kind == TYPE_LIST)
+                    {
+                        if (right->type->kind == left->type->list.base_type->kind)
+                        {
+                            // ok
+                        }
+                        else
+                        {
+                            fatal("list of different type");
+                        }
+                    }
+                    else if (left->type->kind == TYPE_POINTER && right->type->kind == TYPE_NULL)
                     {
                         // ok
                         debug_breakpoint;
@@ -1317,9 +1359,12 @@ void init_before_resolve()
     install_reserved_identifier("___alloc_");
     install_reserved_identifier("___gc_alloc_");
     install_reserved_identifier("___free_");
-    install_reserved_identifier("___push_buf_");
-    install_reserved_identifier("___del_at_buf_");
-    install_reserved_identifier("___free_buf_");
+    install_reserved_identifier("___dynamic_list_hdr_");
+    install_reserved_identifier("___get_list_hdr_");
+    install_reserved_identifier("___list_fits_");
+    install_reserved_identifier("___list_fit_");
+    install_reserved_identifier("___list_grow_");
+    install_reserved_identifier("___list_free_");
 
     complete_c_functions();
 
@@ -1406,7 +1451,7 @@ void resolve_test(void)
             vec.x = local\
             return vec.x } ",
         "fn fun(i: int, j: int): int { j++ i++ return i + j }",
-        "struct v2 { x: int, y: int }",
+        
         "let x := (v2){1,2}",
         "let y = fuu(fuu(7, x), {3, 4})",
         "fn fzz(x: int, y: int) : v2 { return {x + 1, y - 1} }",
@@ -1425,12 +1470,15 @@ void resolve_test(void)
         "let y = auto v2()",
         "fn deletetest1() { let x = new v2 x.x = 2 delete x }",
         "fn deletetest2() { let x = auto v2 x.x = 2 delete x }",
-#endif
         "let x : node* = null",
         "fn f(x: node*): bool { if (x == null) { return true } else { return false } }",
         "struct node { value: int, next: node* }",
         "let b1 : bool = 1",
         "let b2 : bool = (b1 == false)",
+#endif
+        "let list1 := new int[]",
+        "let list2 := new v2[]",
+        "struct v2 { x: int, y: int }",
     };
     size_t str_count = sizeof(test_strs) / sizeof(test_strs[0]);
 
