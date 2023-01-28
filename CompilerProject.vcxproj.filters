@@ -25,5 +25,6 @@
   <ItemGroup>
     <Text Include="test\testcode.txt" />
     <Text Include="test\linked_lists.txt" />
+    <Text Include="test\dynamic_lists.txt" />
   </ItemGroup>
 </Project>

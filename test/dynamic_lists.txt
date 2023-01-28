@@ -1,0 +1,17 @@
+﻿fn main (arguments_count: int, arguments_array: char**) 
+{ 
+	let x := new int[]
+
+	list_add(x, 1)
+	list_add(x, 2)
+	list_add(x, 3)
+	list_add(x, 4)
+
+	delete x
+
+	let y : int[]
+
+	list_add(y, 1)
+	list_add(y, 2)
+	list_add(y, 3)
+}

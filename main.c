@@ -21,7 +21,7 @@
 
 void compile_and_run(void)
 {
-    char* test_file = "test/linked_lists.txt";
+    char* test_file = "test/dynamic_lists.txt";
   
     string_ref file_buf = read_file(test_file);
     if (file_buf.str)
@@ -66,7 +66,6 @@ void compile_and_run(void)
     }
 }
 
-#if 1
 int main(int argc, char** argv)
 {
     string_arena = allocate_memory_arena(megabytes(10));
@@ -99,4 +98,3 @@ int main(int argc, char** argv)
 
     return 1;
 }
-#endif
