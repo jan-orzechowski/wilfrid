@@ -9,6 +9,22 @@ memory_arena* arena;
 
 int* code;
 
+bool is_name_restricted(const char* name)
+{
+    size_t len = strlen(name);
+    if (len > 4)
+    {
+        if (name[0] == '_'
+            && name[1] == '_'
+            && name[2] == '_'
+            && name[len - 1] == '_')
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool is_token_kind(token_kind kind)
 {
     bool result = (token.kind == kind);
@@ -1176,6 +1192,15 @@ decl* parse_declaration_optional(void)
             {
                 declaration->name = token.name;
                 next_lexed_token();
+
+                if (is_name_restricted(declaration->name))
+                {
+                    fatal("cannot use names beginning with ___");
+                }
+            }
+            else
+            {
+                fatal("name expected in declaration");
             }
             
             if (match_token_kind(TOKEN_COLON_ASSIGN))
@@ -1212,6 +1237,15 @@ decl* parse_declaration_optional(void)
             {
                 declaration->name = token.name;
                 next_lexed_token();
+
+                if (is_name_restricted(declaration->name))
+                {
+                    fatal("cannot use names beginning with ___");
+                }
+            }
+            else
+            {
+                fatal("name expected in declaration");
             }
 
             if (expect_token_kind(TOKEN_ASSIGN))
@@ -1232,6 +1266,14 @@ decl* parse_declaration_optional(void)
             {
                 declaration->name = token.name;
                 next_lexed_token();
+                if (is_name_restricted(declaration->name))
+                {
+                    fatal("cannot use names beginning with ___");
+                }
+            }
+            else
+            {
+                fatal("name expected in declaration");
             }
 
             expect_token_kind(TOKEN_LEFT_BRACE);
@@ -1251,6 +1293,14 @@ decl* parse_declaration_optional(void)
             {
                 declaration->name = token.name;
                 next_lexed_token();
+                if (is_name_restricted(declaration->name))
+                {
+                    fatal("cannot use names beginning with ___");
+                }
+            }
+            else
+            {
+                fatal("name expected in declaration");
             }
 
             expect_token_kind(TOKEN_LEFT_PAREN);
@@ -1286,6 +1336,14 @@ decl* parse_declaration_optional(void)
             {
                 declaration->name = token.name;
                 next_lexed_token();
+                if (is_name_restricted(declaration->name))
+                {
+                    fatal("cannot use names beginning with ___");
+                }
+            }
+            else
+            {
+                fatal("name expected in declaration");
             }
 
             expect_token_kind(TOKEN_LEFT_BRACE);
@@ -1308,6 +1366,11 @@ decl* parse_declaration_optional(void)
 
             declaration->typedef_decl.name = name_expr->name;
             declaration->typedef_decl.type = type;
+
+            if (is_name_restricted(name_expr->name))
+            {
+                fatal("cannot use names beginning with ___");
+            }
         }
 
     }
