@@ -81,6 +81,7 @@ int main(int argc, char** argv)
     parse_test();
 #elif 0
     resolve_test();
+    mangled_names_test();
 #elif 0
     cgen_test();
 #else

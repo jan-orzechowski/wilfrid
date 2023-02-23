@@ -893,3 +893,190 @@ void cgen_test(void)
 
     debug_breakpoint;
 }
+
+char* get_mangled_name(type* typ);
+char* get_symbol_mangled_name(symbol* sym);
+
+char* get_basic_type_mangled_name(type* typ)
+{
+    assert(typ)
+    char* result = null;
+    buf_printf(result, "___");
+    switch (typ->kind)
+    {
+        case TYPE_VOID:
+        {
+            buf_printf(result, "0v");
+        }
+        break;
+        case TYPE_INT:
+        {
+            buf_printf(result, "0i");
+        }
+        break;
+        case TYPE_CHAR:
+        {
+            buf_printf(result, "0c");
+        }
+        break;
+        case TYPE_STRING:
+        {
+            buf_printf(result, "0s");
+        }
+        break;
+        case TYPE_FLOAT:
+        {
+            buf_printf(result, "0f");
+        }
+        break;
+        case TYPE_BOOL:
+        {
+            buf_printf(result, "0b");
+        }
+        break;
+        case TYPE_NULL:
+        {
+            buf_printf(result, "0n");
+        }
+        break;
+        case TYPE_ARRAY:
+        {
+            // ___0a_16___type
+            buf_printf(result, "0a");
+            buf_printf(result, xprintf("_%lld", typ->array.size));
+            buf_printf(result, get_mangled_name(typ->array.base_type));
+        }
+        break;
+        case TYPE_LIST:
+        {
+            // ___0l___type
+            buf_printf(result, "0l");
+            buf_printf(result, get_mangled_name(typ->list.base_type));
+        }
+        break;
+        case TYPE_POINTER:
+        {
+            buf_printf(result, "0p");
+            buf_printf(result, get_mangled_name(typ->pointer.base_type));
+        }
+        break;
+        case TYPE_NAME:
+        {
+            buf_printf(result, typ->name);
+        }
+        break;
+        invalid_default_case;
+    }
+    return result;
+}
+
+char* get_mangled_name(type* typ)
+{
+    char* result = null;
+    assert(typ);
+    if (typ->symbol)
+    {
+        result = get_symbol_mangled_name(typ->symbol);
+    }
+    else
+    {
+        result = get_basic_type_mangled_name(typ);
+    }
+    return result;
+}
+
+char* get_symbol_mangled_name(symbol* sym)
+{
+    assert(sym);
+    assert(sym->type)
+    char* result = null;
+    buf_printf(result, "___");
+    switch (sym->type->kind)
+    {
+        case TYPE_STRUCT:
+        {
+            buf_printf(result, sym->name);
+        }
+        break;
+        case TYPE_UNION:
+        {
+            buf_printf(result, sym->name);
+        }
+        break;              
+        case TYPE_FUNCTION:
+        {
+            // ___function_name___arg_type1___arg_type2___ret_type___
+            buf_printf(result, sym->name);
+            for (size_t i = 0; i < sym->type->function.param_count; i++)
+            {
+                type* t = sym->type->function.param_types[i];
+                char* mangled_arg = get_mangled_name(sym->type->function.param_types[i]);
+                buf_printf(result, mangled_arg);
+            }
+            if (sym->type->function.ret_type)
+            {
+                char* mangled_ret = get_mangled_name(sym->type->function.ret_type);
+                buf_printf(result, mangled_ret);
+            }
+            else
+            {
+                buf_printf(result, "___0v");
+            }
+        }
+        break;
+        case TYPE_NONE:
+        case TYPE_INCOMPLETE:
+        case TYPE_COMPLETING:
+        default:
+        {
+            fatal("name mangling: non-supported typespec");
+        }
+        break;        
+    }
+    return result;
+}
+
+void mangled_names_test()
+{
+    // uwaga: reordering podczas resolve może zepsuć test
+    char* test_strs[] = {
+        "fn funkcja (x: int, y: int) { return } ",
+        "struct tee { i: int }",
+        "union zet { s: tee, t: zet* }",
+        "fn funkcja ( t: tee, z: zet, i: int[16]*) { return }",
+        "fn funkcja ( t: tee, z: zet*, i: int[16]*) { return }",
+        "fn funkcja ( t: tee*, z: zet, i: int[16]*) { return }",
+        "fn funkcja ( t: tee*, z: zet, i: int[16]*) : int { return 1 }",
+        "fn funkcja ( t: zet, z: zet, i: int[17]*) { return }",
+        "fn funkcja ( t: zet*, z: int[17]*, i: zet*) { return }",
+        "fn funkcja ( t: tee*, z: zet, i: int[]) { return }",
+    };
+
+    char* cmp_strs[] = {
+        "___funkcja___0i___0i___0v",
+        "___tee",
+        "___zet",
+        "___funkcja___tee___zet___0p___0a_16___0i___0v",
+        "___funkcja___tee___0p___zet___0p___0a_16___0i___0v",
+        "___funkcja___0p___tee___zet___0p___0a_16___0i___0v",
+        "___funkcja___0p___tee___zet___0p___0a_16___0i___0i",
+        "___funkcja___zet___zet___0p___0a_16___0i___0v",
+        "___funkcja___0p___zet___0p___0a_16___0i___0p___zet___0v",
+        "___funkcja___0p___tee___zet___0l___0i___0v",
+    };
+
+    assert((sizeof(test_strs) / sizeof(test_strs[0])) == sizeof(cmp_strs) / sizeof(cmp_strs[0]))
+
+    symbol** resolved = resolve_test_decls(test_strs, sizeof(test_strs) / sizeof(test_strs[0]), false);
+    for (size_t i = 0; i < buf_len(resolved); i++)
+    {
+        symbol* sym = resolved[i];
+        char* mangled_name = get_mangled_name(sym->type);
+        if (0 != strcmp(mangled_name, cmp_strs[i]))
+        {
+            // błąd!
+            debug_breakpoint;
+        }
+    }
+    debug_breakpoint;
+}

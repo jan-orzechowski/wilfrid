@@ -9,17 +9,21 @@ memory_arena* arena;
 
 int* code;
 
-bool is_name_restricted(const char* name)
+bool is_name_reserved(const char* name)
 {
     size_t len = strlen(name);
-    if (len > 4)
+    if (len >= 3)
     {
-        if (name[0] == '_'
-            && name[1] == '_'
-            && name[2] == '_'
-            && name[len - 1] == '_')
+        size_t i = 0;
+        while (i < len)
         {
-            return true;
+            if (name[i] == '_'
+                && (i + 1 < len && name[i + 1] == '_')
+                && (i + 2 < len && name[i + 2] == '_'))
+            {
+                return true;
+            }
+            i++;
         }
     }
     return false;
@@ -1174,6 +1178,24 @@ void parse_enum(enum_decl* decl)
     }
 }
 
+void parse_declaration_identifier(decl* declaration)
+{
+    if (is_token_kind(TOKEN_NAME))
+    {
+        declaration->name = token.name;
+        next_lexed_token();
+
+        if (is_name_reserved(declaration->name))
+        {
+            fatal("identifiers with triple underscore ('___') are reserved");
+        }
+    }
+    else
+    {
+        fatal("name expected in declaration");
+    }
+}
+
 decl* parse_declaration_optional(void)
 {
     decl* declaration = NULL;
@@ -1188,20 +1210,7 @@ decl* parse_declaration_optional(void)
             declaration->pos = pos;
 
             next_lexed_token();
-            if (is_token_kind(TOKEN_NAME))
-            {
-                declaration->name = token.name;
-                next_lexed_token();
-
-                if (is_name_restricted(declaration->name))
-                {
-                    fatal("cannot use names beginning with ___");
-                }
-            }
-            else
-            {
-                fatal("name expected in declaration");
-            }
+            parse_declaration_identifier(declaration);
             
             if (match_token_kind(TOKEN_COLON_ASSIGN))
             {
@@ -1233,20 +1242,7 @@ decl* parse_declaration_optional(void)
             declaration->pos = pos;
 
             next_lexed_token();
-            if (is_token_kind(TOKEN_NAME))
-            {
-                declaration->name = token.name;
-                next_lexed_token();
-
-                if (is_name_restricted(declaration->name))
-                {
-                    fatal("cannot use names beginning with ___");
-                }
-            }
-            else
-            {
-                fatal("name expected in declaration");
-            }
+            parse_declaration_identifier(declaration);
 
             if (expect_token_kind(TOKEN_ASSIGN))
             {
@@ -1262,19 +1258,7 @@ decl* parse_declaration_optional(void)
             declaration->pos = pos;
 
             next_lexed_token();
-            if (is_token_kind(TOKEN_NAME))
-            {
-                declaration->name = token.name;
-                next_lexed_token();
-                if (is_name_restricted(declaration->name))
-                {
-                    fatal("cannot use names beginning with ___");
-                }
-            }
-            else
-            {
-                fatal("name expected in declaration");
-            }
+            parse_declaration_identifier(declaration);
 
             expect_token_kind(TOKEN_LEFT_BRACE);
 
@@ -1289,19 +1273,7 @@ decl* parse_declaration_optional(void)
             declaration->pos = pos;
 
             next_lexed_token();
-            if (is_token_kind(TOKEN_NAME))
-            {
-                declaration->name = token.name;
-                next_lexed_token();
-                if (is_name_restricted(declaration->name))
-                {
-                    fatal("cannot use names beginning with ___");
-                }
-            }
-            else
-            {
-                fatal("name expected in declaration");
-            }
+            parse_declaration_identifier(declaration);
 
             expect_token_kind(TOKEN_LEFT_PAREN);
 
@@ -1332,19 +1304,7 @@ decl* parse_declaration_optional(void)
             declaration->pos = pos;
 
             next_lexed_token();
-            if (is_token_kind(TOKEN_NAME))
-            {
-                declaration->name = token.name;
-                next_lexed_token();
-                if (is_name_restricted(declaration->name))
-                {
-                    fatal("cannot use names beginning with ___");
-                }
-            }
-            else
-            {
-                fatal("name expected in declaration");
-            }
+            parse_declaration_identifier(declaration);
 
             expect_token_kind(TOKEN_LEFT_BRACE);
 
@@ -1367,9 +1327,9 @@ decl* parse_declaration_optional(void)
             declaration->typedef_decl.name = name_expr->name;
             declaration->typedef_decl.type = type;
 
-            if (is_name_restricted(name_expr->name))
+            if (is_name_reserved(name_expr->name))
             {
-                fatal("cannot use names beginning with ___");
+                fatal("identifiers with triple underscore ('___') are reserved");
             }
         }
 

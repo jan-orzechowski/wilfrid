@@ -1110,6 +1110,9 @@ void resolve_symbol(symbol* s)
         break;
     }
 
+    assert(s->type);
+    s->type->symbol = s;
+
     s->state = SYMBOL_RESOLVED;
     buf_push(ordered_global_symbols, s);
 }
