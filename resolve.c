@@ -152,8 +152,6 @@ hashmap global_symbols;
 symbol** global_symbols_list;
 symbol** ordered_global_symbols;
 
-hashmap reserved_identifiers;
-
 enum
 {
     MAX_LOCAL_SYMBOLS = 1024
@@ -171,11 +169,6 @@ void resolve_stmt(stmt* st, type* opt_ret_type);
 
 symbol* get_symbol(const char* name)
 {
-    if (map_get(&reserved_identifiers, name))
-    {
-        fatal("identifier %s is reserved", name);
-    }
-
     for (symbol* it = last_local_symbol; it != local_symbols; it--)
     {
         symbol* sym = it - 1;
@@ -1345,12 +1338,6 @@ void complete_symbol(symbol* sym)
     }
 }
 
-void install_reserved_identifier(const char* identifier)
-{
-    const char* interned = str_intern(identifier);
-    map_put(&reserved_identifiers, interned, interned);
-}
-
 void init_before_resolve()
 {    
     push_installed_symbol("void", type_void);
@@ -1358,16 +1345,6 @@ void init_before_resolve()
     push_installed_symbol("int", type_int);
     push_installed_symbol("float", type_float);
     push_installed_symbol("bool", type_bool);
-    
-    install_reserved_identifier("___alloc_");
-    install_reserved_identifier("___gc_alloc_");
-    install_reserved_identifier("___free_");
-    install_reserved_identifier("___dynamic_list_hdr_");
-    install_reserved_identifier("___get_list_hdr_");
-    install_reserved_identifier("___list_fits_");
-    install_reserved_identifier("___list_fit_");
-    install_reserved_identifier("___list_grow_");
-    install_reserved_identifier("___list_free_");
 
     complete_c_functions();
 
