@@ -93,7 +93,7 @@ char* type_to_cdecl(type* type, const char* name)
         case TYPE_STRUCT:
         case TYPE_UNION:
         {
-            return xprintf("%s%s%s", cdecl_name(type), name ? " " : "", name);
+            return xprintf("%s%s%s", cdecl_name(type), name ? " " : "", name ? name : "");
         }
         break;
         case TYPE_POINTER:
@@ -615,11 +615,13 @@ void gen_expr(expr* e)
         {
             if (e->compound.type)
             {
-                gen_printf("(%s){", typespec_to_cdecl(e->compound.type, null));
+                char* decl = typespec_to_cdecl(e->compound.type, null);
+                gen_printf("(%s){", decl);
             }
             else
             {
-                gen_printf("(%s){", type_to_cdecl(e->resolved_type, null));
+                char* decl = type_to_cdecl(e->resolved_type, null);
+                gen_printf("(%s){", decl);
             }
             for (size_t i = 0; i < e->compound.fields_count; i++)
             {
