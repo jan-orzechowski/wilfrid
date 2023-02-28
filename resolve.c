@@ -778,6 +778,8 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type)
             else if (sym->kind == SYMBOL_CONST)
             {
                 result = get_resolved_rvalue_expr(sym->type);
+                result->is_const = true;
+                result->val = sym->val;
             }
             else if (sym->kind == SYMBOL_FUNCTION)
             {                  
@@ -982,18 +984,6 @@ resolved_expr* resolve_expr(expr* e)
     return result;
 }
 
-type* resolve_const_decl(decl* d)
-{
-    type* result = 0;
-    assert(d->const_decl.expr);
-    resolved_expr* expr = resolve_expr(d->const_decl.expr);
-    if (expr)
-    {
-        result = expr->type;
-    }
-    return result;
-}
-
 type* resolve_variable_decl(decl* d)
 {
     type* result = 0;
@@ -1069,8 +1059,13 @@ void resolve_symbol(symbol* s)
     switch (s->kind)
     {
         case SYMBOL_CONST:
-        {
-            s->type = resolve_const_decl(s->decl);
+        {            
+            resolved_expr* expr = resolve_expr(s->decl->const_decl.expr);
+            if (expr)
+            {
+                s->type = expr->type;
+                s->val = expr->val;
+            }
         }
         break;
         case SYMBOL_VARIABLE:
