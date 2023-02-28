@@ -98,6 +98,7 @@ typedef enum symbol_state
 typedef struct symbol
 {
     const char* name;
+    const char* overloaded_name; // w przypadku funkcji tutaj jest oryginalna nazwa
     symbol_kind kind;
     symbol_state state;
     decl* decl;
@@ -167,6 +168,7 @@ resolved_expr* resolve_expr(expr* e);
 resolved_expr* resolve_expected_expr(expr* e, type* expected_type);
 void resolve_stmt(stmt* st, type* opt_ret_type);
 
+char* get_function_mangled_name(decl* dec);
 symbol* get_symbol(const char* name)
 {
     for (symbol* it = last_local_symbol; it != local_symbols; it--)
@@ -1084,6 +1086,7 @@ void resolve_symbol(symbol* s)
         case SYMBOL_FUNCTION:
         {
             s->type = resolve_function_decl(s->decl);
+            s->type->symbol = s;
         }
         break;
         default:
@@ -1094,7 +1097,6 @@ void resolve_symbol(symbol* s)
     }
 
     assert(s->type);
-    s->type->symbol = s;
 
     s->state = SYMBOL_RESOLVED;
     buf_push(ordered_global_symbols, s);
