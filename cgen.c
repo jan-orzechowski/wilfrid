@@ -562,7 +562,10 @@ void gen_expr(expr* e)
         break;
         case EXPR_CALL:
         {
-            gen_expr(e->call.function_expr);
+            assert(e->call.resolved_function);
+            assert(e->call.resolved_function->mangled_name);
+
+            gen_printf(e->call.resolved_function->mangled_name);
             gen_printf("(");
             for (size_t i = 0; i < e->call.args_num; i++)
             {
@@ -623,6 +626,7 @@ void gen_expr(expr* e)
                 char* decl = type_to_cdecl(e->resolved_type, null);
                 gen_printf("(%s){", decl);
             }
+
             for (size_t i = 0; i < e->compound.fields_count; i++)
             {
                 if (i != 0)
@@ -638,6 +642,7 @@ void gen_expr(expr* e)
 
                 gen_expr(field->expr);
             }
+
             gen_printf("}");
         }
         break;
@@ -694,7 +699,7 @@ void gen_func_decl(decl* d)
 {
     assert(d->kind == DECL_FUNCTION);
 
-    char* mangled_name = get_function_decl_mangled_name(d);
+    char* mangled_name = get_function_mangled_name(d);
     
     if (d->function.return_type)
     {
@@ -968,7 +973,7 @@ char* get_typespec_mangled_name(typespec* typ)
     return result;
 }
 
-char* get_function_decl_mangled_name(decl* dec)
+char* get_function_mangled_name(decl* dec)
 {
     assert(dec);
     assert(dec->kind == DECL_FUNCTION);
@@ -1031,7 +1036,7 @@ void mangled_names_test()
     for (size_t i = 2 /* dwa pierwsze pomijamy!*/; i < buf_len(resolved); i++)
     {
         symbol* sym = resolved[i]; 
-        char* mangled_name = get_function_decl_mangled_name(sym->decl);
+        char* mangled_name = get_function_mangled_name(sym->decl);
         if (0 != strcmp(mangled_name, cmp_strs[i]))
         {
             // błąd!

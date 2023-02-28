@@ -95,16 +95,21 @@ typedef enum symbol_state
     SYMBOL_RESOLVED,
 } symbol_state;
 
-typedef struct symbol
+typedef struct symbol symbol;
+struct symbol
 {
     const char* name;
-    const char* overloaded_name; // w przypadku funkcji tutaj jest oryginalna nazwa
+    const char* mangled_name; // w przypadku funkcji
     symbol_kind kind;
     symbol_state state;
     decl* decl;
     type* type;
-    int64_t val;
-} symbol;
+    union
+    {
+        int64_t val;
+        symbol* next_overload;
+    };
+};
 
 typedef struct resolved_expr
 {
@@ -165,10 +170,63 @@ void complete_type(type* t);
 void resolve_symbol(symbol* s);
 type* resolve_typespec(typespec* t);
 resolved_expr* resolve_expr(expr* e);
-resolved_expr* resolve_expected_expr(expr* e, type* expected_type);
+resolved_expr* resolve_expected_expr(expr* e, type* expected_type, bool ignore_expected_type_mismatch);
 void resolve_stmt(stmt* st, type* opt_ret_type);
 
 char* get_function_mangled_name(decl* dec);
+
+bool are_symbols_the_same_function(symbol* a, symbol* b)
+{
+    assert(a->kind == SYMBOL_FUNCTION);
+    assert(b->kind == SYMBOL_FUNCTION);
+    if (a == b)
+    {
+        return true;
+    }
+
+    if (a->decl->function.return_type == null
+        && b->decl->function.return_type != null)
+    {
+        return false;
+    }
+
+    if (a->decl->function.return_type != null
+        && b->decl->function.return_type == null)
+    {
+        return false;
+    }
+
+    if (a->decl->function.return_type != null
+        && a->decl->function.return_type != null)
+    {
+        // zakładam interning stringów
+        if (a->decl->function.return_type->name
+            != b->decl->function.return_type->name)
+        {
+            return false;
+        }
+    }
+
+    if (a->decl->function.params.param_count 
+        != b->decl->function.params.param_count)
+    {
+        return false;
+    }
+
+    for (size_t param_index = 0;
+        param_index < a->decl->function.params.param_count;
+        param_index++)
+    {
+        if (a->decl->function.params.params[param_index].name
+            != b->decl->function.params.params[param_index].name)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 symbol* get_symbol(const char* name)
 {
     for (symbol* it = last_local_symbol; it != local_symbols; it--)
@@ -180,7 +238,7 @@ symbol* get_symbol(const char* name)
         }
     }
 
-    void* global_symbol = map_get(&global_symbols, name);
+    void* global_symbol = map_get(&global_symbols, (void*)name);
     if (global_symbol)
     {
         return global_symbol;
@@ -425,6 +483,44 @@ symbol* push_installed_function(const char* name, type* type)
 void push_symbol_from_decl(decl* d)
 {
     symbol* sym = get_symbol_from_decl(d);
+
+    if (sym->kind == SYMBOL_TYPE)
+    {
+        // nie zezwalamy na podwójne nazwy
+        if (map_get(&global_symbols, sym->name))
+        {
+            fatal("duplicate identifiers!");
+            return;
+        }
+    }
+    else if (sym->kind == SYMBOL_FUNCTION)
+    {
+        sym->mangled_name = get_function_mangled_name(sym->decl);
+        // jeśli mamy podwójne nazwy, zachodzi overloading...
+        symbol* overload = map_get(&global_symbols, sym->name);
+        if (overload)
+        {
+            // dodajemy na koniec łańcucha
+            symbol* prev = null;
+            do
+            {
+                if (are_symbols_the_same_function(sym, overload))
+                {
+                    fatal("duplicate overloaded functions!");
+                    return;
+                }
+
+                prev = overload;
+                overload = overload->next_overload;
+            }
+            while (overload);
+
+            // jeśli nie znaleźliśmy
+            prev->next_overload = sym;
+            return;
+        }
+    }
+
     map_put(&global_symbols, sym->name, sym);
     buf_push(global_symbols_list, sym);
 }
@@ -482,10 +578,10 @@ void complete_type(type* t)
 symbol* resolve_name(const char* name)
 {    
     symbol* s = get_symbol(name);
-    if (!s)
+    if (s == null)
     {
-        fatal("non-existent name");
-        return 0;
+        fatal("non-existent name");        
+        return null;
     }
     resolve_symbol(s);
     return s;
@@ -679,7 +775,7 @@ resolved_expr* resolve_expr_binary(expr* expr)
     return result;
 }
 
-resolved_expr* resolve_compound_expr(expr* e, type* expected_type)
+resolved_expr* resolve_compound_expr(expr* e, type* expected_type, bool ignore_expected_type_mismatch)
 {
     resolved_expr* result = 0;
 
@@ -696,7 +792,14 @@ resolved_expr* resolve_compound_expr(expr* e, type* expected_type)
         t = resolve_typespec(e->compound.type);
         if (expected_type && t != expected_type)
         {
-            fatal("compound literal has different type than expected");
+            if (false == ignore_expected_type_mismatch)
+            {
+                fatal("compound literal has different type than expected");
+            }
+            else
+            {
+                debug_breakpoint;
+            }
         }
     }
     else
@@ -727,7 +830,7 @@ resolved_expr* resolve_compound_expr(expr* e, type* expected_type)
         {
             compound_literal_field* field = e->compound.fields[i];
             type* expected_type = t->aggregate.fields[index]->type;
-            resolved_expr* init_expr = resolve_expected_expr(field->expr, expected_type);
+            resolved_expr* init_expr = resolve_expected_expr(field->expr, expected_type, false);
 
             if (init_expr->type != expected_type)
             {
@@ -751,7 +854,7 @@ resolved_expr* resolve_compound_expr(expr* e, type* expected_type)
         {
             compound_literal_field* field = e->compound.fields[i];
             type* expected_type = t->array.base_type;
-            resolved_expr* init_expr = resolve_expected_expr(field->expr, expected_type);
+            resolved_expr* init_expr = resolve_expected_expr(field->expr, expected_type, true);
             if (init_expr->type != expected_type)
             {
                 fatal("compound literal element type mismatch");
@@ -763,14 +866,14 @@ resolved_expr* resolve_compound_expr(expr* e, type* expected_type)
    return result;
 }
 
-resolved_expr* resolve_expected_expr(expr* e, type* expected_type)
+resolved_expr* resolve_expected_expr(expr* e, type* expected_type, bool ignore_expected_type_mismatch)
 {
     resolved_expr* result = 0;
     switch (e->kind)
     {
         case EXPR_NAME:
         {
-            symbol* sym = resolve_name(e->name);          
+            symbol* sym = resolve_name(e->name);
             if (sym->kind == SYMBOL_VARIABLE)
             {
                 result = get_resolved_lvalue_expr(sym->type);
@@ -793,7 +896,6 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type)
             else
             {
                 fatal("not expected symbol kind");
-                //fatal("must be a variable name!");
             } 
         }
         break;
@@ -826,24 +928,43 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type)
         }
         break;
         case EXPR_CALL:
-        {
+        {            
             resolved_expr* fn_expr = resolve_expr(e->call.function_expr);
-            size_t count = fn_expr->type->function.param_count;
-            if (count == e->call.args_num)
+            symbol* found = null;
+            symbol* candidate_function = fn_expr->type->symbol;
+            assert(fn_expr->type->kind == TYPE_FUNCTION);
+            while (candidate_function)
             {
-                for (size_t i = 0; i < count; i++)
+                assert(candidate_function->type->kind == TYPE_FUNCTION);
+                size_t arg_count = candidate_function->type->function.param_count;
+                if (arg_count == e->call.args_num)
                 {
-                    expr* arg_expr = e->call.args[i];
-                    type* param_type = fn_expr->type->function.param_types[i];
-                    resolved_expr* resolved_arg_expr = resolve_expected_expr(arg_expr, param_type);
+                    for (size_t i = 0; i < arg_count; i++)
+                    {
+                        expr* arg_expr = e->call.args[i];
+                        type* expected_param_type = candidate_function->type->function.param_types[i];
+                        resolved_expr* resolved_arg_expr = resolve_expected_expr(arg_expr, expected_param_type, true);
+                        if (resolved_arg_expr->type != expected_param_type)
+                        {
+                            goto candidate_function_check_next;
+                        }
+                    }
+                    // jeśli tu jesteśmy, to wszystkie argumenty zgadzają się
+                    found = candidate_function;
                 }
-            }
-            else
-            {
-                fatal("invalid number of arguments");
+candidate_function_check_next:
+
+                candidate_function = candidate_function->next_overload;
             }
 
-            result = get_resolved_rvalue_expr(fn_expr->type->function.ret_type);
+            if (found == null)
+            {
+                fatal("no overload is matching types of arguments");
+            }
+
+            e->call.resolved_function = found;
+
+            result = get_resolved_rvalue_expr(found->type->function.ret_type);
         }
         break;
         case EXPR_CAST:
@@ -958,7 +1079,7 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type)
         break;
         case EXPR_COMPOUND_LITERAL:
         {
-            result = resolve_compound_expr(e, expected_type);
+            result = resolve_compound_expr(e, expected_type, ignore_expected_type_mismatch);
         }
         break;
         default:
@@ -980,7 +1101,7 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type)
 
 resolved_expr* resolve_expr(expr* e)
 {
-    resolved_expr* result = resolve_expected_expr(e, NULL);
+    resolved_expr* result = resolve_expected_expr(e, null, true);
     return result;
 }
 
@@ -998,7 +1119,7 @@ type* resolve_variable_decl(decl* d)
 
     if (d->variable.expr)
     {
-        resolved_expr* expr = resolve_expected_expr(d->variable.expr, result);
+        resolved_expr* expr = resolve_expected_expr(d->variable.expr, result, false);
         if (expr)
         {
             if (expr->type == type_null)
@@ -1123,7 +1244,7 @@ void resolve_stmt(stmt* st, type* opt_ret_type)
         {
             if (st->expr)
             {
-                resolved_expr* result = resolve_expected_expr(st->expr, opt_ret_type);
+                resolved_expr* result = resolve_expected_expr(st->expr, opt_ret_type, true);
                 if (result->type != opt_ret_type)
                 {
                     if (result->type == type_int
@@ -1197,7 +1318,7 @@ void resolve_stmt(stmt* st, type* opt_ret_type)
             resolved_expr* left = resolve_expr(st->assign.assigned_var_expr);
             if (st->assign.value_expr)
             {                
-                resolved_expr* right = resolve_expected_expr(st->assign.value_expr, left->type);
+                resolved_expr* right = resolve_expected_expr(st->assign.value_expr, left->type, false);
                 if (left->type != right->type)
                 {
                     if (left->type->kind == TYPE_LIST)
@@ -1316,12 +1437,15 @@ void complete_symbol(symbol* sym)
     }
     else if (sym->kind == SYMBOL_FUNCTION)
     {
-        // wyjątek - zewnętrzna funkcja
-        if (sym->name == str_intern("printf"))
-        {
-            return;
-        }
         complete_function_body(sym);
+    }
+
+    if (sym->kind == SYMBOL_FUNCTION)
+    {
+        if (sym->next_overload)
+        {
+            complete_symbol(sym->next_overload);
+        }
     }
 }
 

@@ -111,6 +111,7 @@ typedef struct call_expr
     expr* function_expr;
     expr** args;
     size_t args_num;
+    symbol* resolved_function; // określa, które z przeciążeń wezwać
 } call_expr;
 
 typedef struct index_expr

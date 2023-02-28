@@ -1,0 +1,35 @@
+﻿struct rectangle 
+{
+	x: int,
+	y: int
+}
+
+struct cuboid
+{
+	x: int,
+	y: int,
+	z: int
+}
+
+fn add(a: rectangle, b: rectangle) : rectangle
+{
+	let result : rectangle = { x = a.x + b.x, y = a.y + b.y }
+	return result
+}
+
+fn add(a: cuboid, b: cuboid) : cuboid
+{
+	let result : cuboid = { x = a.x + b.x, y = a.y + b.y, z = a.z + b.z }
+	return result
+}
+
+fn main()
+{
+	let a: rectangle = {1, 2}
+	let b: rectangle = {3, 4}
+	let c := add(a, b)
+
+	let d: cuboid = {1, 2, 3}
+	let e: cuboid = {4, 5, 6}
+	let f := add(d, e)
+}

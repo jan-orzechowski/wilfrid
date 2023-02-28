@@ -21,7 +21,7 @@
 
 void compile_and_run(void)
 {
-    char* test_file = "test/dynamic_lists.txt";
+    char* test_file = "test/overloading.txt";
   
     string_ref file_buf = read_file(test_file);
     if (file_buf.str)
@@ -43,7 +43,7 @@ void compile_and_run(void)
 
         size_t debug_count = buf_len(resolved);
 
-        gen_common_includes();
+        //gen_common_includes();
 
         gen_printf_newline("\n// FORWARD DECLARATIONS\n");
 

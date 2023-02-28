@@ -149,6 +149,7 @@
   <ItemGroup>
     <Text Include="test\dynamic_lists.txt" />
     <Text Include="test\linked_lists.txt" />
+    <Text Include="test\overloading.txt" />
     <Text Include="test\testcode.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

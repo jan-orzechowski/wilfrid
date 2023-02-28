@@ -26,5 +26,6 @@
     <Text Include="test\testcode.txt" />
     <Text Include="test\linked_lists.txt" />
     <Text Include="test\dynamic_lists.txt" />
+    <Text Include="test\overloading.txt" />
   </ItemGroup>
 </Project>
