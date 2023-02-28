@@ -593,14 +593,6 @@ void print_decl(decl* d)
             printf(")");
         }
         break;
-        case DECL_TYPEDEF:
-        {
-            printf("(typedef-decl %s", d->typedef_decl.name);
-            printf(" ");
-            print_typespec(d->typedef_decl.type);
-            printf(")");
-        }
-        break;
         invalid_default_case;
     }
 }

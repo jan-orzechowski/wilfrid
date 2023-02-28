@@ -365,7 +365,6 @@ symbol* get_symbol_from_decl(decl* d)
     {
         case DECL_STRUCT:
         case DECL_UNION:
-        case DECL_TYPEDEF:
         case DECL_ENUM:
         {
             kind = SYMBOL_TYPE;
@@ -1025,15 +1024,6 @@ type* resolve_variable_decl(decl* d)
     return result;
 }
 
-type* resolve_type_decl(decl* d)
-{
-    assert(d->kind == DECL_TYPEDEF); 
-    // jedyny rodzaj, jaki tu trzeba obsłużyć
-    // unions i structs są resolved od razu
-    type* result = resolve_typespec(d->typedef_decl.type);
-    return result;
-}
-
 type* resolve_function_decl(decl* d)
 {
     assert(d->kind == DECL_FUNCTION);
@@ -1087,8 +1077,8 @@ void resolve_symbol(symbol* s)
         }
         break;
         case SYMBOL_TYPE:
-        {            
-            s->type = resolve_type_decl(s->decl);
+        {       
+            // nie musimy nic robić - unions i structs są resolved od razu
         }
         break;
         case SYMBOL_FUNCTION:

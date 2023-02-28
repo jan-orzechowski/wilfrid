@@ -294,7 +294,6 @@ typedef enum decl_kind
     DECL_VARIABLE,
     DECL_CONST,
     DECL_FUNCTION,
-    DECL_TYPEDEF,
     DECL_ENUM
 } decl_kind;
 
@@ -356,12 +355,6 @@ typedef struct enum_decl
     size_t values_count;
 } enum_decl;
 
-typedef struct typedef_decl
-{
-    typespec* type;
-    const char* name;
-} typedef_decl;
-
 struct decl
 {
     const char* name;
@@ -373,7 +366,6 @@ struct decl
         variable_decl variable;
         aggregate_decl aggregate;
         enum_decl enum_decl;
-        typedef_decl typedef_decl;
         const_decl const_decl;
     };
 };

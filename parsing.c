@@ -1312,27 +1312,10 @@ decl* parse_declaration_optional(void)
 
             expect_token_kind(TOKEN_RIGHT_BRACE);
         }
-        else if (decl_keyword == typedef_keyword)
+        else
         {
-            next_lexed_token();
-            declaration = push_struct(arena, decl);
-            declaration->kind = DECL_TYPEDEF;
-            declaration->pos = pos;
-
-            expr* name_expr = parse_expr();
-            assert(name_expr->kind == EXPR_NAME);
-            expect_token_kind(TOKEN_ASSIGN);
-            typespec* type = parse_typespec();
-
-            declaration->typedef_decl.name = name_expr->name;
-            declaration->typedef_decl.type = type;
-
-            if (is_name_reserved(name_expr->name))
-            {
-                fatal("identifiers with triple underscore ('___') are reserved");
-            }
+            fatal("unknown keyword");
         }
-
     }
     return declaration;
 }
@@ -1429,8 +1412,6 @@ void parse_test(void)
         "let x = y == z ? *y : 20",
         "fn fc(x: stru*) : stu { stru.substru = {1, 2} let y = func(12, a, {2, 3, x, stru.substru}) return y }",
         "fn f() { x.y = {z = 2, w = 3, p = 44, q = z, 22} }",
-        "typedef vectors = vector[1+2]",
-        "typedef t = (fn(int*[2], int):int)[16]",
         "let x: int[4] = {1, 2, 3, 4}",
         "let x = (v3){1, 2, 3}",
         "let y = f(1, {1, 2}, (v2){1,2})",

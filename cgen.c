@@ -754,7 +754,6 @@ void gen_forward_decls(symbol** resolved)
                 case DECL_CONST:
                 case DECL_VARIABLE:
                 case DECL_ENUM:
-                case DECL_TYPEDEF:
                 default:
                 {
                     // nie potrzeba forward declaration
@@ -827,11 +826,7 @@ void gen_symbol_decl(symbol* sym)
             gen_expr(decl->const_decl.expr);
             gen_printf(" };");
             break;
-        }
-        case DECL_TYPEDEF:
-        {
-            gen_printf_newline("typedef %s;", type_to_cdecl(sym->type, sym->name));
-        }
+        }      
         break;
         default:
         {

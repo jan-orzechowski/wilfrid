@@ -31,7 +31,6 @@ const char* enum_keyword;
 const char* union_keyword;
 const char* let_keyword;
 const char* fn_keyword;
-const char* typedef_keyword;
 const char* const_keyword;
 const char* new_keyword;
 const char* auto_keyword;
@@ -68,7 +67,6 @@ void init_keywords(void)
         KEYWORD(union);
         KEYWORD(let);
         KEYWORD(fn);
-        KEYWORD(typedef);
         KEYWORD(sizeof);
         KEYWORD(const);
         KEYWORD(new);
