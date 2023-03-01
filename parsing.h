@@ -111,6 +111,7 @@ typedef struct call_expr
     expr* function_expr;
     expr** args;
     size_t args_num;
+    expr* method_receiver;
     symbol* resolved_function; // określa, które z przeciążeń wezwać
 } call_expr;
 
@@ -339,6 +340,7 @@ typedef struct function_decl
 {
     function_param_list params;
     typespec* return_type;
+    function_param* method_receiver;
     stmt_block stmts;
 } function_decl;
 

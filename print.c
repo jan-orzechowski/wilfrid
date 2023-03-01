@@ -83,6 +83,14 @@ void print_expr(expr* e)
         {
             printf("(");
             print_expr(e->call.function_expr);
+
+            if (e->call.method_receiver)
+            {
+                printf(" (receiver ");
+                print_expr(e->call.method_receiver);
+                printf(")");
+            }
+
             printf(" ");
             for (size_t i = 0; i < e->call.args_num; i++)
             {
@@ -463,6 +471,13 @@ void print_decl(decl* d)
             if (d->name)
             {
                 printf("%s", d->name);
+            }
+
+            if (d->function.method_receiver)
+            {
+                printf(" (receiver (%s ", d->function.method_receiver->name);
+                print_typespec(d->function.method_receiver->type);
+                printf("))");
             }
 
             if (d->function.params.param_count > 0)

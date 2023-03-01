@@ -85,7 +85,6 @@ expr* push_int_expr(source_pos pos, int value)
     result->kind = EXPR_INT;
     result->number_value = value;
     result->pos = pos;
-    next_lexed_token();
     return result;
 }
 
@@ -95,7 +94,6 @@ expr* push_name_expr(source_pos pos, const char* name)
     result->kind = EXPR_NAME;
     result->name = str_intern(name);
     result->pos = pos;
-    next_lexed_token();
     return result;
 }
 
@@ -142,7 +140,6 @@ expr* push_string_expr(source_pos pos, const char* str_value)
     result->kind = EXPR_STRING;
     result->string_value = str_value;
     result->pos = pos;
-    next_lexed_token();
     return result;
 }
 
@@ -151,7 +148,6 @@ expr* push_null_expr(source_pos pos)
     expr* result = push_struct(arena, expr);
     result->kind = EXPR_NULL;
     result->pos = pos;
-    next_lexed_token();
     return result;
 }
 
@@ -161,7 +157,6 @@ expr* push_bool_expr(source_pos pos, bool value)
     result->kind = EXPR_BOOL;
     result->bool_value = value;
     result->pos = pos;
-    next_lexed_token();
     return result;
 }
 
@@ -192,6 +187,25 @@ typespec* push_typespec_name(source_pos pos, const char* name)
     result->kind = TYPESPEC_NAME;
     result->name = name;
     result->pos = pos;   
+    return result;
+}
+
+char* parse_identifier(void)
+{
+    char* result = null;
+    if (is_token_kind(TOKEN_NAME))
+    {
+        result = token.name;
+        if (is_name_reserved(result))
+        {
+            fatal("identifiers with triple underscore ('___') are reserved");
+        }
+        next_lexed_token();
+    }
+    else
+    {
+        fatal("name expected");
+    }
     return result;
 }
 
@@ -353,14 +367,17 @@ expr* parse_base_expr(void)
     if (is_token_kind(TOKEN_INT))
     {
         result = push_int_expr(token.pos, token.val);
+        next_lexed_token();
     }
     else if (is_token_kind(TOKEN_NAME))
     {
         result = push_name_expr(token.pos, token.name);
+        next_lexed_token();
     }
     else if (is_token_kind(TOKEN_STRING))
     {
         result = push_string_expr(token.pos, token.string_val);
+        next_lexed_token();
     }
     else if (is_token_kind(TOKEN_KEYWORD))
     {
@@ -387,14 +404,17 @@ expr* parse_base_expr(void)
         else if (keyword == null_keyword)
         {
             result = push_null_expr(pos);
+            next_lexed_token();
         }
         else if (keyword == true_keyword)
         {
             result = push_bool_expr(pos, true);
+            next_lexed_token();
         }
         else if (keyword == false_keyword)
         {
             result = push_bool_expr(pos, false);
+            next_lexed_token();
         }
         else
         {
@@ -465,6 +485,22 @@ expr* parse_base_expr(void)
     return result;
 }
 
+void parse_function_call_arguments(expr* e)
+{
+    assert(e->kind == EXPR_CALL);
+    while (false == is_token_kind(TOKEN_RIGHT_PAREN))
+    {
+        expr* arg = parse_expr();
+        buf_push(e->call.args, arg);
+
+        if (false == is_token_kind(TOKEN_RIGHT_PAREN))
+        {
+            expect_token_kind(TOKEN_COMMA);
+        }
+    }
+    e->call.args_num = buf_len(e->call.args);
+}
+
 // przydałaby się lepsza nazwa na to
 expr* parse_complex_expr(void)
 {    
@@ -482,17 +518,7 @@ expr* parse_complex_expr(void)
             result->kind = EXPR_CALL;
             result->call.function_expr = left_side;
 
-            while (false == is_token_kind(TOKEN_RIGHT_PAREN))
-            {
-                expr* arg = parse_expr();
-                buf_push(result->call.args, arg);
-
-                if (false == is_token_kind(TOKEN_RIGHT_PAREN))
-                {
-                    expect_token_kind(TOKEN_COMMA);
-                }
-            }
-            result->call.args_num = buf_len(result->call.args);
+            parse_function_call_arguments(result);
 
             expect_token_kind(TOKEN_RIGHT_PAREN);
         }
@@ -511,13 +537,30 @@ expr* parse_complex_expr(void)
         } 
         else if (is_token_kind(TOKEN_DOT))
         {
-            next_lexed_token();
-            
-            result = push_struct(arena, expr);
-            result->kind = EXPR_FIELD;
-            result->field.expr = left_side;
-            result->field.field_name = token.name;
-            next_lexed_token();
+            next_lexed_token();           
+            char* identifier = token.name;
+            source_pos pos = token.pos;
+            next_lexed_token();                       
+            if (match_token_kind(TOKEN_LEFT_PAREN))
+            {
+                // method call
+                result = push_struct(arena, expr);
+                result->kind = EXPR_CALL;
+                result->call.function_expr = push_name_expr(pos, identifier);
+                result->call.method_receiver = left_side;
+
+                parse_function_call_arguments(result);
+
+                expect_token_kind(TOKEN_RIGHT_PAREN);              
+            }
+            else
+            {
+                // field access
+                result = push_struct(arena, expr);
+                result->kind = EXPR_FIELD;
+                result->field.expr = left_side;
+                result->field.field_name = identifier;
+            }            
         }
     }
     return result;
@@ -1037,10 +1080,9 @@ function_param parse_function_param(void)
     function_param p = {0};
     if (is_token_kind(TOKEN_NAME))
     {
-        p.name = token.name;
         p.pos = token.pos;
+        p.name = parse_identifier();
 
-        next_lexed_token();
         expect_token_kind(TOKEN_COLON);
 
         if (is_token_kind(TOKEN_NAME))
@@ -1093,10 +1135,9 @@ aggregate_field parse_aggregate_field(void)
     aggregate_field result = {0};
     if (is_token_kind(TOKEN_NAME))
     {        
-        result.name = token.name;
         result.pos = token.pos;
+        result.name = parse_identifier();
 
-        next_lexed_token();
         expect_token_kind(TOKEN_COLON);
 
         if (is_token_kind(TOKEN_NAME))
@@ -1136,9 +1177,8 @@ enum_value parse_enum_value(void)
     enum_value result = { 0 };
     if (is_token_kind(TOKEN_NAME))
     {
-        result.name = token.name;
         result.pos = token.pos;
-        next_lexed_token();
+        result.name = parse_identifier();
 
         if (is_token_kind(TOKEN_ASSIGN))
         {
@@ -1178,24 +1218,6 @@ void parse_enum(enum_decl* decl)
     }
 }
 
-void parse_declaration_identifier(decl* declaration)
-{
-    if (is_token_kind(TOKEN_NAME))
-    {
-        declaration->name = token.name;
-        next_lexed_token();
-
-        if (is_name_reserved(declaration->name))
-        {
-            fatal("identifiers with triple underscore ('___') are reserved");
-        }
-    }
-    else
-    {
-        fatal("name expected in declaration");
-    }
-}
-
 decl* parse_declaration_optional(void)
 {
     decl* declaration = NULL;
@@ -1210,7 +1232,7 @@ decl* parse_declaration_optional(void)
             declaration->pos = pos;
 
             next_lexed_token();
-            parse_declaration_identifier(declaration);
+            declaration->name = parse_identifier();
             
             if (match_token_kind(TOKEN_COLON_ASSIGN))
             {
@@ -1242,7 +1264,7 @@ decl* parse_declaration_optional(void)
             declaration->pos = pos;
 
             next_lexed_token();
-            parse_declaration_identifier(declaration);
+            declaration->name = parse_identifier();
 
             if (expect_token_kind(TOKEN_ASSIGN))
             {
@@ -1258,7 +1280,7 @@ decl* parse_declaration_optional(void)
             declaration->pos = pos;
 
             next_lexed_token();
-            parse_declaration_identifier(declaration);
+            declaration->name = parse_identifier();
 
             expect_token_kind(TOKEN_LEFT_BRACE);
 
@@ -1273,7 +1295,28 @@ decl* parse_declaration_optional(void)
             declaration->pos = pos;
 
             next_lexed_token();
-            parse_declaration_identifier(declaration);
+
+            // reveiver method
+            if (match_token_kind(TOKEN_LEFT_PAREN))
+            {
+                // fn (s : int) method_name () { }
+                declaration->function.method_receiver = push_struct(arena, function_param);
+                declaration->function.method_receiver->pos = token.pos;
+                declaration->function.method_receiver->name = parse_identifier();
+                
+                expect_token_kind(TOKEN_COLON);
+
+                declaration->function.method_receiver->type = parse_typespec();
+
+                if (match_token_kind(TOKEN_COMMA))
+                {
+                    fatal("only one argument allowed in a receiver method");
+                }
+
+                expect_token_kind(TOKEN_RIGHT_PAREN);
+            }
+
+            declaration->name = parse_identifier();
 
             expect_token_kind(TOKEN_LEFT_PAREN);
 
@@ -1304,7 +1347,7 @@ decl* parse_declaration_optional(void)
             declaration->pos = pos;
 
             next_lexed_token();
-            parse_declaration_identifier(declaration);
+            declaration->name = parse_identifier();
 
             expect_token_kind(TOKEN_LEFT_BRACE);
 
@@ -1431,10 +1474,19 @@ void parse_test(void)
         "fn f() { delete x }",
         "let x : node* = null",
         "fn f(x: node*): bool { if (x == null) { return true } else { return false } }",
-#endif
         "let x := new int[]",
         "let x : string[] = auto string[]",
         "let x : int[12][] = new int[12][]",
+#endif
+        "fn (s: some_struct) method (i: int) { s.x += i } ",
+        "fn (this: int[16]*[12]) method () {  } ",
+        "fn (x: some_struct*) method () : some_struct* { return x } ",
+        "let x := some_var.method() ",
+        "let x := (*some_var_ptr).method(1, 2, 3)",
+        "let x := some_array[12].method(*other_var)",
+        "let x := one_object.other_object.method(one_object)",
+        "let x := one_object.other_object.one_other_object.method()",
+        "let chain := some_object.method().other_method().yet_other_method()",
     };
 
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);
