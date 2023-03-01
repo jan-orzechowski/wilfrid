@@ -44,7 +44,8 @@ typedef struct type_pointer
 
 typedef struct type_function
 {
-    type* ret_type;
+    type* receiver_type;
+    type* return_type;
     type** param_types;
     size_t param_count;
 } type_function;
@@ -177,6 +178,10 @@ char* get_function_mangled_name(decl* dec);
 
 bool are_symbols_the_same_function(symbol* a, symbol* b)
 {
+    /*
+        do rozważenia: zakładając interning stringów, może po prostu porównanie mangled names byłoby szybsze?
+    */
+
     assert(a->kind == SYMBOL_FUNCTION);
     assert(b->kind == SYMBOL_FUNCTION);
     if (a == b)
@@ -207,6 +212,31 @@ bool are_symbols_the_same_function(symbol* a, symbol* b)
         }
     }
 
+    if (a->decl->function.method_receiver == null
+        && b->decl->function.method_receiver != null)
+    {
+        return false;
+    }
+
+    if (a->decl->function.method_receiver != null
+        && b->decl->function.method_receiver == null)
+    {
+        return false;
+    }
+
+    if (a->decl->function.method_receiver != null
+        && a->decl->function.method_receiver != null)
+    {
+        // zakładam interning stringów
+        assert(a->decl->function.method_receiver->type);
+        assert(b->decl->function.method_receiver->type);
+        if (a->decl->function.method_receiver->type->name
+            != b->decl->function.method_receiver->type->name)
+        {
+            return false;
+        }
+    }
+
     if (a->decl->function.params.param_count 
         != b->decl->function.params.param_count)
     {
@@ -217,8 +247,8 @@ bool are_symbols_the_same_function(symbol* a, symbol* b)
         param_index < a->decl->function.params.param_count;
         param_index++)
     {
-        if (a->decl->function.params.params[param_index].name
-            != b->decl->function.params.params[param_index].name)
+        if (a->decl->function.params.params[param_index].type->name
+            != b->decl->function.params.params[param_index].type->name)
         {
             return false;
         }
@@ -378,7 +408,7 @@ type* get_function_type(type** param_types, size_t param_types_count, type* retu
     type->align = POINTER_ALIGN;
     type->function.param_types = param_types;
     type->function.param_count = param_types_count;
-    type->function.ret_type = return_type;
+    type->function.return_type = return_type;
     return type;
 }
 
@@ -936,6 +966,16 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type, bool ignore_e
             while (candidate_function)
             {
                 assert(candidate_function->type->kind == TYPE_FUNCTION);
+
+                if (fn_expr->type->function.receiver_type)
+                {
+                    if (fn_expr->type->function.receiver_type
+                        != candidate_function->type->function.receiver_type)
+                    {
+                        goto candidate_function_check_next;
+                    }
+                }
+
                 size_t arg_count = candidate_function->type->function.param_count;
                 if (arg_count == e->call.args_num)
                 {
@@ -964,7 +1004,7 @@ candidate_function_check_next:
 
             e->call.resolved_function = found;
 
-            result = get_resolved_rvalue_expr(found->type->function.ret_type);
+            result = get_resolved_rvalue_expr(found->type->function.return_type);
         }
         break;
         case EXPR_CAST:
@@ -1146,7 +1186,12 @@ type* resolve_function_decl(decl* d)
     {
         resolved_return_type = resolve_typespec(d->function.return_type);
     }
-    
+
+    if (d->function.method_receiver)
+    {
+        resolve_typespec(d->function.method_receiver->type);
+    }
+
     type** resolved_args = 0;
     function_param_list* args = &d->function.params;
     for (size_t i = 0; i < args->param_count; i++)
@@ -1408,9 +1453,15 @@ void resolve_stmt(stmt* st, type* opt_ret_type)
 void complete_function_body(symbol* s)
 {
     assert(s->state == SYMBOL_RESOLVED);
-    type* ret_type = s->type->function.ret_type;
+    type* return_type = s->type->function.return_type;
 
     symbol* marker = enter_local_scope();
+
+    if (s->decl->function.method_receiver)
+    {
+        push_local_symbol(s->decl->function.method_receiver->name, 
+            resolve_typespec(s->decl->function.method_receiver->type));
+    }
 
     for (size_t i = 0; i < s->decl->function.params.param_count; i++)
     {
@@ -1422,7 +1473,7 @@ void complete_function_body(symbol* s)
     for (size_t i = 0; i < count; i++)
     {
         stmt* st = s->decl->function.stmts.stmts[i];
-        resolve_stmt(st, ret_type);        
+        resolve_stmt(st, return_type);
     }
 
     leave_local_scope(marker);

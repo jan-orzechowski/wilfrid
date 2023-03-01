@@ -115,12 +115,19 @@ char* type_to_cdecl(type* type, const char* name)
         {
             char* result = NULL;
             buf_printf(result, "%s(", xprintf("*%s", name));
-            if (type->function.param_count == 0)
+            if (type->function.param_count == 0 
+                && type->function.receiver_type == null)
             {
                 buf_printf(result, "void");
             }
             else
             {
+                if (type->function.receiver_type)
+                {
+                    char* declstr = type_to_cdecl(type->function.receiver_type, "");
+                    buf_printf(result, "%s%s", type->function.param_count == 0 ? "" : ", ", declstr);
+                }
+
                 for (size_t i = 0; i < type->function.param_count; i++)
                 {
                     char* declstr = type_to_cdecl(type->function.param_types[i], "");
@@ -128,7 +135,7 @@ char* type_to_cdecl(type* type, const char* name)
                 }
             }
             buf_printf(result, ")");
-            return type_to_cdecl(type->function.ret_type, result);
+            return type_to_cdecl(type->function.return_type, result);
         }
         break;
         invalid_default_case;       
@@ -567,6 +574,16 @@ void gen_expr(expr* e)
 
             gen_printf(e->call.resolved_function->mangled_name);
             gen_printf("(");
+            
+            if (e->call.method_receiver)
+            {
+                gen_expr(e->call.method_receiver);
+                if (e->call.args_num != 0)
+                {
+                    gen_printf(", ");
+                }
+            }
+                        
             for (size_t i = 0; i < e->call.args_num; i++)
             {
                 if (i != 0)
@@ -575,6 +592,7 @@ void gen_expr(expr* e)
                 }
                 gen_expr(e->call.args[i]);
             }
+            
             gen_printf(")");
         }
         break;
@@ -711,12 +729,25 @@ void gen_func_decl(decl* d)
         gen_printf_newline("void %s(", mangled_name);
     }
 
-    if (d->function.params.param_count == 0)
+    if (d->function.params.param_count == 0
+        && d->function.method_receiver == null)
     {
         gen_printf("void");
     }
     else
     {
+        if (d->function.method_receiver)
+        {
+            char* decl_str = typespec_to_cdecl(
+                d->function.method_receiver->type, 
+                d->function.method_receiver->name);
+            gen_printf("%s", decl_str);
+            if (d->function.params.param_count > 0)
+            {
+                gen_printf(", ");
+            }
+        }
+
         for (size_t i = 0; i < d->function.params.param_count; i++)
         {
             function_param param = d->function.params.params[i];
@@ -975,12 +1006,20 @@ char* get_typespec_mangled_name(typespec* typ)
 
 char* get_function_mangled_name(decl* dec)
 {
+    // ___function_name___arg_type1___arg_type2___ret_type
+    
     assert(dec);
     assert(dec->kind == DECL_FUNCTION);
     char* result = null;
+           
+    if (dec->function.method_receiver)
+    {
+        typespec* t = dec->function.method_receiver->type;
+        char* mangled_rec = get_typespec_mangled_name(t);
+        buf_printf(result, mangled_rec);
+    }
+
     buf_printf(result, "___");
-        
-    // ___function_name___arg_type1___arg_type2___ret_type___
     buf_printf(result, dec->name);
     for (size_t i = 0; i < dec->function.params.param_count; i++)
     {
@@ -988,6 +1027,7 @@ char* get_function_mangled_name(decl* dec)
         char* mangled_arg = get_typespec_mangled_name(t);
         buf_printf(result, mangled_arg);
     }
+
     if (dec->function.return_type)
     {
         char* mangled_ret = get_typespec_mangled_name(dec->function.return_type);
@@ -1015,6 +1055,9 @@ void mangled_names_test()
         "fn funkcja ( t: zet, z: zet, i: int[17]*) { return }",
         "fn funkcja ( t: zet*, z: int[17]*, i: zet*) { return }",
         "fn funkcja ( t: tee*, z: zet, i: int[]) { return }",
+        "fn (i: int) funkcja (o: int) { return }",
+        "fn (s: int) funkcja () : int { return s }",
+        "fn (x: int) funkcja () : { }",
     };
 
     char* cmp_strs[] = {
@@ -1028,6 +1071,9 @@ void mangled_names_test()
         "___funkcja___zet___zet___0p___0a_17___0i___0v",
         "___funkcja___0p___zet___0p___0a_17___0i___0p___zet___0v",
         "___funkcja___0p___tee___zet___0l___0i___0v",
+        "___0i___funkcja___0i___0v",
+        "___0i___funkcja___0i",
+        "___0i___funkcja___0v",
     };
 
     assert((sizeof(test_strs) / sizeof(test_strs[0])) == sizeof(cmp_strs) / sizeof(cmp_strs[0]))

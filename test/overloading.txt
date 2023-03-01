@@ -1,20 +1,26 @@
 ﻿struct rectangle 
 {
-	x: int,
-	y: int
+    x: int,
+    y: int
 }
 
 struct cuboid
 {
-	x: int,
-	y: int,
-	z: int
+    x: int,
+    y: int,
+    z: int
 }
 
 fn add(a: rectangle, b: rectangle) : rectangle
 {
-	let result : rectangle = { x = a.x + b.x, y = a.y + b.y }
-	return result
+    let result : rectangle = { x = a.x + b.x, y = a.y + b.y }
+    return result
+}
+
+fn (a: rectangle) add (b: rectangle) : rectangle
+{
+    let result : rectangle = { x = a.x + b.x, y = a.y + b.y }
+    return result
 }
 
 fn add(a: cuboid, b: cuboid) : cuboid
@@ -23,13 +29,24 @@ fn add(a: cuboid, b: cuboid) : cuboid
 	return result
 }
 
+fn (a: cuboid) add(b: cuboid) : cuboid
+{
+	let result : cuboid = { x = a.x + b.x, y = a.y + b.y, z = a.z + b.z }
+	return result
+}
+
+// można jeszcze przetestować wersje ze wskaźnikami
+
 fn main()
 {
-	let a: rectangle = {1, 2}
-	let b: rectangle = {3, 4}
-	let c := add(a, b)
+    let a: rectangle = {1, 2}
+    let b: rectangle = {3, 4}
+    let c := add(a, b)
 
-	let d: cuboid = {1, 2, 3}
-	let e: cuboid = {4, 5, 6}
-	let f := add(d, e)
+    let d: cuboid = {1, 2, 3}
+    let e: cuboid = {4, 5, 6}
+    let f := add(d, e)
+
+    c = c.add(b)
+    f = f.add(e)
 }
