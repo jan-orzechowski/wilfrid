@@ -1,8 +1,12 @@
-extern fn printf(str: char*, variadic) : int
+﻿extern fn printf(str: char*, variadic) : int
+
+fn printf(str: char*, i: int) : int { return -1 }
+
+fn printf(str: char*, i: int, i: int) : int { return -1 }
 
 fn main()
 {
-   let printed_chars1 := printf("numbers: %d\n", 1)
-   let printed_chars2 := printf("numbers: %d, %d\n", 1, 2)
-   let printed_chars3 := printf("numbers: %d, %d, %d\n", 1, 2, 3)
+    let printed_chars1 := printf("numbers: %d\n", 1)
+    let printed_chars2 := printf("numbers: %d, %d\n", 1, 2)
+    let printed_chars3 := printf("numbers: %d, %d, %d\n", 1, 2, 3) // tylko ta powinna używać printf z C
 }

@@ -969,7 +969,7 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type, bool ignore_e
 
                 size_t arg_count = candidate_function->type->function.param_count;
                 if (arg_count == e->call.args_num
-                    || fn_expr->type->function.has_variadic_arg)
+                    || candidate_function->type->function.has_variadic_arg)
                 {
                     for (size_t i = 0; i < arg_count; i++)
                     {
@@ -981,8 +981,20 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type, bool ignore_e
                             goto candidate_function_check_next;
                         }
                     }
+
                     // jeśli tu jesteśmy, to wszystkie argumenty zgadzają się
-                    found = candidate_function;
+                    // variadic candidate jest użyty tylko wtedy, gdy żaden inny się nie zgadza
+                    if (candidate_function->type->function.has_variadic_arg)
+                    {
+                        if (found == null)
+                        {
+                            found = candidate_function;
+                        }
+                    }
+                    else
+                    {
+                        found = candidate_function;
+                    }
                 }
              
 candidate_function_check_next:
