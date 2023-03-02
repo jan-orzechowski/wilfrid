@@ -1192,6 +1192,21 @@ void parse_aggregate_fields(aggregate_decl* decl)
         new_field = parse_aggregate_field();
     }
 
+    // sprawdzenie, czy się nie powtarzają
+    for (size_t i = 0; i < buf_len(fields); i++)
+    {
+        for (size_t j = 0; j < buf_len(fields); j++)
+        {
+            if (i != j)
+            {
+                if (fields[i].name == fields[j].name)
+                {
+                    fatal("two or more fields with the same name in the struct declaration");
+                }
+            }
+        }
+    }
+
     decl->fields_count = (int)buf_len(fields);
     if (decl->fields_count > 0)
     {
