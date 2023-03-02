@@ -1130,6 +1130,21 @@ function_param_list parse_function_param_list()
         }
     }
 
+    // sprawdzenie, czy się nie powtarzają
+    for (size_t i = 0; i < buf_len(params); i++)
+    {
+        for (size_t j = 0; j < buf_len(params); j++)
+        {
+            if (i != j)
+            {
+                if (params[i].name == params[j].name)
+                {
+                    fatal("two or more parameters with the same name in the function declaration");
+                }
+            }
+        }
+    }
+
     function_param_list result = { 0 };
     result.param_count = (int)buf_len(params);
     if (result.param_count > 0)
