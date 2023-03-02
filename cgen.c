@@ -875,6 +875,62 @@ void gen_symbol_decl(symbol* sym)
     }
 }
 
+
+void gen_entry_point(void)
+{
+    symbol* main_found = null;
+    const char* main_str = str_intern("main");
+
+    for (symbol** it = global_symbols_list;
+        it != buf_end(global_symbols_list);
+        it++)
+    {
+        symbol* sym = *it;
+        if (sym->name == main_str)
+        {
+            if (main_found)
+            {
+                fatal("only one function 'main' allowed");
+            }
+            else
+            {
+                main_found = sym;
+            }
+        }
+    }
+
+    if (main_found == null)
+    {
+        fatal("entry point function 'main' not defined");
+    }
+    
+    if (main_found->mangled_name == str_intern("___main___0l___0s___0v"))
+    {
+        gen_printf(
+"int main(int argc, char** argv) {\
+  string* buf = 0;\
+  for(int i = 0; i < argc; i++) {\
+    string s = get_string(argv[i]);\
+    buf_push(buf, s);\
+  }\
+  ___main___0l___0s___0v(buf);\
+  buf_free(buf);\
+}");
+
+    }
+    else if (main_found->mangled_name == str_intern("___main___0v"))
+    {
+        gen_printf(
+"int main(int argc, char** argv) {\
+  ___main___0v();\
+}");
+    }
+    else
+    {
+        fatal("main has incorrect signature: either main(){} or main(string[]){} allowed");
+    }
+}
+
 void gen_common_includes(void)
 {
     // TODO przydałoby się usunąć wszelkie komentarze z tego pliku
@@ -1037,8 +1093,11 @@ char* get_function_mangled_name(decl* dec)
     {
         buf_printf(result, "___0v");
     }
-     
-    return result;
+    
+    const char* interned = str_intern(result);
+    buf_free(result);
+
+    return interned;
 }
 
 void mangled_names_test()

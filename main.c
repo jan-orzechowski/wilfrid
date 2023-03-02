@@ -49,6 +49,10 @@ void compile_and_run(void)
 
         gen_forward_decls(resolved);
 
+        gen_printf_newline("\n// ENTRY POINT \n");
+
+        gen_entry_point();
+        
         gen_printf_newline("\n// DECLARATIONS\n");
 
         for (size_t i = 0; i < buf_len(resolved); i++)
