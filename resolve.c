@@ -482,18 +482,7 @@ symbol* get_symbol_from_decl(decl* d)
 symbol* push_installed_symbol(const char* name, type* type)
 {
     const char* interned = str_intern(name);
-    symbol* sym = get_new_symbol(SYMBOL_TYPE, interned, NULL);
-    sym->state = SYMBOL_RESOLVED;
-    sym->type = type;
-    map_put(&global_symbols, interned, sym);
-    buf_push(global_symbols_list, sym);
-    return sym;
-}
-
-symbol* push_installed_function(const char* name, type* type)
-{
-    const char* interned = str_intern(name);
-    symbol* sym = get_new_symbol(SYMBOL_FUNCTION, interned, NULL);
+    symbol* sym = get_new_symbol(SYMBOL_TYPE, interned, null);
     sym->state = SYMBOL_RESOLVED;
     sym->type = type;
     map_put(&global_symbols, interned, sym);
@@ -521,6 +510,12 @@ void push_symbol_from_decl(decl* d)
         symbol* overload = map_get(&global_symbols, sym->name);
         if (overload)
         {
+            if (overload->kind != SYMBOL_FUNCTION)
+            {
+                // być może to można zmienić
+                fatal("cannot name structs the same as functions");
+            }
+
             // dodajemy na koniec łańcucha
             symbol* prev = null;
             do
@@ -565,7 +560,7 @@ void complete_type(type* t)
     assert(d->kind == DECL_STRUCT || d->kind == DECL_UNION);
     
     // idziemy po kolei po polach
-    type_aggregate_field** fields = NULL;
+    type_aggregate_field** fields = null;
     for (size_t i = 0; i < d->aggregate.fields_count; i++)
     {
         aggregate_field field = d->aggregate.fields[i];
@@ -772,14 +767,14 @@ resolved_expr* resolve_expr_binary(expr* expr)
     if (expr->binary.operator == TOKEN_ADD
         || expr->binary.operator == TOKEN_SUB)
     {
-        if ((left->type == type_int || left->type->kind == TYPE_POINTER)
-            && (right->type == type_int || right->type->kind == TYPE_POINTER))
+        if ((left->type == type_int || left->type->kind == TYPE_POINTER || left->type->kind == TYPE_FLOAT)
+            && (right->type == type_int || right->type->kind == TYPE_POINTER || right->type->kind == TYPE_FLOAT))
         {
             // ok
         }
         else
         {
-            fatal("operands of +- must be both ints or pointers");
+            fatal("operands of +- must be both ints, floats or pointers");
         }
     }
 
@@ -807,7 +802,7 @@ resolved_expr* resolve_compound_expr(expr* e, type* expected_type, bool ignore_e
         fatal("implicitly typed compound literal in context without expected type");
     }
 
-    type* t = NULL;
+    type* t = null;
     if (e->compound.type)
     {        
         t = resolve_typespec(e->compound.type);
@@ -887,9 +882,77 @@ resolved_expr* resolve_compound_expr(expr* e, type* expected_type, bool ignore_e
    return result;
 }
 
+resolved_expr* resolve_call_expr(expr* e)
+{
+    assert(e->kind == EXPR_CALL);
+    
+    symbol* matching = null;
+    resolved_expr* fn_expr = resolve_expr(e->call.function_expr);
+    assert(fn_expr->type->kind == TYPE_FUNCTION);
+    
+    symbol* candidate = fn_expr->type->symbol;
+    while (candidate)
+    {
+        assert(candidate->type->kind == TYPE_FUNCTION);
+
+        if (fn_expr->type->function.receiver_type)
+        {
+            if (fn_expr->type->function.receiver_type
+                != candidate->type->function.receiver_type)
+            {
+                goto candidate_check_next;
+            }
+        }
+
+        size_t arg_count = candidate->type->function.param_count;
+        if (arg_count == e->call.args_num
+            || candidate->type->function.has_variadic_arg)
+        {
+            for (size_t i = 0; i < arg_count; i++)
+            {
+                expr* arg_expr = e->call.args[i];
+                type* expected_param_type = candidate->type->function.param_types[i];
+                resolved_expr* resolved_arg_expr = resolve_expected_expr(arg_expr, expected_param_type, true);
+                if (resolved_arg_expr->type != expected_param_type)
+                {
+                    goto candidate_check_next;
+                }
+            }
+
+            // jeśli tu jesteśmy, to wszystkie argumenty zgadzają się
+            // variadic candidate jest użyty tylko wtedy, gdy żaden inny się nie zgadza
+            if (candidate->type->function.has_variadic_arg)
+            {
+                if (matching == null)
+                {
+                    matching = candidate;
+                }
+            }
+            else
+            {
+                matching = candidate;
+            }
+        }
+
+    candidate_check_next:
+
+        candidate = candidate->next_overload;
+    }
+
+    if (matching == null)
+    {
+        fatal("no overload is matching types of arguments");
+    }
+
+    e->call.resolved_function = matching;
+
+    resolved_expr* result = get_resolved_rvalue_expr(matching->type->function.return_type);
+    return result;
+}
+
 resolved_expr* resolve_expected_expr(expr* e, type* expected_type, bool ignore_expected_type_mismatch)
 {
-    resolved_expr* result = 0;
+    resolved_expr* result = null;
     switch (e->kind)
     {
         case EXPR_NAME:
@@ -950,66 +1013,7 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type, bool ignore_e
         break;
         case EXPR_CALL:
         {            
-            resolved_expr* fn_expr = resolve_expr(e->call.function_expr);
-            symbol* found = null;
-            symbol* candidate_function = fn_expr->type->symbol;
-            assert(fn_expr->type->kind == TYPE_FUNCTION);
-            while (candidate_function)
-            {
-                assert(candidate_function->type->kind == TYPE_FUNCTION);
-
-                if (fn_expr->type->function.receiver_type)
-                {
-                    if (fn_expr->type->function.receiver_type
-                        != candidate_function->type->function.receiver_type)
-                    {
-                        goto candidate_function_check_next;
-                    }
-                }
-
-                size_t arg_count = candidate_function->type->function.param_count;
-                if (arg_count == e->call.args_num
-                    || candidate_function->type->function.has_variadic_arg)
-                {
-                    for (size_t i = 0; i < arg_count; i++)
-                    {
-                        expr* arg_expr = e->call.args[i];
-                        type* expected_param_type = candidate_function->type->function.param_types[i];
-                        resolved_expr* resolved_arg_expr = resolve_expected_expr(arg_expr, expected_param_type, true);
-                        if (resolved_arg_expr->type != expected_param_type)
-                        {
-                            goto candidate_function_check_next;
-                        }
-                    }
-
-                    // jeśli tu jesteśmy, to wszystkie argumenty zgadzają się
-                    // variadic candidate jest użyty tylko wtedy, gdy żaden inny się nie zgadza
-                    if (candidate_function->type->function.has_variadic_arg)
-                    {
-                        if (found == null)
-                        {
-                            found = candidate_function;
-                        }
-                    }
-                    else
-                    {
-                        found = candidate_function;
-                    }
-                }
-             
-candidate_function_check_next:
-
-                candidate_function = candidate_function->next_overload;
-            }
-
-            if (found == null)
-            {
-                fatal("no overload is matching types of arguments");
-            }
-
-            e->call.resolved_function = found;
-
-            result = get_resolved_rvalue_expr(found->type->function.return_type);
+            result = resolve_call_expr(e);
         }
         break;
         case EXPR_CAST:
@@ -1082,7 +1086,7 @@ candidate_function_check_next:
                 t = t->pointer.base_type;
             }
 
-            const char* field_name = str_intern(e->field.field_name);
+            const char* field_name = e->field.field_name;
             complete_type(t);
 
             type* found = 0;
@@ -1137,7 +1141,7 @@ candidate_function_check_next:
     // przyda nam się podczas generowania kodu
     if (result->type)
     {
-        assert(e->resolved_type == NULL || e->resolved_type == result->type);
+        assert(e->resolved_type == null || e->resolved_type == result->type);
         e->resolved_type = result->type;
     }
 
@@ -1152,7 +1156,7 @@ resolved_expr* resolve_expr(expr* e)
 
 type* resolve_variable_decl(decl* d)
 {
-    type* result = 0;
+    type* result = null;
     
     // musi być albo typ, albo wyrażenie
     // mogą być oba, ale wtedy muszą się zgadzać
@@ -1199,7 +1203,7 @@ type* resolve_function_decl(decl* d)
 
     bool variadic_declared = false;
 
-    type** resolved_args = 0;
+    type** resolved_args = null;
     function_param_list* args = &d->function.params;
     for (size_t i = 0; i < args->param_count; i++)
     {
@@ -1378,7 +1382,7 @@ void resolve_stmt(stmt* st, type* opt_ret_type)
             push_local_symbol(st->for_stmt.init_decl->name, t);
 
             resolve_expr(st->for_stmt.cond_expr);
-            resolve_stmt(st->for_stmt.next_stmt, NULL);
+            resolve_stmt(st->for_stmt.next_stmt, null);
 
             resolve_stmt_block(st->for_stmt.stmts, opt_ret_type);
 
@@ -1620,7 +1624,8 @@ void resolve_test(void)
         "struct T { i: int }",
         "let a: int[3] = {1, 2, 3}",
         "struct S { t: int, c: char }",
-        "let x = fun(1, 2)",
+#endif
+        "let x2 = fun(1, 2)",
         "let i: int = 1",
         "fn fun2(vec: v2): int {\
             let local = fun(i, 2)\
@@ -1632,6 +1637,7 @@ void resolve_test(void)
         "let y = fuu(fuu(7, x), {3, 4})",
         "fn fzz(x: int, y: int) : v2 { return {x + 1, y - 1} }",
         "fn fuu(x: int, v: v2) : int { return v.x + x } ",
+#if 1
         "fn ftest1(x: int): int { if (x) { return -x } else if (x % 2 == 0) { return x } else { return 0 } }",
         "fn ftest2(x: int): int { let p := 1 while (x) { p *= 2 x-- } return p }",
         "fn ftest3(x: int): int { let p := 1 do { p *= 2 x-- } while (x) return p }",
@@ -1642,23 +1648,23 @@ void resolve_test(void)
         "let ooo := (bool)o && (bool)oo || ((bool)o & (bool)oo)",
         "let oo := (int)o ",
         "let o := (float)1",
-        "let x = new v2",
+        "let x3 = new v2",
         "let y = auto v2()",
         "fn deletetest1() { let x = new v2 x.x = 2 delete x }",
         "fn deletetest2() { let x = auto v2 x.x = 2 delete x }",
-        "let x : node* = null",
-        "fn f(x: node*): bool { if (x == null) { return true } else { return false } }",
+        "let x4 : node* = null",
+        "fn ft(x: node*): bool { if (x == null) { return true } else { return false } }",
         "struct node { value: int, next: node* }",
         "let b1 : bool = 1",
         "let b2 : bool = (b1 == false)",
         "let list1 := new int[]",
         "let list2 := new v2[]",
         "struct v2 { x: int, y: int }",
-#endif
         "let printed_chars1 := printf(\"numbers: %d\", 1)",
         "let printed_chars2 := printf(\"numbers: %d, %d\", 1, 2)",
         "let printed_chars3 := printf(\"numbers: %d, %d, %d\", 1, 2, 3)",
         "extern fn printf(str: char*, variadic) : int",
+#endif
     };
     size_t str_count = sizeof(test_strs) / sizeof(test_strs[0]);
 

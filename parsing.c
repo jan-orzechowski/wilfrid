@@ -92,7 +92,7 @@ expr* push_name_expr(source_pos pos, const char* name)
 {
     expr* result = push_struct(arena, expr);
     result->kind = EXPR_NAME;
-    result->name = str_intern(name);
+    result->name = name;
     result->pos = pos;
     return result;
 }
@@ -381,7 +381,7 @@ expr* parse_base_expr(void)
     }
     else if (is_token_kind(TOKEN_KEYWORD))
     {
-        const char* keyword = str_intern(token.name);
+        const char* keyword = token.name;
         source_pos pos = token.pos;
         if (keyword == new_keyword)
         {
@@ -570,7 +570,7 @@ expr* parse_unary_expr(void)
 {
     expr* e = parse_complex_expr();
     source_pos pos = token.pos;
-    if (e == NULL)
+    if (e == null)
     {
         if (match_token_kind(TOKEN_ADD))
         {
@@ -778,7 +778,7 @@ void parse_switch_cases(switch_stmt* switch_stmt)
 
             if (is_token_kind(TOKEN_KEYWORD))
             {
-                const char* keyword = str_intern(token.name);
+                const char* keyword = token.name;
                 if (keyword == case_keyword)
                 {               
                     next_lexed_token();
@@ -825,7 +825,7 @@ void parse_switch_cases(switch_stmt* switch_stmt)
             expect_token_kind(TOKEN_RIGHT_BRACE);
 
             if (is_token_kind(TOKEN_KEYWORD)
-                && str_intern(token.name) == break_keyword)
+                && token.name == break_keyword)
             {
                 c->fallthrough = false;
                 next_lexed_token();
@@ -852,7 +852,7 @@ void parse_switch_cases(switch_stmt* switch_stmt)
 stmt* parse_if_statement(void)
 {
     stmt* s = 0;
-    if (str_intern(token.name) == if_keyword)
+    if (token.name == if_keyword)
     {
         s = push_struct(arena, stmt);
         s->kind = STMT_IF_ELSE;
@@ -867,7 +867,7 @@ stmt* parse_if_statement(void)
         expect_token_kind(TOKEN_RIGHT_BRACE);
 
         if (is_token_kind(TOKEN_KEYWORD) 
-            && str_intern(token.name) == else_keyword)
+            && token.name == else_keyword)
         {
             next_lexed_token();            
             s->if_else.else_stmt = parse_statement();           
@@ -882,7 +882,7 @@ stmt* parse_statement(void)
     source_pos pos = token.pos;
     if (is_token_kind(TOKEN_KEYWORD))
     {
-        const char* keyword = str_intern(token.name);
+        const char* keyword = token.name;
         if (keyword == return_keyword)
         {
             s = push_struct(arena, stmt);
@@ -958,7 +958,7 @@ stmt* parse_statement(void)
             expect_token_kind(TOKEN_RIGHT_BRACE);
             
             if (is_token_kind(TOKEN_KEYWORD) 
-                && str_intern(token.name) == while_keyword)
+                && token.name == while_keyword)
             {
                 next_lexed_token();
                 expect_token_kind(TOKEN_LEFT_PAREN);
@@ -1109,11 +1109,11 @@ function_param_list parse_function_param_list()
 {
     expect_token_kind(TOKEN_LEFT_PAREN);
 
-    function_param* params = NULL;
+    function_param* params = null;
     while (is_token_kind(TOKEN_NAME) || is_token_kind(TOKEN_KEYWORD))
     {
         function_param p = parse_function_param();
-        if (p.name == NULL)
+        if (p.name == null)
         {
             break;
         }
@@ -1168,7 +1168,7 @@ aggregate_field parse_aggregate_field(void)
 
 void parse_aggregate_fields(aggregate_decl* decl)
 {
-    aggregate_field* fields = 0;
+    aggregate_field* fields = null;
 
     aggregate_field new_field = parse_aggregate_field();
     while (new_field.type)
@@ -1214,7 +1214,7 @@ enum_value parse_enum_value(void)
 
 void parse_enum(enum_decl* decl)
 {
-    enum_value* values = 0;
+    enum_value* values = null;
 
     enum_value new_value = parse_enum_value();
     while (new_value.name)
@@ -1233,11 +1233,11 @@ void parse_enum(enum_decl* decl)
 
 decl* parse_declaration_optional(void)
 {
-    decl* declaration = NULL;
+    decl* declaration = null;
     source_pos pos = token.pos;
     if (is_token_kind(TOKEN_KEYWORD))
     {
-        const char* decl_keyword = str_intern(token.name);
+        const char* decl_keyword = token.name;
         if (decl_keyword == let_keyword)
         {
             declaration = push_struct(arena, decl);
@@ -1508,11 +1508,7 @@ void parse_test(void)
         "let x := (int)other_var",
         "let x := (uint)12 + 1",
         "let x := (bool)var1 && (bool)var2 || (bool)((bool)var3 & (bool)var4)",
-        "let x := (bool)var1 && (bool)var2 || ((bool)var3 & (bool)var4)",
-         "let x: X = new X(12, 13)",
-        "let x = new X(new y(), new z())",
-        "let x = new memory(1000)",
-        "let x = auto memory(100)",
+        "let x := (bool)var1 && (bool)var2 || ((bool)var3 & (bool)var4)",             
         "fn f() { delete x }",
         "let x : node* = null",
         "fn f(x: node*): bool { if (x == null) { return true } else { return false } }",

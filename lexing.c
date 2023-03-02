@@ -602,6 +602,9 @@ bool next_token(void)
         buf_push(all_tokens, new_tok);
     }
 
+    assert((token.kind != TOKEN_NAME && token.kind != TOKEN_KEYWORD) 
+        || token.name == str_intern(token.name));
+
     bool is_at_end = (token.kind == TOKEN_EOF && false == discard_token);
     return (false == is_at_end);
 }

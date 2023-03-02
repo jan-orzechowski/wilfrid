@@ -6,7 +6,7 @@ bool generate_line_hints = true;
 
 int gen_indent;
 
-char* gen_buf = NULL;
+char* gen_buf = null;
 source_pos gen_pos;
 
 #define gen_printf(...) buf_printf(gen_buf, __VA_ARGS__)
@@ -113,7 +113,7 @@ char* type_to_cdecl(type* type, const char* name)
         break;
         case TYPE_FUNCTION:
         {
-            char* result = NULL;
+            char* result = null;
             buf_printf(result, "%s(", xprintf("*%s", name));
             if (type->function.param_count == 0 
                 && type->function.receiver_type == null)
@@ -140,7 +140,7 @@ char* type_to_cdecl(type* type, const char* name)
         break;
         invalid_default_case;       
     }
-    return NULL;
+    return null;
 }
 
 char* typespec_to_cdecl(typespec* t, const char* name)
@@ -685,14 +685,6 @@ void gen_aggregate_decl(symbol* sym)
     print_newline();
 }
 
-void gen_func(decl* decl)
-{
-    assert(decl->kind == DECL_FUNCTION);
-    gen_func_decl(decl);
-    gen_printf(" ");
-    gen_stmt_block(decl->function.stmts);
-}
-
 void gen_var_decl(decl* decl, symbol* sym)
 {
     assert(decl->kind == DECL_VARIABLE);
@@ -713,12 +705,10 @@ void gen_var_decl(decl* decl, symbol* sym)
     gen_printf(";");
 }
 
-void gen_func_decl(decl* d)
+void gen_func_decl(decl* d, const char* mangled_name)
 {
     assert(d->kind == DECL_FUNCTION);
-    
-    char* mangled_name = get_function_mangled_name(d);
-    
+
     if (d->function.return_type)
     {
         char* decl_str = typespec_to_cdecl(d->function.return_type, mangled_name);
@@ -768,12 +758,11 @@ void gen_forward_decls(symbol** resolved)
     for (size_t i = 0; i < buf_len(resolved); i++)
     {        
         symbol* sym = resolved[i];
-        decl* d = sym->decl;
-        if (d)
+        if (sym->decl)
         {
-            switch (d->kind)
+            switch (sym->decl->kind)
             {
-                gen_line_hint(d->pos);
+                gen_line_hint(sym->decl->pos);
                 case DECL_STRUCT:
                 {
                     gen_printf_newline("typedef struct %s %s;", sym->name, sym->name);
@@ -786,9 +775,9 @@ void gen_forward_decls(symbol** resolved)
                 break;
                 case DECL_FUNCTION:
                 {
-                    if (d->function.is_extern == false)
+                    if (sym->decl->function.is_extern == false)
                     {
-                        gen_func_decl(d);
+                        gen_func_decl(sym->decl, sym->mangled_name);
                         gen_printf(";");
                     }
                 }
@@ -805,7 +794,7 @@ void gen_forward_decls(symbol** resolved)
         }
         else
         {
-            debug_breakpoint;
+            fatal("symbol without declaration");
         }
     }
 }
@@ -853,7 +842,7 @@ void gen_symbol_decl(symbol* sym)
         {
             if (decl->function.is_extern == false)
             {
-                gen_func_decl(decl);
+                gen_func_decl(decl, sym->mangled_name);
                 gen_stmt_block(decl->function.stmts);
                 gen_printf(";");
             }
@@ -1088,38 +1077,37 @@ char* get_function_mangled_name(decl* dec)
         return dec->name;
     }
 
-    char* result = null;
+    char* mangled = null;
            
     if (dec->function.method_receiver)
     {
         typespec* t = dec->function.method_receiver->type;
         char* mangled_rec = get_typespec_mangled_name(t);
-        buf_printf(result, mangled_rec);
+        buf_printf(mangled, mangled_rec);
     }
 
-    buf_printf(result, "___");
-    buf_printf(result, dec->name);
+    buf_printf(mangled, "___");
+    buf_printf(mangled, dec->name);
     for (size_t i = 0; i < dec->function.params.param_count; i++)
     {
         typespec* t = dec->function.params.params[i].type;
         char* mangled_arg = get_typespec_mangled_name(t);
-        buf_printf(result, mangled_arg);
+        buf_printf(mangled, mangled_arg);
     }
 
     if (dec->function.return_type)
     {
         char* mangled_ret = get_typespec_mangled_name(dec->function.return_type);
-        buf_printf(result, mangled_ret);
+        buf_printf(mangled, mangled_ret);
     }
     else
     {
-        buf_printf(result, "___0v");
+        buf_printf(mangled, "___0v");
     }
     
-    const char* interned = str_intern(result);
-    buf_free(result);
-
-    return interned;
+    const char* result = str_intern(mangled);
+    buf_free(mangled);
+    return result;
 }
 
 void mangled_names_test()

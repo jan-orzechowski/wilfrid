@@ -14,7 +14,7 @@ void print_typespec(typespec* t);
 
 void print_expr(expr* e)
 {
-    if (e == NULL)
+    if (e == null)
     {
         return;
     }
@@ -207,7 +207,7 @@ void print_expr(expr* e)
 
 void print_statement(stmt* s)
 {
-    if (s == NULL)
+    if (s == null)
     {
         return;
     }
@@ -458,7 +458,7 @@ void print_typespec(typespec* t)
 
 void print_decl(decl* d)
 {
-    if (d == NULL)
+    if (d == null)
     {
         return;
     }

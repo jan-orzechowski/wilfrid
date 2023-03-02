@@ -120,7 +120,7 @@ char* xprintf(const char* format, ...)
     va_list args;
 
     va_start(args, format);
-    size_t length = 1 + vsnprintf(NULL, 0, format, args);
+    size_t length = 1 + vsnprintf(null, 0, format, args);
     va_end(args);
 
     char* str = xmalloc(length);
@@ -153,7 +153,7 @@ buffer_header;
 #define __buf_fit(b, n) (__buf_fits((b), (n)) ? 0 : ((b) = __buf_grow((b), buf_len(b) + (n), sizeof(*(b)))))
 
 #define buf_push(b, x) (__buf_fit((b), 1), (b)[__buf_header(b)->len++] = (x))
-#define buf_free(b) ((b) ? (free(__buf_header(b)), (b) = NULL) : 0)
+#define buf_free(b) ((b) ? (free(__buf_header(b)), (b) = null) : 0)
 #define buf_remove_at(b, i) ((b) && buf_len(b) > (i) ? ((b)[i] = (b)[buf_len(b) - 1], (b)[buf_len(b) - 1] = 0, __buf_header(b)->len--) : 0) 
 
 // do debugowania - w watch window makra nie działają...
@@ -216,7 +216,7 @@ void copy_test(void);
 
 void* __copy_buf_to_arena(memory_arena* arena, const void* buf, size_t elem_size)
 {
-    void* dest = NULL;    
+    void* dest = null;    
     if (buf)
     {
         buffer_header* hdr = __buf_header(buf);
@@ -480,7 +480,7 @@ void stretchy_buffers_test(void)
 
     for (size_t index = 0; index < 1024; index++)
     {
-        buf_push(str, ((intern_str){ index, NULL }));
+        buf_push(str, ((intern_str){ index, null }));
     }
 
     assert(buf_len(str) == 1024);
