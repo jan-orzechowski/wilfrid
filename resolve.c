@@ -48,6 +48,8 @@ typedef struct type_function
     type* return_type;
     type** param_types;
     size_t param_count;
+    bool is_extern;
+    bool has_variadic_arg;
 } type_function;
 
 typedef struct type_aggregate_field
@@ -143,17 +145,6 @@ type* type_char =  &(type) { .name = "char",    .kind = TYPE_CHAR,    .size = 1,
 type* type_int =   &(type) { .name = "int",     .kind = TYPE_INT,     .size = 4, .align = 4 };
 type* type_float = &(type) { .name = "float",   .kind = TYPE_FLOAT,   .size = 4, .align = 4 };
 type* type_bool =  &(type) { .name = "bool",    .kind = TYPE_BOOL,    .size = 4, .align = 4 };
-
-// funkcje c
-type* type_printf = &(type) { .name = "printf", .kind = TYPE_FUNCTION };
-
-void complete_c_functions()
-{
-    type_printf->function.param_count = 2;
-    type_printf->function.param_types = xmalloc(2 * sizeof(type));
-    type_printf->function.param_types[0] = type_char;
-    type_printf->function.param_types[1] = type_int;
-}
 
 hashmap global_symbols;
 symbol** global_symbols_list;
@@ -977,7 +968,8 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type, bool ignore_e
                 }
 
                 size_t arg_count = candidate_function->type->function.param_count;
-                if (arg_count == e->call.args_num)
+                if (arg_count == e->call.args_num
+                    || fn_expr->type->function.has_variadic_arg)
                 {
                     for (size_t i = 0; i < arg_count; i++)
                     {
@@ -992,6 +984,7 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type, bool ignore_e
                     // jeśli tu jesteśmy, to wszystkie argumenty zgadzają się
                     found = candidate_function;
                 }
+             
 candidate_function_check_next:
 
                 candidate_function = candidate_function->next_overload;
@@ -1192,17 +1185,47 @@ type* resolve_function_decl(decl* d)
         resolve_typespec(d->function.method_receiver->type);
     }
 
+    bool variadic_declared = false;
+
     type** resolved_args = 0;
     function_param_list* args = &d->function.params;
     for (size_t i = 0; i < args->param_count; i++)
     {
         function_param* p = &args->params[i];
-        // nazwy argumentów na razie nas nie obchodzą
-        type* t = resolve_typespec(p->type);
-        buf_push(resolved_args, t);
+        if (p->name != variadic_keyword)
+        {
+            type* t = resolve_typespec(p->type);
+            buf_push(resolved_args, t);
+        }
+        else
+        {           
+            if (d->function.is_extern == false)
+            {
+                fatal("variadic allowed only in extern functions");
+            }
+            else
+            {                
+                if (variadic_declared)
+                {
+                    fatal("there can only be one variadic argument");
+                }
+                else if (i < args->param_count - 1)
+                {
+                    fatal("variadic must be the last argument");
+                }
+                else
+                {
+                    variadic_declared = true;
+                }
+            }
+        }
     }
 
     type* result = get_function_type(resolved_args, buf_len(resolved_args), resolved_return_type);
+
+    result->function.has_variadic_arg = variadic_declared;
+    result->function.is_extern = d->function.is_extern;
+
     return result;
 }
 
@@ -1488,7 +1511,11 @@ void complete_symbol(symbol* sym)
     }
     else if (sym->kind == SYMBOL_FUNCTION)
     {
-        complete_function_body(sym);
+        // można to też wziąć z type
+        if (false == sym->decl->function.is_extern)
+        {
+            complete_function_body(sym);
+        }
     }
 
     if (sym->kind == SYMBOL_FUNCTION)
@@ -1507,10 +1534,6 @@ void init_before_resolve()
     push_installed_symbol("int", type_int);
     push_installed_symbol("float", type_float);
     push_installed_symbol("bool", type_bool);
-
-    complete_c_functions();
-
-    push_installed_function("printf", type_printf);
 }
 
 symbol** resolve_test_decls(char** decl_arr, size_t decl_arr_count, bool print)
@@ -1584,7 +1607,7 @@ void resolve_test(void)
         "struct Z { s: S, t: T* }",
         "struct T { i: int }",
         "let a: int[3] = {1, 2, 3}",
-        "struct S { t: int, c: char }",        
+        "struct S { t: int, c: char }",
         "let x = fun(1, 2)",
         "let i: int = 1",
         "fn fun2(vec: v2): int {\
@@ -1593,7 +1616,6 @@ void resolve_test(void)
             vec.x = local\
             return vec.x } ",
         "fn fun(i: int, j: int): int { j++ i++ return i + j }",
-        
         "let x := (v2){1,2}",
         "let y = fuu(fuu(7, x), {3, 4})",
         "fn fzz(x: int, y: int) : v2 { return {x + 1, y - 1} }",
@@ -1617,10 +1639,14 @@ void resolve_test(void)
         "struct node { value: int, next: node* }",
         "let b1 : bool = 1",
         "let b2 : bool = (b1 == false)",
-#endif
         "let list1 := new int[]",
         "let list2 := new v2[]",
         "struct v2 { x: int, y: int }",
+#endif
+        "let printed_chars1 := printf(\"numbers: %d\", 1)",
+        "let printed_chars2 := printf(\"numbers: %d, %d\", 1, 2)",
+        "let printed_chars3 := printf(\"numbers: %d, %d, %d\", 1, 2, 3)",
+        "extern fn printf(str: char*, variadic) : int",
     };
     size_t str_count = sizeof(test_strs) / sizeof(test_strs[0]);
 

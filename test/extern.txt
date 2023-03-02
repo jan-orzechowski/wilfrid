@@ -1,0 +1,8 @@
+extern fn printf(str: char*, variadic) : int
+
+fn main()
+{
+   let printed_chars1 := printf("numbers: %d\n", 1)
+   let printed_chars2 := printf("numbers: %d, %d\n", 1, 2)
+   let printed_chars3 := printf("numbers: %d, %d, %d\n", 1, 2, 3)
+}

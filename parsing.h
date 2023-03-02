@@ -342,6 +342,7 @@ typedef struct function_decl
     typespec* return_type;
     function_param* method_receiver;
     stmt_block stmts;
+    bool is_extern;
 } function_decl;
 
 typedef struct enum_value

@@ -1078,7 +1078,15 @@ stmt_block parse_statement_block(void)
 function_param parse_function_param(void)
 {
     function_param p = {0};
-    if (is_token_kind(TOKEN_NAME))
+    if (is_token_kind(TOKEN_KEYWORD))
+    {
+        if (token.name == variadic_keyword)
+        {
+            p.name = variadic_keyword;
+            next_lexed_token();
+        }
+    }
+    else if (is_token_kind(TOKEN_NAME))
     {
         p.pos = token.pos;
         p.name = parse_identifier();
@@ -1089,29 +1097,32 @@ function_param parse_function_param(void)
         {
             p.type = parse_typespec();
         }
+        else
+        {
+            fatal("expected typespec");
+        }        
     }
     return p;
 }
 
-function_param_list parse_function_param_list(void)
+function_param_list parse_function_param_list()
 {
-    function_param* params = NULL;
+    expect_token_kind(TOKEN_LEFT_PAREN);
 
-    while (is_token_kind(TOKEN_NAME))
+    function_param* params = NULL;
+    while (is_token_kind(TOKEN_NAME) || is_token_kind(TOKEN_KEYWORD))
     {
         function_param p = parse_function_param();
-        if (p.name != NULL)
+        if (p.name == NULL)
         {
-            buf_push(params, p);
+            break;
+        }
 
-            if (is_token_kind(TOKEN_COMMA))
-            {
-                next_lexed_token();
-            }
-            else
-            {
-                break;
-            }
+        buf_push(params, p);
+
+        if (is_token_kind(TOKEN_COMMA))
+        {           
+            next_lexed_token();
         }
         else
         {
@@ -1126,6 +1137,8 @@ function_param_list parse_function_param_list(void)
         result.params = copy_buf_to_arena(arena, params);
         buf_free(params);
     }
+
+    expect_token_kind(TOKEN_RIGHT_PAREN);
 
     return result;
 }
@@ -1317,13 +1330,8 @@ decl* parse_declaration_optional(void)
             }
 
             declaration->name = parse_identifier();
-
-            expect_token_kind(TOKEN_LEFT_PAREN);
-
-            declaration->function.params
-                = parse_function_param_list();
-
-            expect_token_kind(TOKEN_RIGHT_PAREN);
+         
+            declaration->function.params = parse_function_param_list();
 
             if (is_token_kind(TOKEN_COLON))
             {
@@ -1339,6 +1347,40 @@ decl* parse_declaration_optional(void)
             declaration->function.stmts = parse_statement_block();
 
             expect_token_kind(TOKEN_RIGHT_BRACE);
+        }
+        else if (decl_keyword == extern_keyword)
+        {
+            next_lexed_token();
+            if (false == is_token_kind(TOKEN_KEYWORD)
+                || false == (token.name == fn_keyword))
+            {
+                fatal("only functions can be marked extern");
+            }
+
+            declaration = push_struct(arena, decl);
+            declaration->kind = DECL_FUNCTION;
+            declaration->pos = pos;
+            declaration->function.is_extern = true;
+
+            next_lexed_token();
+
+            declaration->name = parse_identifier();
+
+            declaration->function.params = parse_function_param_list();
+
+            if (is_token_kind(TOKEN_COLON))
+            {
+                next_lexed_token();
+                if (is_token_kind(TOKEN_NAME))
+                {
+                    declaration->function.return_type = parse_typespec();
+                }
+            }
+
+            if (is_token_kind(TOKEN_LEFT_BRACE))
+            {
+                fatal("function body not allowed for extern");
+            }
         }
         else if (decl_keyword == enum_keyword)
         {
@@ -1477,7 +1519,6 @@ void parse_test(void)
         "let x := new int[]",
         "let x : string[] = auto string[]",
         "let x : int[12][] = new int[12][]",
-#endif
         "fn (s: some_struct) method (i: int) { s.x += i } ",
         "fn (this: int[16]*[12]) method () {  } ",
         "fn (x: some_struct*) method () : some_struct* { return x } ",
@@ -1487,6 +1528,9 @@ void parse_test(void)
         "let x := one_object.other_object.method(one_object)",
         "let x := one_object.other_object.one_other_object.method()",
         "let chain := some_object.method().other_method().yet_other_method()",
+#endif
+        "extern fn strlen(str: char*) : int",
+        "extern fn printf(str: char*, variadic) : int",
     };
 
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);

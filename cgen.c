@@ -716,7 +716,7 @@ void gen_var_decl(decl* decl, symbol* sym)
 void gen_func_decl(decl* d)
 {
     assert(d->kind == DECL_FUNCTION);
-
+    
     char* mangled_name = get_function_mangled_name(d);
     
     if (d->function.return_type)
@@ -786,8 +786,11 @@ void gen_forward_decls(symbol** resolved)
                 break;
                 case DECL_FUNCTION:
                 {
-                    gen_func_decl(sym->decl);
-                    gen_printf(";");
+                    if (d->function.is_extern == false)
+                    {
+                        gen_func_decl(d);
+                        gen_printf(";");
+                    }
                 }
                 break;
                 case DECL_CONST:
@@ -848,9 +851,12 @@ void gen_symbol_decl(symbol* sym)
         break;
         case DECL_FUNCTION:
         {
-            gen_func_decl(decl);
-            gen_stmt_block(decl->function.stmts);
-            gen_printf(";");
+            if (decl->function.is_extern == false)
+            {
+                gen_func_decl(decl);
+                gen_stmt_block(decl->function.stmts);
+                gen_printf(";");
+            }
         }
         break;
         case DECL_STRUCT:
@@ -935,9 +941,19 @@ void gen_common_includes(void)
 {
     // TODO przydałoby się usunąć wszelkie komentarze z tego pliku
     // oraz naprawić kwestię z CRLF/CR
-    char* test_file = "common_include.c";
-    string_ref file_buf = read_file(test_file);
-    gen_printf(file_buf.str);
+    //char* test_file = "common_include.c";
+    //string_ref file_buf = read_file(test_file);
+    //gen_printf(file_buf.str);
+
+    gen_printf(
+"#include <stddef.h>\n\
+#include <stdlib.h>\n\
+#include <stdio.h>\n\
+#include <stdarg.h>\n\
+#include <string.h>\n\
+#include <stdint.h>\n\
+#include <stdbool.h>"
+);
 }
 
 void cgen_test(void)
@@ -945,7 +961,7 @@ void cgen_test(void)
     generate_line_hints = false;
 
     char* test_strs[] = {
-#if 1
+#if 0
         "const x = 10",        
         "let y := (vec3){1, 2, 3}",
         "fn power_2(n:int):int{return n*n}",        
@@ -1065,7 +1081,13 @@ char* get_function_mangled_name(decl* dec)
     // ___function_name___arg_type1___arg_type2___ret_type
     
     assert(dec);
-    assert(dec->kind == DECL_FUNCTION);
+    assert(dec->kind == DECL_FUNCTION);    
+
+    if (dec->function.is_extern)
+    {
+        return dec->name;
+    }
+
     char* result = null;
            
     if (dec->function.method_receiver)

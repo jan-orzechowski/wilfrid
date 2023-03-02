@@ -468,6 +468,12 @@ void print_decl(decl* d)
         case DECL_FUNCTION:
         {
             printf("(fn-decl ");
+
+            if (d->function.is_extern)
+            {
+                printf("extern ");
+            }
+
             if (d->name)
             {
                 printf("%s", d->name);
@@ -503,9 +509,12 @@ void print_decl(decl* d)
                 print_typespec(d->function.return_type);
             }
             
-            print_stmt_block(d->function.stmts);
+            if (false == d->function.is_extern)
+            {
+                print_stmt_block(d->function.stmts);
+                print_newline();
+            }
 
-            print_newline();
             printf(")");
         }
         break;

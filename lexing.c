@@ -50,6 +50,8 @@ const char* for_keyword;
 const char* switch_keyword;
 const char* case_keyword;
 const char* default_keyword;
+const char* variadic_keyword;
+const char* extern_keyword;
 
 const char* first_keyword;
 const char* last_keyword;
@@ -86,9 +88,11 @@ void init_keywords(void)
         KEYWORD(switch);
         KEYWORD(case);
         KEYWORD(default);
+        KEYWORD(variadic);
+        KEYWORD(extern);
     }
     first_keyword = struct_keyword;
-    last_keyword = default_keyword;
+    last_keyword = extern_keyword;
     initialized = true;
 }
 
