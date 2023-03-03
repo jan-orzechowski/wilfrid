@@ -924,7 +924,7 @@ stmt* parse_statement(void)
 
             expect_token_kind(TOKEN_LEFT_PAREN);
 
-            s->for_stmt.init_decl = parse_declaration();
+            s->for_stmt.init_stmt = parse_statement();
 
             expect_token_kind(TOKEN_SEMICOLON);
 

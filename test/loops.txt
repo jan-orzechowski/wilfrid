@@ -1,0 +1,49 @@
+fn f () { }
+
+extern fn printf(str: char*, variadic) : int
+
+fn main()
+{
+    let sum := 0
+    for (let i := 0; i < 10; i++)
+    {
+        sum++
+    }
+
+    let loop := true
+    while (loop)
+    {
+        sum++
+        if (sum >= 20)
+        {
+            loop = false
+        }
+    }
+
+    do 
+    {
+        sum++
+
+        if (sum >= 30)
+        {
+            loop = true
+        }
+    }
+    while (false == loop)
+
+    for (;;f())
+    {
+        sum++
+
+        if (sum > 39)
+        {
+            break
+        } 
+        else 
+        {
+            continue
+        }
+    }
+
+    printf("sum: %d", sum)
+}

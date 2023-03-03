@@ -310,7 +310,7 @@ void print_statement(stmt* s)
         case STMT_FOR:
         {
             printf("(for ");
-            print_decl(s->for_stmt.init_decl);
+            print_statement(s->for_stmt.init_stmt);
             printf(" ");
             print_expr(s->for_stmt.cond_expr);
             printf(" ");

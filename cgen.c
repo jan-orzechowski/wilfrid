@@ -406,11 +406,9 @@ void gen_stmt(stmt* stmt)
         case STMT_FOR:
         {
             gen_printf_newline("for (");
-            if (stmt->for_stmt.init_decl)
+            if (stmt->for_stmt.init_stmt)
             {
-             /*   type_to_cdecl(stmt->for_stmt.init_decl->variable.type,
-                    stmt->for_stmt.init_decl->variable.expr);
-                gen_simple_stmt(stmt->for_stmt.init_decl);*/
+                gen_simple_stmt(stmt->for_stmt.init_stmt);
             }
             gen_printf(";");
             if (stmt->for_stmt.cond_expr)

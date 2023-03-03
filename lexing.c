@@ -248,10 +248,9 @@ bool next_token(void)
             else if (*(stream + 1) == '*')
             {
                 discard_token = true;
-
                 nested_comments_level++;
-
                 stream += 2;
+
                 for (;;)
                 {
                     stream++;
@@ -269,7 +268,6 @@ bool next_token(void)
                     if (*(stream) == '*' && *(stream + 1) == '/')
                     {
                         nested_comments_level--;
-
                         stream += 2;
                     }
 

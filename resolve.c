@@ -596,7 +596,7 @@ symbol* resolve_name(const char* name)
     symbol* s = get_symbol(name);
     if (s == null)
     {
-        fatal("non-existent name");        
+        fatal("non-existent name: %s", name);        
         return null;
     }
     resolve_symbol(s);
@@ -1378,11 +1378,20 @@ void resolve_stmt(stmt* st, type* opt_ret_type)
         {
             symbol* marker = enter_local_scope();
 
-            type* t = resolve_variable_decl(st->for_stmt.init_decl);
-            push_local_symbol(st->for_stmt.init_decl->name, t);
+            if (st->for_stmt.init_stmt)
+            {
+                resolve_stmt(st->for_stmt.init_stmt, null);
+            }
 
-            resolve_expr(st->for_stmt.cond_expr);
-            resolve_stmt(st->for_stmt.next_stmt, null);
+            if (st->for_stmt.cond_expr)
+            {
+                resolve_expr(st->for_stmt.cond_expr);
+            }
+
+            if (st->for_stmt.next_stmt)
+            {
+                resolve_stmt(st->for_stmt.next_stmt, null);
+            }
 
             resolve_stmt_block(st->for_stmt.stmts, opt_ret_type);
 

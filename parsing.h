@@ -235,7 +235,7 @@ typedef struct while_stmt
 
 typedef struct for_stmt
 {
-    decl* init_decl;
+    stmt* init_stmt;
     expr* cond_expr;
     stmt* next_stmt;
     stmt_block stmts;
