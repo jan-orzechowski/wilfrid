@@ -107,6 +107,8 @@ tok token;
 tok** all_tokens;
 int lexed_token_index;
 
+int nested_comments_level = 0;
+
 bool next_token(void)
 {
     bool discard_token = false;
@@ -246,6 +248,9 @@ bool next_token(void)
             else if (*(stream + 1) == '*')
             {
                 discard_token = true;
+
+                nested_comments_level++;
+
                 stream += 2;
                 for (;;)
                 {
@@ -255,9 +260,21 @@ bool next_token(void)
                         break;
                     }
 
+                    if (*(stream) == '/' && *(stream + 1) == '*')
+                    {
+                        nested_comments_level++;
+                        stream += 2;
+                    }
+
                     if (*(stream) == '*' && *(stream + 1) == '/')
                     {
+                        nested_comments_level--;
+
                         stream += 2;
+                    }
+
+                    if (nested_comments_level == 0)
+                    {
                         break;
                     }
                 }

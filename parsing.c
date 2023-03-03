@@ -1554,9 +1554,10 @@ void parse_test(void)
         "let x := one_object.other_object.method(one_object)",
         "let x := one_object.other_object.one_other_object.method()",
         "let chain := some_object.method().other_method().yet_other_method()",
-#endif
         "extern fn strlen(str: char*) : int",
         "extern fn printf(str: char*, variadic) : int",
+#endif
+        "fn /* comment /* other comment /* other comment */ */ */ x /* comment */(i:int) :int { return i }",
     };
 
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);
