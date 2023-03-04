@@ -1,1 +1,182 @@
-﻿#include <stddef.h>#include <stdlib.h>#include <stdio.h>#include <stdarg.h>#include <string.h>#include <stdint.h>#include <stdbool.h>void* ___alloc_(size_t num_bytes){    void* ptr = calloc(1, num_bytes);    if (!ptr)    {        perror("allocation failed");        exit(1);    }    return ptr;}void* ___realloc_(void* ptr, size_t num_bytes){    void* ptr = realloc(ptr, num_bytes);    if (!ptr)    {        perror("reallocation failed");        exit(1);    }    return ptr;}void ___free_(void* ptr){    // powinniśmy sprawdzić też naszą listę alokacji    if (ptr)    {        free(ptr);    }}typedef struct ___dynamic_list_hdr_{    bool gc;    size_t len;    size_t cap;    char buf[0];} ___dynamic_list_hdr_;#define ___get_list_hdr_(b) ((___dynamic_list_hdr_*)((char*)(b) - offsetof(___dynamic_list_hdr_, buf)))#define get_list_length(b) ((b) ? ___get_list_hdr_(b)->len : 0)#define get_list_capacity(b) ((b) ? ___get_list_hdr_(b)->cap : 0)#define ___list_fits_(b, n) (get_list_length(b) + (n) <= get_list_capacity(b))#define ___list_fit_(b, n) (___list_fits_((b), (n)) ? 0 : ((b) = ___list_grow_((b), get_list_length(b) + (n), sizeof(*(b)))))#define ___list_free_(b) ((b) ? (___free_(___get_list_hdr_(b)), (b) = NULL) : 0)#define list_add(b, x) (___list_fit_((b), 1), (b)[___get_list_hdr_(b)->len++] = (x))#define list_remove(b, i) ((b) && get_list_length(b) > (i) ? ((b)[i] = (b)[get_list_length(b) - 1], (b)[get_list_length(b) - 1] = 0, ___get_list_hdr_(b)->len--) : 0) void* ___list_grow_(const void* list, size_t new_len, size_t elem_size){    size_t new_cap = max(1 + 2 * get_list_capacity(list), new_len);    assert(new_len <= new_cap);    size_t new_size = offsetof(___dynamic_list_hdr_, buf) + new_cap * elem_size;    ___dynamic_list_hdr_* new_hdr;    if (list)    {        new_hdr = ___get_list_hdr_(list);        new_hdr = (___dynamic_list_hdr_*)___realloc_(new_hdr, new_size);    }    else    {        new_hdr = (___dynamic_list_hdr_*)___alloc_(new_size);        new_hdr->len = 0;    }    new_hdr->cap = new_cap;    return new_hdr->buf;}// strings typedef struct string{    size_t length;    char* ptr;} string;typedef struct string_builder{    char* ptr;    size_t current_length;    size_t max_length;} string_builder;size_t get_c_string_length(const char* str){    size_t result = 0;    const char* str_temp = str;    while (*str_temp)    {        str_temp++;        result++;    }    return result;}string get_string_known_size(const char* str_ptr, size_t size){    string result = { 0 };    result.ptr = (char*)str_ptr;    result.length = size;    return result;}string get_string(const char* str_ptr){    string result = { 0 };    result.ptr = (char*)str_ptr;    result.length = get_c_string_length(str_ptr);    return result;}bool is_empty_string(string str){    bool result = (str.ptr == 0 || str.length == 0);    return result;}bool string_equals(string a, string b){    if (is_empty_string(a) || is_empty_string(b))    {        return false;    }    else if (a.length != b.length)    {        return false;    }    else    {        for (size_t char_index = 0;            char_index < a.length;            char_index++)        {            char a_char = *(a.ptr + char_index);            char b_char = *(b.ptr + char_index);            if (a_char != b_char)            {                return false;            }        }        return true;    }}bool compare_to_c_string(string my_str, const char* c_str){        if (my_str.ptr == NULL || c_str == NULL)    {        return false;    }    size_t my_str_char_index = 0;    while (*c_str)    {        if (my_str_char_index == my_str.length)        {            // strings are of different length - we went through my_str, but not through c_str            return false;        }        char my_char = *(my_str.ptr + my_str_char_index);        char c_char = *c_str;        if (my_char != c_char)        {            return false;        }        my_str_char_index++;        c_str++;    }    if (my_str_char_index < my_str.length)    {        // strings are of different length - we went through c_str, but not through my_str        return false;    }    return true;}
+﻿//#include <stddef.h>
+#include <stdlib.h> // calloc, realloc
+#include <stdio.h>
+//#include <stdarg.h>
+#include <string.h> // memcpy
+//#include <stdint.h>
+#include <stdbool.h>
+
+#define null 0
+#define offsetof(s,m) ((size_t)&(((s*)0)->m))
+
+void* ___alloc___(size_t num_bytes)
+{
+    void* ptr = calloc(1, num_bytes);
+    if (!ptr)
+    {
+        perror("allocation failed");
+        exit(1);
+    }
+    return ptr;
+}
+
+void* ___realloc___(void* ptr, size_t num_bytes)
+{
+    ptr = realloc(ptr, num_bytes);
+    if (!ptr)
+    {
+        perror("reallocation failed");
+        exit(1);
+    }
+    return ptr;
+}
+
+void ___free___(void* ptr)
+{
+    if (ptr)
+    {
+        free(ptr);
+    }
+}
+
+typedef struct ___list_hdr___
+{
+    bool is_managed;
+    size_t length;
+    size_t capacity;
+    char buffer[0];
+} ___list_hdr___;
+
+___list_hdr___* ___get_list_hdr___(void* list)
+{
+    return ((___list_hdr___*)((char*)(list) - offsetof(___list_hdr___, buffer)));
+}
+
+size_t ___get_list_length___(void* list)
+{
+    if (list)
+    {
+        return ___get_list_hdr___(list)->length;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+size_t ___get_list_capacity___(void* list)
+{
+    if (list)
+    {
+        return ___get_list_hdr___(list)->capacity;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+bool ___check_list_fits___(void* list, size_t increase)
+{
+    if (list)
+    {
+        ___list_hdr___* hdr = ___get_list_hdr___(list);
+        if (hdr->length + increase < hdr->capacity)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+void* ___list_grow___(void* list, size_t new_length, size_t element_size)
+{
+    size_t new_capacity = max(1 + 2 * ___get_list_capacity___(list), new_length);
+    size_t new_size = offsetof(___list_hdr___, buffer) + new_capacity * element_size;
+    ___list_hdr___* new_hdr = 0;
+
+    if (list)
+    {
+        new_hdr = ___get_list_hdr___(list);
+        new_hdr = (___list_hdr___*)___realloc___(new_hdr, new_size);
+    }
+    else
+    {
+        new_hdr = (___list_hdr___*)___alloc___(new_size);
+        new_hdr->length = 0;
+    }
+
+    new_hdr->capacity = new_capacity;
+    return new_hdr->buffer;
+}
+
+void* ___list_fit___(void* list, size_t increase, size_t element_size)
+{
+    if (false == ___check_list_fits___(list, increase))
+    {
+        list = ___list_grow___(list, ___get_list_length___(list) + increase, element_size);
+    }
+    return list;
+}
+
+void ___list_free___(void* list)
+{
+    ___free___(___get_list_hdr___(list));
+}
+
+void* ___list_add___(void* list, size_t element_size, void* new_element)
+{
+    list = ___list_fit___(list, 1, element_size);
+
+    ___list_hdr___* hdr = ___get_list_hdr___(list);
+    memcpy(hdr->buffer + (element_size * hdr->length), new_element, element_size);
+    hdr->length++;
+    
+    return list;
+}
+
+void* ___list_add_at_index___(void* list, size_t element_size, void* new_element, size_t index)
+{    
+    if (list)
+    {
+        ___list_hdr___* hdr = ___get_list_hdr___(list);
+        if (hdr->capacity < index)
+        {
+            list = ___list_fit___(list, index - hdr->capacity, element_size);
+            hdr = ___get_list_hdr___(list);
+            hdr->length = index + 1;
+        }
+
+        memcpy(hdr->buffer + (element_size * index), new_element, element_size);
+        if (index > hdr->length)
+        {
+            hdr->length = index + 1;
+        }
+    }
+    return list;
+}
+
+void ___list_remove___(void* list, size_t element_size, size_t index)
+{
+    if (list && ___get_list_length___(list) > index)
+    {
+        ___list_hdr___* hdr = ___get_list_hdr___(list);
+
+        memcpy(
+            hdr->buffer + (index * element_size), 
+            hdr->buffer + ((hdr->length - 1) * element_size), 
+            element_size);
+
+        memset(hdr->buffer + ((hdr->length - 1) * element_size), 0, element_size);
+        
+        hdr->length--;
+    }
+}
+
+#undef bool
+#undef false
+#undef true
+#undef offsetof
+#undef max
+#undef min
+#undef NULL

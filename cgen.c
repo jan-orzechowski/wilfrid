@@ -926,12 +926,11 @@ void gen_entry_point(void)
 
 void gen_common_includes(void)
 {
-    // TODO przydałoby się usunąć wszelkie komentarze z tego pliku
-    // oraz naprawić kwestię z CRLF/CR
-    //char* test_file = "common_include.c";
-    //string_ref file_buf = read_file(test_file);
-    //gen_printf(file_buf.str);
+    char* test_file = "common_include.c";
+    string_ref file_buf = read_file(test_file);
+    gen_printf(file_buf.str);
 
+#if 0
     gen_printf(
 "#include <stddef.h>\n\
 #include <stdlib.h>\n\
@@ -941,6 +940,7 @@ void gen_common_includes(void)
 #include <stdint.h>\n\
 #include <stdbool.h>"
 );
+#endif
 }
 
 void cgen_test(void)
