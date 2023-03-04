@@ -39,6 +39,36 @@ void ___free___(void* ptr)
     }
 }
 
+void* ___managed_alloc___(size_t num_bytes)
+{
+    void* ptr = calloc(1, num_bytes);
+    if (!ptr)
+    {
+        perror("allocation failed");
+        exit(1);
+    }
+    return ptr;
+}
+
+void* ___managed_realloc___(void* ptr, size_t num_bytes)
+{
+    ptr = realloc(ptr, num_bytes);
+    if (!ptr)
+    {
+        perror("reallocation failed");
+        exit(1);
+    }
+    return ptr;
+}
+
+void ___managed_free___(void* ptr)
+{
+    if (ptr)
+    {
+        free(ptr);
+    }
+}
+
 typedef struct ___list_hdr___
 {
     bool is_managed;
@@ -50,6 +80,54 @@ typedef struct ___list_hdr___
 ___list_hdr___* ___get_list_hdr___(void* list)
 {
     return ((___list_hdr___*)((char*)(list) - offsetof(___list_hdr___, buffer)));
+}
+
+size_t ___get_list_allocation_size___(size_t new_capacity, size_t element_size)
+{
+    size_t result = offsetof(___list_hdr___, buffer) + new_capacity * element_size;
+    return result;
+}
+
+void* ___list_initialize___(size_t initial_capacity, size_t element_size, bool managed)
+{
+    size_t new_size = ___get_list_allocation_size___(initial_capacity, element_size);
+    ___list_hdr___* hdr = 0;
+    if (managed)
+    {
+        hdr = (___list_hdr___*)___managed_alloc___(new_size);
+    }
+    else
+    {
+        hdr = (___list_hdr___*)___alloc___(new_size);
+    }
+    hdr->length = 0;
+    hdr->capacity = initial_capacity;
+    hdr->is_managed = managed;
+    return hdr->buffer;
+}
+
+void* ___list_grow___(void* list, size_t new_length, size_t element_size)
+{
+    if (list)
+    {
+        ___list_hdr___* hdr = ___get_list_hdr___(list);
+        size_t new_capacity = max(1 + 2 * hdr->capacity, new_length);
+        size_t new_size = ___get_list_allocation_size___(new_capacity, element_size);        
+        if (hdr->is_managed)
+        {
+            hdr = (___list_hdr___*)___managed_realloc___(hdr, new_size);
+        }
+        else
+        {
+            hdr = (___list_hdr___*)___realloc___(hdr, new_size);
+        }                
+        hdr->capacity = new_capacity;
+        return hdr->buffer;
+    }
+    else
+    {
+        return 0;
+    }
 }
 
 size_t ___get_list_length___(void* list)
@@ -89,49 +167,44 @@ bool ___check_list_fits___(void* list, size_t increase)
     return false;
 }
 
-void* ___list_grow___(void* list, size_t new_length, size_t element_size)
-{
-    size_t new_capacity = max(1 + 2 * ___get_list_capacity___(list), new_length);
-    size_t new_size = offsetof(___list_hdr___, buffer) + new_capacity * element_size;
-    ___list_hdr___* new_hdr = 0;
-
-    if (list)
-    {
-        new_hdr = ___get_list_hdr___(list);
-        new_hdr = (___list_hdr___*)___realloc___(new_hdr, new_size);
-    }
-    else
-    {
-        new_hdr = (___list_hdr___*)___alloc___(new_size);
-        new_hdr->length = 0;
-    }
-
-    new_hdr->capacity = new_capacity;
-    return new_hdr->buffer;
-}
-
 void* ___list_fit___(void* list, size_t increase, size_t element_size)
 {
-    if (false == ___check_list_fits___(list, increase))
+    if (list)
     {
-        list = ___list_grow___(list, ___get_list_length___(list) + increase, element_size);
-    }
+        if (false == ___check_list_fits___(list, increase))
+        {
+            list = ___list_grow___(list, ___get_list_length___(list) + increase, element_size);
+        }
+    }   
     return list;
 }
 
 void ___list_free___(void* list)
 {
-    ___free___(___get_list_hdr___(list));
+    if (list)
+    {
+        ___list_hdr___* hdr = ___get_list_hdr___(list);
+        if (hdr->is_managed)
+        {
+            ___managed_free___(hdr);
+        }
+        else
+        {
+            ___free___(hdr);
+        }        
+    }
 }
 
 void* ___list_add___(void* list, size_t element_size, void* new_element)
 {
-    list = ___list_fit___(list, 1, element_size);
+    if (list)
+    {
+        list = ___list_fit___(list, 1, element_size);
 
-    ___list_hdr___* hdr = ___get_list_hdr___(list);
-    memcpy(hdr->buffer + (element_size * hdr->length), new_element, element_size);
-    hdr->length++;
-    
+        ___list_hdr___* hdr = ___get_list_hdr___(list);
+        memcpy(hdr->buffer + (element_size * hdr->length), new_element, element_size);
+        hdr->length++;
+    }   
     return list;
 }
 

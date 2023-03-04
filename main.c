@@ -112,10 +112,10 @@ int main(int argc, char** argv)
 
 void common_includes_test(void)
 {
-    int* int_list = 0;
+    int* int_list = ___list_initialize___(4, sizeof(int), 0);
 
     assert(___get_list_length___(int_list) == 0);
-    assert(___get_list_capacity___(int_list) == 0);
+    assert(___get_list_capacity___(int_list) == 4);
 
     {
         int ___temp = 12;
@@ -137,7 +137,7 @@ void common_includes_test(void)
     assert(int_list[2] == 20);
         
     assert(___get_list_length___(int_list) == 3);
-    assert(___get_list_capacity___(int_list) == 7);
+    assert(___get_list_capacity___(int_list) == 4);
 
     ___list_free___(int_list);
     int_list = 0;
@@ -145,8 +145,7 @@ void common_includes_test(void)
     assert(___get_list_length___(int_list) == 0);
     assert(___get_list_capacity___(int_list) == 0);
 
-    // alternatywna inicjalizacja
-    tok* token_list = ___list_fit___(0, 16, sizeof(tok));
+    tok* token_list = ___list_initialize___(16, sizeof(tok), 0);
 
     assert(___get_list_length___(token_list) == 0);
 

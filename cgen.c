@@ -41,7 +41,7 @@ void gen_line_hint(source_pos pos)
 
 void gen_stmt(stmt* s);
 void gen_expr(expr* e);
-void gen_expr_assign(expr* e, const char* dynamic_list_name);
+void gen_expr_assign(expr* e);
 void gen_func_decl(decl* d);
 
 const char* gen_expr_str(expr* e)
@@ -267,12 +267,9 @@ void gen_simple_stmt(stmt* stmt)
                     {
                         if (stmt->decl_stmt.decl->variable.expr->kind == EXPR_NEW
                             || stmt->decl_stmt.decl->variable.expr->kind == EXPR_AUTO)
-                        {
-                            // w przypadku dynamic array nie możemy tego zrobić w jednym statement w C
-                            // więc rozbijamy na dwa
-                            gen_printf(" = 0; ");                           
-                            gen_expr_assign(stmt->decl_stmt.decl->variable.expr,
-                                stmt->decl_stmt.decl->name);
+                        {                       
+                            gen_printf(" = ");
+                            gen_expr_assign(stmt->decl_stmt.decl->variable.expr);
                             debug_breakpoint;
                         }
                         else
@@ -307,7 +304,7 @@ void gen_simple_stmt(stmt* stmt)
                 if (stmt->assign.value_expr->kind == EXPR_NEW
                     || stmt->assign.value_expr->kind == EXPR_AUTO)
                 {
-                    gen_expr_assign(stmt->assign.value_expr, stmt->assign.assigned_var_expr->name);
+                    gen_expr_assign(stmt->assign.value_expr);
                     debug_breakpoint;
                 }
                 else
@@ -325,13 +322,15 @@ void gen_simple_stmt(stmt* stmt)
         {
             if (stmt->delete.expr->resolved_type->kind == TYPE_LIST)
             {
-                gen_printf("___list_free_(");
+                gen_printf("___list_free___(");
                 gen_expr(stmt->delete.expr);
-                gen_printf(")");
+                gen_printf("); ");
+                gen_expr(stmt->delete.expr);
+                gen_printf(" = 0");
             }
             else
             {
-                gen_printf("___free_(");
+                gen_printf("___free___(");
                 gen_expr(stmt->delete.expr);
                 gen_printf(")");
             }
@@ -467,7 +466,7 @@ void gen_stmt(stmt* stmt)
     }
 }
 
-void gen_expr_assign(expr* e, const char* dynamic_list_name)
+void gen_expr_assign(expr* e)
 {
     switch (e->kind)
     {
@@ -475,13 +474,13 @@ void gen_expr_assign(expr* e, const char* dynamic_list_name)
         {
             if (e->new.type->kind == TYPESPEC_LIST)
             {
-                assert(dynamic_list_name);
-                gen_printf("___list_fit_(%s, 16)", dynamic_list_name);
+                assert(e->resolved_type);
+                gen_printf("___list_initialize___(8, sizeof(%s), 0)", e->resolved_type->list.base_type->name);
             }
             else
             {
                 char* c = typespec_to_cdecl(e->new.type, null);
-                gen_printf("(%s*)___alloc_(sizeof(%s))", c, c);
+                gen_printf("(%s*)___alloc___(sizeof(%s))", c, c);
             }
         }
         break;
@@ -489,14 +488,13 @@ void gen_expr_assign(expr* e, const char* dynamic_list_name)
         {
             if (e->new.type->kind == TYPESPEC_LIST)
             {
-                fatal("not implemented");
-                /* char* c = typespec_to_cdecl(e->new.type->list.base_type, null);
-                 gen_printf("(%s)___list_fit_(16, sizeof(%s))", c, c);*/
+                assert(e->resolved_type);
+                gen_printf("___list_initialize___(8, sizeof(%s), 1)", e->resolved_type->list.base_type->name);
             }
             else
             {
                 char* c = typespec_to_cdecl(e->new.type, null);
-                gen_printf("(%s*)___gc_alloc_(sizeof(%s))", c, c);
+                gen_printf("(%s*)___managed_alloc___(sizeof(%s))", c, c);
             }
         }
         break;
