@@ -116,21 +116,10 @@ void common_includes_test(void)
 
     assert(___get_list_length___(int_list) == 0);
     assert(___get_list_capacity___(int_list) == 4);
-
-    {
-        int ___temp = 12;
-        int_list = ___list_add___(int_list, sizeof(int), &___temp);
-    }
-
-    {
-        int ___temp = 16;
-        int_list = ___list_add___(int_list, sizeof(int), &___temp);
-    }
-
-    {
-        int ___temp = 20;
-        int_list = ___list_add___(int_list, sizeof(int), &___temp);
-    }
+   
+    ___list_add___(int_list, 12);
+    ___list_add___(int_list, 16);
+    ___list_add___(int_list, 20);
 
     assert(int_list[0] == 12);
     assert(int_list[1] == 16);
@@ -140,7 +129,6 @@ void common_includes_test(void)
     assert(___get_list_capacity___(int_list) == 4);
 
     ___list_free___(int_list);
-    int_list = 0;
 
     assert(___get_list_length___(int_list) == 0);
     assert(___get_list_capacity___(int_list) == 0);
@@ -149,10 +137,7 @@ void common_includes_test(void)
 
     assert(___get_list_length___(token_list) == 0);
 
-    {
-        tok ___temp = { .kind = TOKEN_NAME, .val = 666 };
-        token_list = ___list_add___(token_list, sizeof(tok), &___temp);
-    }
+    ___list_add___(token_list, ((tok){.kind = TOKEN_NAME, .val = 666 }));
 
     assert(___get_list_length___(token_list) == 1);
 
@@ -168,25 +153,17 @@ void common_includes_test(void)
     assert(token_list[0].kind == TOKEN_ASSIGN);
     assert(token_list[0].val == 668);
 
-    {
-        tok ___temp = { .kind = TOKEN_MUL, .val = 669 };
-        token_list = ___list_add_at_index___(token_list, sizeof(tok), &___temp, 2);
-    }
+    ___list_add___(token_list, ((tok){.kind = TOKEN_MUL, .val = 669 }));
+    
+    assert(token_list[1].kind == TOKEN_MUL);
+    assert(token_list[1].val == 669);
+
+    ___list_remove_at___(token_list, sizeof(tok), 1);
 
     assert(token_list[1].kind == 0);
     assert(token_list[1].val == 0);
 
-    assert(token_list[2].kind == TOKEN_MUL);
-    assert(token_list[2].val == 669);
-
-    ___list_remove___(token_list, sizeof(tok), 1);
-
-    assert(token_list[1].kind == TOKEN_MUL);
-    assert(token_list[1].val == 669);
-
-    assert(token_list[2].kind == 0);
-    assert(token_list[2].val == 0);
-
     ___list_free___(token_list);
-    token_list = 0;
+
+    debug_breakpoint;
 }

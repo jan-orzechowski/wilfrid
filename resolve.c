@@ -882,14 +882,89 @@ resolved_expr* resolve_compound_expr(expr* e, type* expected_type, bool ignore_e
    return result;
 }
 
+resolved_expr* resolve_special_case_methods(expr* e)
+{    
+    resolved_expr* result = null;
+    if (e->kind == EXPR_CALL && e->call.method_receiver)
+    {
+        resolve_expr(e->call.method_receiver);
+        assert(e->call.method_receiver->resolved_type);
+        if (e->call.method_receiver->resolved_type->kind == TYPE_LIST)
+        {
+            stub_expr_kind stub_kind = STUB_EXPR_NONE;
+            if (e->call.function_expr->name == str_intern("capacity"))
+            {
+                if (e->call.args_num != 0)
+                {
+                    fatal("capacity method accepts no arguments");
+                }
+                
+                stub_kind = STUB_EXPR_LIST_CAPACITY;
+                result = get_resolved_rvalue_expr(type_int);
+            }            
+            else if (e->call.function_expr->name == str_intern("length"))
+            {
+                if (e->call.args_num != 0)
+                {
+                    fatal("length method accept no arguments");
+                }
+
+                stub_kind = STUB_EXPR_LIST_LENGTH;
+                result = get_resolved_rvalue_expr(type_int);
+            }
+            else if (e->call.function_expr->name == str_intern("add"))
+            {
+                if (e->call.args_num != 1)
+                {
+                    fatal("only one argument for an add method");
+                }
+
+                type* list_type = e->call.method_receiver->resolved_type;
+                type* list_element_type = list_type->list.base_type;
+                type* new_element_type = resolve_expr(e->call.args[0])->type;
+
+                if (list_element_type != new_element_type)
+                {
+                    fatal("wrong type of argument for a list");
+                }
+                
+                stub_kind = STUB_EXPR_LIST_ADD;
+                result = get_resolved_rvalue_expr(type_void);
+            }
+
+            if (stub_kind)
+            {
+                expr* new_expr = push_struct(arena, expr);
+                new_expr->kind = EXPR_STUB;
+                new_expr->stub.kind = stub_kind;
+                new_expr->stub.original_expr = e;
+
+                expr temp = *e;
+                (*e) = *new_expr;
+                *new_expr = temp;
+                e->stub.original_expr = new_expr;
+            }
+        }
+    }
+
+    return result;
+}
+
 resolved_expr* resolve_call_expr(expr* e)
 {
     assert(e->kind == EXPR_CALL);
-    
+    resolved_expr* result = null;
+
+    result = resolve_special_case_methods(e);
+    if (result)
+    {
+        return result;
+    }
+
     symbol* matching = null;
     resolved_expr* fn_expr = resolve_expr(e->call.function_expr);
     assert(fn_expr->type->kind == TYPE_FUNCTION);
-    
+
     symbol* candidate = fn_expr->type->symbol;
     while (candidate)
     {
@@ -946,7 +1021,7 @@ resolved_expr* resolve_call_expr(expr* e)
 
     e->call.resolved_function = matching;
 
-    resolved_expr* result = get_resolved_rvalue_expr(matching->type->function.return_type);
+    result = get_resolved_rvalue_expr(matching->type->function.return_type);
     return result;
 }
 
@@ -1129,6 +1204,12 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type, bool ignore_e
         case EXPR_COMPOUND_LITERAL:
         {
             result = resolve_compound_expr(e, expected_type, ignore_expected_type_mismatch);
+        }
+        break;
+        case EXPR_STUB:
+        {
+            // nie powinniśmy się tutaj znaleźć
+            fatal("stubs should not be resolved");
         }
         break;
         default:
@@ -1463,8 +1544,13 @@ void resolve_stmt(stmt* st, type* opt_ret_type)
         }
         break;
         case STMT_SWITCH:
-        {
+        {            
             resolve_expr(st->switch_stmt.var_expr);
+
+            if (st->switch_stmt.var_expr->kind != EXPR_NAME)
+            {
+                fatal("only names allowed in switch condition expression");
+            }
 
             for (size_t i = 0; i < st->switch_stmt.cases_num; i++)
             {

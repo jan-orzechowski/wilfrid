@@ -1,17 +1,41 @@
-﻿fn main (arguments_count: int, arguments_array: char**) 
+﻿extern fn printf(str: char*, variadic) : int
+
+const static_array_length = 12
+
+struct dynamics 
+{
+    list: int[],
+    array: int[static_array_length]
+}
+
+fn main () 
 { 
-	let x := new int[]
+    let x := new int[]
+    
+    x.add(1)
+    x.add(2)
+    x.add(3)
 
-	list_add(x, 1)
-	list_add(x, 2)
-	list_add(x, 3)
-	list_add(x, 4)
+    let len := x.length()
+    let cap := x.capacity()
 
-	delete x
+    if (x.add(4))
+    {
+        printf("\ntest if")
+    }
 
-	let y : int[]
+    for (let x:= new int[]; x.capacity() < 5; x.add(2))
+    {
+        printf("\ntest for")
+    }
 
-	list_add(y, 1)
-	list_add(y, 2)
-	list_add(y, 3)
+    delete x
+
+    let y := auto int[]
+
+    y[0] = 1
+    y[1] = 2 
+    y[2] = 3
+
+     printf("\nkoniec testu")
 }

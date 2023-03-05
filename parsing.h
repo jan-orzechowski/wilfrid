@@ -79,7 +79,9 @@ typedef enum expr_kind
     EXPR_AUTO,
     EXPR_SIZEOF,
     EXPR_CAST,
-    EXPR_COMPOUND_LITERAL
+    EXPR_COMPOUND_LITERAL,
+
+    EXPR_STUB
 } expr_kind;
 
 typedef struct unary_expr unary_expr;
@@ -161,6 +163,22 @@ typedef struct cast_expr
     expr* expr;
 } cast_expr;
 
+typedef enum stub_expr_kind
+{
+    STUB_EXPR_NONE = 0,
+    STUB_EXPR_LIST_FREE,
+    STUB_EXPR_LIST_REMOVE_AT,
+    STUB_EXPR_LIST_LENGTH,
+    STUB_EXPR_LIST_CAPACITY,
+    STUB_EXPR_LIST_ADD,
+} stub_expr_kind;
+
+typedef struct stub_expr
+{
+    stub_expr_kind kind;
+    expr* original_expr;
+} stub_expr;
+
 struct expr
 {
     expr_kind kind;
@@ -183,6 +201,7 @@ struct expr
         auto_expr auto_new; // dlaczego MSVC skarży się na użycie 'auto' w C?
         sizeof_expr size_of;
         cast_expr cast;
+        stub_expr stub;
     };
 };
 

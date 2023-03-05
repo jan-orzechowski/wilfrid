@@ -324,9 +324,7 @@ void gen_simple_stmt(stmt* stmt)
             {
                 gen_printf("___list_free___(");
                 gen_expr(stmt->delete.expr);
-                gen_printf("); ");
-                gen_expr(stmt->delete.expr);
-                gen_printf(" = 0");
+                gen_printf(")");
             }
             else
             {
@@ -475,7 +473,8 @@ void gen_expr_assign(expr* e)
             if (e->new.type->kind == TYPESPEC_LIST)
             {
                 assert(e->resolved_type);
-                gen_printf("___list_initialize___(8, sizeof(%s), 0)", e->resolved_type->list.base_type->name);
+                gen_printf("___list_initialize___(8, sizeof(%s), 0)", 
+                    e->resolved_type->list.base_type->name);
             }
             else
             {
@@ -489,13 +488,62 @@ void gen_expr_assign(expr* e)
             if (e->new.type->kind == TYPESPEC_LIST)
             {
                 assert(e->resolved_type);
-                gen_printf("___list_initialize___(8, sizeof(%s), 1)", e->resolved_type->list.base_type->name);
+                gen_printf("___list_initialize___(8, sizeof(%s), 1)", 
+                    e->resolved_type->list.base_type->name);
             }
             else
             {
                 char* c = typespec_to_cdecl(e->new.type, null);
                 gen_printf("(%s*)___managed_alloc___(sizeof(%s))", c, c);
             }
+        }
+        break;
+        invalid_default_case;
+    }
+}
+
+void gen_expr_stub(expr* e)
+{
+    assert(e->kind == EXPR_STUB);
+    assert(e->stub.original_expr);
+    assert(e->stub.original_expr->kind == EXPR_CALL);
+    assert(e->stub.original_expr->call.method_receiver);
+    assert(e->stub.original_expr->call.method_receiver->kind == EXPR_NAME);
+    assert(e->stub.original_expr->call.method_receiver->resolved_type);
+    assert(e->stub.original_expr->call.method_receiver->resolved_type->kind == TYPE_LIST);
+
+    switch (e->stub.kind)
+    {
+        case STUB_EXPR_LIST_CAPACITY:
+        {               
+            gen_printf("___get_list_capacity___(%s)", 
+                e->stub.original_expr->call.method_receiver->name);
+        }
+        break;
+        case STUB_EXPR_LIST_LENGTH:
+        {
+            gen_printf("___get_list_length___(%s)",
+                e->stub.original_expr->call.method_receiver->name);
+        }
+        break;
+        case STUB_EXPR_LIST_REMOVE_AT:
+        {
+            fatal("not implemented");
+        }
+        break;
+        case STUB_EXPR_LIST_FREE:
+        {
+            gen_printf("___list_free___(%s)",
+                e->stub.original_expr->call.method_receiver->name);
+        }
+        break;
+        case STUB_EXPR_LIST_ADD:
+        {
+            assert(e->stub.original_expr->call.args_num == 1);
+            gen_printf("___list_add___(%s,(",
+                e->stub.original_expr->call.method_receiver->name);          
+            gen_expr(e->stub.original_expr->call.args[0]);
+            gen_printf("))");
         }
         break;
         invalid_default_case;
@@ -658,6 +706,11 @@ void gen_expr(expr* e)
             }
 
             gen_printf("}");
+        }
+        break;
+        case EXPR_STUB:
+        {
+            gen_expr_stub(e);
         }
         break;
         case EXPR_NONE:

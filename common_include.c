@@ -132,26 +132,12 @@ void* ___list_grow___(void* list, size_t new_length, size_t element_size)
 
 size_t ___get_list_length___(void* list)
 {
-    if (list)
-    {
-        return ___get_list_hdr___(list)->length;
-    }
-    else
-    {
-        return 0;
-    }
+    return (list) ? ___get_list_hdr___(list)->length : 0;
 }
 
 size_t ___get_list_capacity___(void* list)
 {
-    if (list)
-    {
-        return ___get_list_hdr___(list)->capacity;
-    }
-    else
-    {
-        return 0;
-    }
+    return (list) ? ___get_list_hdr___(list)->capacity : 0;
 }
 
 bool ___check_list_fits___(void* list, size_t increase)
@@ -179,7 +165,7 @@ void* ___list_fit___(void* list, size_t increase, size_t element_size)
     return list;
 }
 
-void ___list_free___(void* list)
+void ___list_free_internal__(void* list)
 {
     if (list)
     {
@@ -195,41 +181,14 @@ void ___list_free___(void* list)
     }
 }
 
-void* ___list_add___(void* list, size_t element_size, void* new_element)
-{
-    if (list)
-    {
-        list = ___list_fit___(list, 1, element_size);
+#define ___list_free___(list) \
+    ((list) ? (___list_free_internal__(list), (list) = null) : 0)
 
-        ___list_hdr___* hdr = ___get_list_hdr___(list);
-        memcpy(hdr->buffer + (element_size * hdr->length), new_element, element_size);
-        hdr->length++;
-    }   
-    return list;
-}
+#define ___list_add___(list, new_element) \
+    (___list_fit___((list), 1, sizeof(new_element)), \
+    (list)[___get_list_hdr___(list)->length++] = (new_element))
 
-void* ___list_add_at_index___(void* list, size_t element_size, void* new_element, size_t index)
-{    
-    if (list)
-    {
-        ___list_hdr___* hdr = ___get_list_hdr___(list);
-        if (hdr->capacity < index)
-        {
-            list = ___list_fit___(list, index - hdr->capacity, element_size);
-            hdr = ___get_list_hdr___(list);
-            hdr->length = index + 1;
-        }
-
-        memcpy(hdr->buffer + (element_size * index), new_element, element_size);
-        if (index > hdr->length)
-        {
-            hdr->length = index + 1;
-        }
-    }
-    return list;
-}
-
-void ___list_remove___(void* list, size_t element_size, size_t index)
+void ___list_remove_at___(void* list, size_t element_size, size_t index)
 {
     if (list && ___get_list_length___(list) > index)
     {
