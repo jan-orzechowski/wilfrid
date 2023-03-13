@@ -108,7 +108,7 @@ char* type_to_cdecl(type* type, const char* name)
         break;
         case TYPE_LIST:
         {
-            return type_to_cdecl(type->list.base_type, parenthesize(xprintf("*%s", name), name));
+            return xprintf("___list_hdr___ %s", parenthesize(xprintf("*%s", name), name));
         }
         break;
         case TYPE_FUNCTION:
@@ -170,8 +170,7 @@ char* typespec_to_cdecl(typespec* t, const char* name)
         break;
         case TYPESPEC_LIST:
         {
-            const char* wrapped_name = parenthesize(xprintf("*%s", name ? name : ""), false);
-            result = typespec_to_cdecl(t->list.base_type, wrapped_name);
+            result = xprintf("___list_hdr___ %s", parenthesize(xprintf("*%s", name), name));
         }
         break;
         case TYPESPEC_FUNCTION:
@@ -508,22 +507,26 @@ void gen_expr_stub(expr* e)
     assert(e->stub.original_expr);
     assert(e->stub.original_expr->kind == EXPR_CALL);
     assert(e->stub.original_expr->call.method_receiver);
-    assert(e->stub.original_expr->call.method_receiver->kind == EXPR_NAME);
-    assert(e->stub.original_expr->call.method_receiver->resolved_type);
-    assert(e->stub.original_expr->call.method_receiver->resolved_type->kind == TYPE_LIST);
+
+    expr* receiver = e->stub.original_expr->call.method_receiver;
+
+    assert(receiver->resolved_type);
+    assert(receiver->resolved_type->kind == TYPE_LIST);
 
     switch (e->stub.kind)
     {
         case STUB_EXPR_LIST_CAPACITY:
         {               
-            gen_printf("___get_list_capacity___(%s)", 
-                e->stub.original_expr->call.method_receiver->name);
+            gen_printf("___get_list_capacity___("), 
+            gen_expr(receiver);
+            gen_printf(")");
         }
         break;
         case STUB_EXPR_LIST_LENGTH:
         {
-            gen_printf("___get_list_length___(%s)",
-                e->stub.original_expr->call.method_receiver->name);
+            gen_printf("___get_list_length___(");
+            gen_expr(receiver);
+            gen_printf(")");
         }
         break;
         case STUB_EXPR_LIST_REMOVE_AT:
@@ -533,17 +536,23 @@ void gen_expr_stub(expr* e)
         break;
         case STUB_EXPR_LIST_FREE:
         {
-            gen_printf("___list_free___(%s)",
-                e->stub.original_expr->call.method_receiver->name);
+            gen_printf("___list_free___(");
+            gen_expr(receiver);
+            gen_printf(")");
         }
         break;
         case STUB_EXPR_LIST_ADD:
         {
             assert(e->stub.original_expr->call.args_num == 1);
-            gen_printf("___list_add___(%s,(",
-                e->stub.original_expr->call.method_receiver->name);          
+            gen_printf("___list_add___(");
+            gen_expr(receiver);
+            gen_printf(",(");
             gen_expr(e->stub.original_expr->call.args[0]);
-            gen_printf("))");
+            gen_printf("),");
+            assert(receiver->resolved_type->kind == TYPE_LIST);
+            type* base_type = receiver->resolved_type->list.base_type;
+            char* type_str = type_to_cdecl(base_type, null);
+            gen_printf("%s)", type_str);
         }
         break;
         invalid_default_case;
@@ -664,6 +673,10 @@ void gen_expr(expr* e)
         case EXPR_INDEX:
         {
             gen_expr(e->index.array_expr);
+            if (e->index.array_expr->resolved_type->kind == TYPE_LIST)
+            {
+                gen_printf("->buffer");
+            }
             gen_printf("[");
             gen_expr(e->index.index_expr);
             gen_printf("]");

@@ -112,18 +112,18 @@ int main(int argc, char** argv)
 
 void common_includes_test(void)
 {
-    int* int_list = ___list_initialize___(4, sizeof(int), 0);
+    ___list_hdr___* int_list = ___list_initialize___(4, sizeof(int), 0);
 
-    assert(___get_list_length___(int_list) == 0);
-    assert(___get_list_capacity___(int_list) == 4);
+    assert(int_list->length == 0);
+    assert(int_list->capacity == 4);
    
-    ___list_add___(int_list, 12);
-    ___list_add___(int_list, 16);
-    ___list_add___(int_list, 20);
+    ___list_add___(int_list, 12, int);
+    ___list_add___(int_list, 16, int);
+    ___list_add___(int_list, 20, int);
 
-    assert(int_list[0] == 12);
-    assert(int_list[1] == 16);
-    assert(int_list[2] == 20);
+    assert(((int*)int_list->buffer)[0] == 12);
+    assert(((int*)int_list->buffer)[1] == 16);
+    assert(((int*)int_list->buffer)[2] == 20);
         
     assert(___get_list_length___(int_list) == 3);
     assert(___get_list_capacity___(int_list) == 4);
@@ -133,35 +133,35 @@ void common_includes_test(void)
     assert(___get_list_length___(int_list) == 0);
     assert(___get_list_capacity___(int_list) == 0);
 
-    tok* token_list = ___list_initialize___(16, sizeof(tok), 0);
+    ___list_hdr___* token_list = ___list_initialize___(16, sizeof(tok), 0);
 
-    assert(___get_list_length___(token_list) == 0);
+    assert(token_list->length == 0);
 
-    ___list_add___(token_list, ((tok){.kind = TOKEN_NAME, .val = 666 }));
+    ___list_add___(token_list, ((tok){.kind = TOKEN_NAME, .val = 666 }), tok);
 
-    assert(___get_list_length___(token_list) == 1);
+    assert(token_list->length == 1);
 
-    assert(token_list[0].kind == TOKEN_NAME);
-    assert(token_list[0].val == 666);
+    assert(((tok*)(token_list->buffer))[0].kind == TOKEN_NAME);
+    assert(((tok*)(token_list->buffer))[0].val == 666);
 
-    token_list[0].val = 667;
+    ((tok*)(token_list->buffer))[0].val = 667;
 
-    assert(token_list[0].val == 667);
+    assert(((tok*)(token_list->buffer))[0].val == 667);
 
-    token_list[0] = (tok){.kind = TOKEN_ASSIGN, .val = 668};
+    ((tok*)(token_list->buffer))[0] = (tok){.kind = TOKEN_ASSIGN, .val = 668};
 
-    assert(token_list[0].kind == TOKEN_ASSIGN);
-    assert(token_list[0].val == 668);
+    assert(((tok*)(token_list->buffer))[0].kind == TOKEN_ASSIGN);
+    assert(((tok*)(token_list->buffer))[0].val == 668);
 
-    ___list_add___(token_list, ((tok){.kind = TOKEN_MUL, .val = 669 }));
+    ___list_add___(token_list, ((tok){.kind = TOKEN_MUL, .val = 669 }), tok);
     
-    assert(token_list[1].kind == TOKEN_MUL);
-    assert(token_list[1].val == 669);
+    assert(((tok*)(token_list->buffer))[1].kind == TOKEN_MUL);
+    assert(((tok*)(token_list->buffer))[1].val == 669);
 
     ___list_remove_at___(token_list, sizeof(tok), 1);
 
-    assert(token_list[1].kind == 0);
-    assert(token_list[1].val == 0);
+    assert(((tok*)(token_list->buffer))[1].kind == 0);
+    assert(((tok*)(token_list->buffer))[1].val == 0);
 
     ___list_free___(token_list);
 

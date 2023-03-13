@@ -167,6 +167,41 @@ void resolve_stmt(stmt* st, type* opt_ret_type);
 
 char* get_function_mangled_name(decl* dec);
 
+bool compare_types(type* a, type* b)
+{    
+    if (a == b)
+    {
+        return true;
+    }
+
+    if (a->kind != b->kind)
+    {
+        return false;
+    }
+
+    // teraz musimy sprawdzić tylko jeden kind
+    if (a->kind == TYPE_LIST)
+    {
+        bool result = compare_types(a->list.base_type, b->list.base_type);
+        return result;
+    }
+    
+    if (a->kind == TYPE_ARRAY)
+    {
+        bool result = (a->array.size == b->array.size
+            && compare_types(a->array.base_type, b->array.base_type));
+        return result;
+    }
+    
+    if (a->kind == TYPE_POINTER)
+    {
+        bool result = compare_types(a->pointer.base_type, b->pointer.base_type);
+        return result;
+    }
+
+    return false;
+}
+
 bool are_symbols_the_same_function(symbol* a, symbol* b)
 {
     /*
@@ -848,7 +883,7 @@ resolved_expr* resolve_compound_expr(expr* e, type* expected_type, bool ignore_e
             type* expected_type = t->aggregate.fields[index]->type;
             resolved_expr* init_expr = resolve_expected_expr(field->expr, expected_type, false);
 
-            if (init_expr->type != expected_type)
+            if (false == compare_types(init_expr->type, expected_type))
             {
                 if (init_expr->type == type_int
                     && expected_type->kind == TYPE_POINTER)
@@ -871,7 +906,7 @@ resolved_expr* resolve_compound_expr(expr* e, type* expected_type, bool ignore_e
             compound_literal_field* field = e->compound.fields[i];
             type* expected_type = t->array.base_type;
             resolved_expr* init_expr = resolve_expected_expr(field->expr, expected_type, true);
-            if (init_expr->type != expected_type)
+            if (false == compare_types(init_expr->type, expected_type))
             {
                 fatal("compound literal element type mismatch");
             }
@@ -923,7 +958,7 @@ resolved_expr* resolve_special_case_methods(expr* e)
                 type* list_element_type = list_type->list.base_type;
                 type* new_element_type = resolve_expr(e->call.args[0])->type;
 
-                if (list_element_type != new_element_type)
+                if (false == compare_types(list_element_type, new_element_type))
                 {
                     fatal("wrong type of argument for a list");
                 }
@@ -936,6 +971,7 @@ resolved_expr* resolve_special_case_methods(expr* e)
             {
                 expr* new_expr = push_struct(arena, expr);
                 new_expr->kind = EXPR_STUB;
+                new_expr->pos = e->pos;
                 new_expr->stub.kind = stub_kind;
                 new_expr->stub.original_expr = e;
 
@@ -988,7 +1024,7 @@ resolved_expr* resolve_call_expr(expr* e)
                 expr* arg_expr = e->call.args[i];
                 type* expected_param_type = candidate->type->function.param_types[i];
                 resolved_expr* resolved_arg_expr = resolve_expected_expr(arg_expr, expected_param_type, true);
-                if (resolved_arg_expr->type != expected_param_type)
+                if (false == compare_types(resolved_arg_expr->type, expected_param_type))
                 {
                     goto candidate_check_next;
                 }
@@ -1410,7 +1446,7 @@ void resolve_stmt(stmt* st, type* opt_ret_type)
             if (st->expr)
             {
                 resolved_expr* result = resolve_expected_expr(st->expr, opt_ret_type, true);
-                if (result->type != opt_ret_type)
+                if (false == compare_types(result->type, opt_ret_type))
                 {
                     if (result->type == type_int
                         && opt_ret_type->kind == TYPE_POINTER)
@@ -1493,7 +1529,7 @@ void resolve_stmt(stmt* st, type* opt_ret_type)
             if (st->assign.value_expr)
             {                
                 resolved_expr* right = resolve_expected_expr(st->assign.value_expr, left->type, false);
-                if (left->type != right->type)
+                if (false == compare_types(left->type, right->type))
                 {
                     if (left->type->kind == TYPE_LIST)
                     {
