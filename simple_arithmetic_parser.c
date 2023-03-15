@@ -1,7 +1,7 @@
 ﻿#include "parsing.h"
 #include "lexing.h"
 
-int* code;
+int *code;
 
 bool is_token_kind(token_kind kind)
 {

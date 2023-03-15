@@ -1,7 +1,7 @@
 ﻿#include "utils.h"
 #include "lexing.h"
 
-const char* get_token_kind_name(token_kind kind)
+const char *get_token_kind_name(token_kind kind)
 {
     if (kind < sizeof(token_kind_names) / sizeof(*token_kind_names))
     {
@@ -15,7 +15,7 @@ const char* get_token_kind_name(token_kind kind)
 
 void print_token_kind(token_kind kind)
 {
-    const char* name = get_token_kind_name(kind);
+    const char *name = get_token_kind_name(kind);
     if (name)
     {
          printf("%s", name);
@@ -26,36 +26,36 @@ void print_token_kind(token_kind kind)
     }
 }
 
-const char* struct_keyword;
-const char* enum_keyword;
-const char* union_keyword;
-const char* let_keyword;
-const char* fn_keyword;
-const char* const_keyword;
-const char* new_keyword;
-const char* auto_keyword;
-const char* delete_keyword;
-const char* sizeof_keyword;
-const char* null_keyword;
-const char* true_keyword;
-const char* false_keyword;
-const char* break_keyword;
-const char* continue_keyword;
-const char* return_keyword;
-const char* if_keyword;
-const char* else_keyword;
-const char* while_keyword;
-const char* do_keyword;
-const char* for_keyword;
-const char* switch_keyword;
-const char* case_keyword;
-const char* default_keyword;
-const char* variadic_keyword;
-const char* extern_keyword;
+const char *struct_keyword;
+const char *enum_keyword;
+const char *union_keyword;
+const char *let_keyword;
+const char *fn_keyword;
+const char *const_keyword;
+const char *new_keyword;
+const char *auto_keyword;
+const char *delete_keyword;
+const char *sizeof_keyword;
+const char *null_keyword;
+const char *true_keyword;
+const char *false_keyword;
+const char *break_keyword;
+const char *continue_keyword;
+const char *return_keyword;
+const char *if_keyword;
+const char *else_keyword;
+const char *while_keyword;
+const char *do_keyword;
+const char *for_keyword;
+const char *switch_keyword;
+const char *case_keyword;
+const char *default_keyword;
+const char *variadic_keyword;
+const char *extern_keyword;
 
-const char* first_keyword;
-const char* last_keyword;
-const char** keywords_list;
+const char *first_keyword;
+const char *last_keyword;
+const char **keywords_list;
 
 #define KEYWORD(name) name##_keyword = str_intern(#name); buf_push(keywords_list, name##_keyword)
 
@@ -96,15 +96,15 @@ void init_keywords(void)
     initialized = true;
 }
 
-bool is_name_keyword(const char* name)
+bool is_name_keyword(const char *name)
 {
     bool result = (name >= first_keyword && name <= last_keyword);
     return result;
 }
 
-char* stream;
+char *stream;
 tok token;
-tok** all_tokens;
+tok **all_tokens;
 int lexed_token_index;
 
 int nested_comments_level = 0;
@@ -612,7 +612,7 @@ bool next_token(void)
 
     if (false == discard_token)
     {
-        tok* new_tok = xmalloc(sizeof(token));
+        tok *new_tok = xmalloc(sizeof(token));
         memcpy(new_tok, &token, sizeof(token));
         buf_push(all_tokens, new_tok);
     }
@@ -624,7 +624,7 @@ bool next_token(void)
     return (false == is_at_end);
 }
 
-void init_stream(char* filename, char* str)
+void init_stream(char *filename, char *str)
 {
     init_keywords(); 
     stream = str;
@@ -644,7 +644,7 @@ void next_lexed_token(void)
 {
     if (lexed_token_index + 1 < buf_len(all_tokens))
     {
-        tok* next_token = all_tokens[lexed_token_index];
+        tok *next_token = all_tokens[lexed_token_index];
         if (next_token)
         {
             token = *next_token;
@@ -657,7 +657,7 @@ void next_lexed_token(void)
     }
 }
 
-void lex(char* filename, char* test)
+void lex(char *filename, char *test)
 {
     init_stream(filename, test);
     while (next_token());

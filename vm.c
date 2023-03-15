@@ -1,13 +1,13 @@
 ﻿#include "utils.h"
 
-int* stack;
+int *stack;
 int stack_size;
 int ip;
 int sp;
 
-int* vm_output;
+int *vm_output;
 
-void run_vm(int* code)
+void run_vm(int *code)
 {
     size_t code_size = buf_len(code);
 
@@ -53,7 +53,7 @@ void run_vm(int* code)
             {
                 int a = stack[sp--];
                 int b = stack[sp--];
-                stack[++sp] = b * a;
+                stack[++sp] = b  *a;
             }
             break;
             case DIV:
@@ -76,7 +76,7 @@ void run_vm(int* code)
     debug_breakpoint;
 }
 
-void stack_vm_test(int* code)
+void stack_vm_test(int *code)
 {
     buf_push(code, PUSH);
     buf_push(code, 1);
@@ -90,7 +90,7 @@ void stack_vm_test(int* code)
     buf_push(code, POP);
 
     stack_size = 1024;
-    stack = xmalloc(sizeof(int) * stack_size);
+    stack = xmalloc(sizeof(int)  *stack_size);
 
     run_vm(code);
 
@@ -98,7 +98,7 @@ void stack_vm_test(int* code)
     free(stack);
 }
 
-void parsing_and_vm_test(char* expr, int value)
+void parsing_and_vm_test(char *expr, int value)
 {
     init_stream(null, expr);
     while (token.kind)
@@ -111,7 +111,7 @@ void parsing_and_vm_test(char* expr, int value)
     buf_push(code, POP);
 
     stack_size = 1024;
-    stack = xmalloc(sizeof(int) * stack_size);
+    stack = xmalloc(sizeof(int)  *stack_size);
 
     buf_free(vm_output);
 

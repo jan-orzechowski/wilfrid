@@ -147,7 +147,7 @@ const char* token_kind_names[] = {
 
 typedef struct source_pos
 {
-    const char* filename;
+    const char *filename;
     int line;
 } source_pos;
 
@@ -155,13 +155,13 @@ typedef struct tok
 {
     token_kind kind;
     source_pos pos;
-    const char* start;
-    const char* end;
+    const char *start;
+    const char *end;
     union
     {
         int val;
-        const char* name;
-        const char* string_val;
+        const char *name;
+        const char *string_val;
     };
 }
 tok;

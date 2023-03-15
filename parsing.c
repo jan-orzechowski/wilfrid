@@ -1,15 +1,15 @@
 ﻿#include "parsing.h"
 #include "lexing.h"
 
-expr* parse_expr(void);
-typespec* parse_typespec(void);
-typespec* push_typespec_name(source_pos pos, const char* name);
+expr *parse_expr(void);
+typespec *parse_typespec(void);
+typespec *push_typespec_name(source_pos pos, const char *name);
 
-memory_arena* arena;
+memory_arena *arena;
 
-int* code;
+int *code;
 
-bool is_name_reserved(const char* name)
+bool is_name_reserved(const char *name)
 {
     size_t len = strlen(name);
     if (len >= 3)
@@ -79,54 +79,54 @@ bool is_comparison_operation(token_kind kind)
     return result;
 }
 
-expr* push_int_expr(source_pos pos, int value)
+expr *push_int_expr(source_pos pos, int value)
 {
-    expr* result = push_struct(arena, expr);
+    expr *result = push_struct(arena, expr);
     result->kind = EXPR_INT;
     result->number_value = value;
     result->pos = pos;
     return result;
 }
 
-expr* push_name_expr(source_pos pos, const char* name)
+expr *push_name_expr(source_pos pos, const char *name)
 {
-    expr* result = push_struct(arena, expr);
+    expr *result = push_struct(arena, expr);
     result->kind = EXPR_NAME;
     result->name = name;
     result->pos = pos;
     return result;
 }
 
-expr* push_new_expr(source_pos pos, typespec* t)
+expr *push_new_expr(source_pos pos, typespec *t)
 {
-    expr* result = push_struct(arena, expr);
+    expr *result = push_struct(arena, expr);
     result->kind = EXPR_NEW;
     result->new.type = t;
     result->pos = pos;
     return result;
 }
 
-expr* push_auto_expr(source_pos pos, typespec* t)
+expr *push_auto_expr(source_pos pos, typespec *t)
 {
-    expr* result = push_struct(arena, expr);
+    expr *result = push_struct(arena, expr);
     result->kind = EXPR_AUTO;
     result->auto_new.type = t;
     result->pos = pos;
     return result;
 }
 
-expr* push_sizeof_expr(source_pos pos, expr* e)
+expr *push_sizeof_expr(source_pos pos, expr *e)
 {
-    expr* result = push_struct(arena, expr);
+    expr *result = push_struct(arena, expr);
     result->kind = EXPR_SIZEOF;
     result->size_of.expr = e;
     result->pos = pos;
     return result;
 }
 
-expr* push_cast_expr(source_pos pos, const char* type_name, expr* e)
+expr *push_cast_expr(source_pos pos, const char *type_name, expr *e)
 {
-    expr* result = push_struct(arena, expr);
+    expr *result = push_struct(arena, expr);
     result->kind = EXPR_CAST;
     result->cast.type = push_typespec_name(pos, type_name);
     result->cast.expr = e;
@@ -134,35 +134,35 @@ expr* push_cast_expr(source_pos pos, const char* type_name, expr* e)
     return result;
 }
 
-expr* push_string_expr(source_pos pos, const char* str_value)
+expr *push_string_expr(source_pos pos, const char *str_value)
 {
-    expr* result = push_struct(arena, expr);
+    expr *result = push_struct(arena, expr);
     result->kind = EXPR_STRING;
     result->string_value = str_value;
     result->pos = pos;
     return result;
 }
 
-expr* push_null_expr(source_pos pos)
+expr *push_null_expr(source_pos pos)
 {
-    expr* result = push_struct(arena, expr);
+    expr *result = push_struct(arena, expr);
     result->kind = EXPR_NULL;
     result->pos = pos;
     return result;
 }
 
-expr* push_bool_expr(source_pos pos, bool value)
+expr *push_bool_expr(source_pos pos, bool value)
 {
-    expr* result = push_struct(arena, expr);
+    expr *result = push_struct(arena, expr);
     result->kind = EXPR_BOOL;
     result->bool_value = value;
     result->pos = pos;
     return result;
 }
 
-expr* push_unary_expr(source_pos pos, token_kind operator, expr* operand)
+expr *push_unary_expr(source_pos pos, token_kind operator, expr *operand)
 {
-    expr* result = push_struct(arena, expr);
+    expr *result = push_struct(arena, expr);
     result->kind = EXPR_UNARY;
     result->unary.operator = operator;
     result->unary.operand = operand;
@@ -170,9 +170,9 @@ expr* push_unary_expr(source_pos pos, token_kind operator, expr* operand)
     return result;
 }
 
-expr* push_binary_expr(source_pos pos, token_kind operator, expr* left, expr* right)
+expr *push_binary_expr(source_pos pos, token_kind operator, expr *left, expr *right)
 {
-    expr* result = push_struct(arena, expr);
+    expr *result = push_struct(arena, expr);
     result->kind = EXPR_BINARY;
     result->binary.operator = operator;
     result->binary.left = left;
@@ -181,18 +181,18 @@ expr* push_binary_expr(source_pos pos, token_kind operator, expr* left, expr* ri
     return result;
 }
 
-typespec* push_typespec_name(source_pos pos, const char* name)
+typespec *push_typespec_name(source_pos pos, const char *name)
 {
-    typespec* result = push_struct(arena, typespec);
+    typespec *result = push_struct(arena, typespec);
     result->kind = TYPESPEC_NAME;
     result->name = name;
     result->pos = pos;   
     return result;
 }
 
-char* parse_identifier(void)
+char *parse_identifier(void)
 {
-    char* result = null;
+    char *result = null;
     if (is_token_kind(TOKEN_NAME))
     {
         result = token.name;
@@ -209,9 +209,9 @@ char* parse_identifier(void)
     return result;
 }
 
-typespec* parse_basic_typespec(void)
+typespec *parse_basic_typespec(void)
 {
-    typespec* t = 0;
+    typespec *t = 0;
 
     if (is_token_kind(TOKEN_NAME))
     {
@@ -226,8 +226,8 @@ typespec* parse_basic_typespec(void)
 
         expect_token_kind(TOKEN_LEFT_PAREN);
         {
-            typespec** params = 0;
-            typespec* param = 0;
+            typespec **params = 0;
+            typespec *param = 0;
             do
             {
                 param = parse_typespec();
@@ -269,14 +269,14 @@ typespec* parse_basic_typespec(void)
     return t;
 }
 
-typespec* parse_typespec(void)
+typespec *parse_typespec(void)
 {
-    typespec* t = parse_basic_typespec();
+    typespec *t = parse_basic_typespec();
     while(is_token_kind(TOKEN_MUL) || is_token_kind(TOKEN_LEFT_BRACKET))
     {
         if (is_token_kind(TOKEN_MUL))
         {
-            typespec* base_t = t;
+            typespec *base_t = t;
             t = push_struct(arena, typespec);
             t->kind = TYPESPEC_POINTER;
             t->pointer.base_type = base_t;
@@ -284,7 +284,7 @@ typespec* parse_typespec(void)
         }
         else
         {           
-            typespec* base_t = t;
+            typespec *base_t = t;
             t = push_struct(arena, typespec);
             next_lexed_token();
 
@@ -305,22 +305,22 @@ typespec* parse_typespec(void)
     return t;
 }
 
-expr* parse_compound_literal(void)
+expr *parse_compound_literal(void)
 {
-    expr* e = 0;
+    expr *e = 0;
     if (match_token_kind(TOKEN_LEFT_BRACE))
     {
         e = push_struct(arena, expr);
         e->kind = EXPR_COMPOUND_LITERAL;
 
-        compound_literal_field** fields = 0;
-        compound_literal_field* field = 0;
+        compound_literal_field **fields = 0;
+        compound_literal_field *field = 0;
 
         do
         {
             field = 0;
 
-            expr* val = parse_expr();
+            expr *val = parse_expr();
             if (val)
             {
                 field = push_struct(arena, compound_literal_field);
@@ -361,9 +361,9 @@ expr* parse_compound_literal(void)
     return e;
 }
 
-expr* parse_base_expr(void)
+expr *parse_base_expr(void)
 {
-    expr* result = 0;
+    expr *result = 0;
     if (is_token_kind(TOKEN_INT))
     {
         result = push_int_expr(token.pos, token.val);
@@ -381,24 +381,24 @@ expr* parse_base_expr(void)
     }
     else if (is_token_kind(TOKEN_KEYWORD))
     {
-        const char* keyword = token.name;
+        const char *keyword = token.name;
         source_pos pos = token.pos;
         if (keyword == new_keyword)
         {
             next_lexed_token();
-            typespec* t = parse_typespec();
+            typespec *t = parse_typespec();
             result = push_new_expr(pos, t);
         }
         else if (keyword == auto_keyword)
         {
             next_lexed_token();
-            typespec* t = parse_typespec();
+            typespec *t = parse_typespec();
             result = push_auto_expr(pos, t);
         }      
         else if (keyword == sizeof_keyword)
         {
             next_lexed_token();            
-            expr* e = parse_expr();
+            expr *e = parse_expr();
             result = push_sizeof_expr(pos, e);
         }
         else if (keyword == null_keyword)
@@ -429,7 +429,7 @@ expr* parse_base_expr(void)
     {
         source_pos pos = token.pos;
         result = parse_expr();
-        const char* type_name = result->name;
+        const char *type_name = result->name;
         expect_token_kind(TOKEN_RIGHT_PAREN);
         
         if (result->kind != EXPR_NAME)
@@ -446,7 +446,7 @@ expr* parse_base_expr(void)
                     fatal("only names supported in casts");
                 }
 
-                expr* e = parse_expr();
+                expr *e = parse_expr();
                 result = push_cast_expr(pos, type_name, e);
 
                 expect_token_kind(TOKEN_RIGHT_PAREN);
@@ -460,7 +460,7 @@ expr* parse_base_expr(void)
 
                 result = parse_compound_literal();
 
-                typespec* t = push_typespec_name(token.pos, type_name);
+                typespec *t = push_typespec_name(token.pos, type_name);
                 result->compound.type = t;
             }
             else
@@ -470,7 +470,7 @@ expr* parse_base_expr(void)
                     fatal("only names supported in casts");
                 }
 
-                expr* e = parse_base_expr();
+                expr *e = parse_base_expr();
                 result = push_cast_expr(pos, type_name, e);
 
                 debug_breakpoint;
@@ -485,12 +485,12 @@ expr* parse_base_expr(void)
     return result;
 }
 
-void parse_function_call_arguments(expr* e)
+void parse_function_call_arguments(expr *e)
 {
     assert(e->kind == EXPR_CALL);
     while (false == is_token_kind(TOKEN_RIGHT_PAREN))
     {
-        expr* arg = parse_expr();
+        expr *arg = parse_expr();
         buf_push(e->call.args, arg);
 
         if (false == is_token_kind(TOKEN_RIGHT_PAREN))
@@ -502,14 +502,14 @@ void parse_function_call_arguments(expr* e)
 }
 
 // przydałaby się lepsza nazwa na to
-expr* parse_complex_expr(void)
+expr *parse_complex_expr(void)
 {    
-    expr* result = parse_base_expr();
+    expr *result = parse_base_expr();
     while (is_token_kind(TOKEN_LEFT_PAREN) 
         || is_token_kind(TOKEN_LEFT_BRACKET) 
         || is_token_kind(TOKEN_DOT))
     {
-        expr* left_side = result;
+        expr *left_side = result;
         if (is_token_kind(TOKEN_LEFT_PAREN))
         {
             next_lexed_token();
@@ -538,7 +538,7 @@ expr* parse_complex_expr(void)
             result->kind = EXPR_INDEX;
             result->index.array_expr = left_side;
             
-            expr* index_expr = parse_expr();
+            expr *index_expr = parse_expr();
             result->index.index_expr = index_expr;
 
             expect_token_kind(TOKEN_RIGHT_BRACKET);
@@ -546,7 +546,7 @@ expr* parse_complex_expr(void)
         else if (is_token_kind(TOKEN_DOT))
         {
             next_lexed_token();           
-            char* identifier = token.name;
+            char *identifier = token.name;
             source_pos pos = token.pos;
             next_lexed_token();                       
             if (match_token_kind(TOKEN_LEFT_PAREN))
@@ -574,9 +574,9 @@ expr* parse_complex_expr(void)
     return result;
 }
 
-expr* parse_unary_expr(void)
+expr *parse_unary_expr(void)
 {
-    expr* e = parse_complex_expr();
+    expr *e = parse_complex_expr();
     source_pos pos = token.pos;
     if (e == null)
     {
@@ -610,100 +610,100 @@ expr* parse_unary_expr(void)
     return e;
 }
 
-expr* parse_multiplicative_expr(void)
+expr *parse_multiplicative_expr(void)
 {
-    expr* e = parse_unary_expr();
+    expr *e = parse_unary_expr();
     while (is_multiplicative_operation(token.kind))
     {
         source_pos pos = token.pos;
-        expr* left_expr = e;
+        expr *left_expr = e;
         token_kind op = token.kind;
         next_lexed_token();
-        expr* right_expr = parse_unary_expr();
+        expr *right_expr = parse_unary_expr();
 
         e = push_binary_expr(pos, op, left_expr, right_expr);
     }
     return e;
 }
 
-expr* parse_additive_expr(void)
+expr *parse_additive_expr(void)
 {
-    expr* e = parse_multiplicative_expr();
+    expr *e = parse_multiplicative_expr();
     while (is_additive_operation(token.kind))
     {
         source_pos pos = token.pos;
-        expr* left_expr = e;
+        expr *left_expr = e;
         token_kind op = token.kind;
         next_lexed_token();
-        expr* right_expr = parse_multiplicative_expr();
+        expr *right_expr = parse_multiplicative_expr();
 
         e = push_binary_expr(pos, op, left_expr, right_expr);
     }
     return e;
 }
 
-expr* parse_comparison_expr(void)
+expr *parse_comparison_expr(void)
 {
-    expr* e = parse_additive_expr();
+    expr *e = parse_additive_expr();
     while (is_comparison_operation(token.kind))
     {
         source_pos pos = token.pos;
-        expr* left_expr = e;
+        expr *left_expr = e;
         token_kind op = token.kind;
         next_lexed_token();
-        expr* right_expr = parse_additive_expr();
+        expr *right_expr = parse_additive_expr();
 
         e = push_binary_expr(pos, op, left_expr, right_expr);
     }
     return e;
 }
 
-expr* parse_and_expr(void)
+expr *parse_and_expr(void)
 {
-    expr* e = parse_comparison_expr();
+    expr *e = parse_comparison_expr();
     while (is_token_kind(TOKEN_AND))
     {
         source_pos pos = token.pos;
-        expr* left_expr = e;
+        expr *left_expr = e;
         token_kind op = token.kind;
         next_lexed_token();
-        expr* right_expr = parse_comparison_expr();
+        expr *right_expr = parse_comparison_expr();
 
         e = push_binary_expr(pos, op, left_expr, right_expr);
     }
     return e;
 }
 
-expr* parse_or_expr(void)
+expr *parse_or_expr(void)
 {
-    expr* e = parse_and_expr();
+    expr *e = parse_and_expr();
     while (is_token_kind(TOKEN_OR))
     {
         source_pos pos = token.pos;
-        expr* left_expr = e;
+        expr *left_expr = e;
         token_kind op = token.kind;
         next_lexed_token();
-        expr* right_expr = parse_and_expr();
+        expr *right_expr = parse_and_expr();
 
         e = push_binary_expr(pos, op, left_expr, right_expr);
     }
     return e;
 }
 
-expr* parse_ternary_expr(void)
+expr *parse_ternary_expr(void)
 {
-    expr* e = parse_or_expr();
+    expr *e = parse_or_expr();
 
     if (e != 0)
     {
         if (is_token_kind(TOKEN_QUESTION))
         {
             next_lexed_token();
-            expr* cond = e;
+            expr *cond = e;
 
-            expr* if_true_expr = parse_expr();
+            expr *if_true_expr = parse_expr();
             expect_token_kind(TOKEN_COLON);
-            expr* if_false_expr = parse_expr();
+            expr *if_false_expr = parse_expr();
 
             e = push_struct(arena, expr);
             e->kind = EXPR_TERNARY;
@@ -716,20 +716,20 @@ expr* parse_ternary_expr(void)
     return e;
 }
 
-expr* parse_expr(void)
+expr *parse_expr(void)
 {
-    expr* result = parse_ternary_expr(); 
+    expr *result = parse_ternary_expr(); 
     return result;
 }
 
-decl* parse_declaration(void);
-decl* parse_declaration_optional(void);
+decl *parse_declaration(void);
+decl *parse_declaration_optional(void);
 stmt_block parse_statement_block(void);
 
-stmt* parse_simple_statement(void)
+stmt *parse_simple_statement(void)
 { 
-    stmt* s = 0; 
-    expr* left_expr = parse_expr();
+    stmt *s = 0; 
+    expr *left_expr = parse_expr();
 
     if (is_assign_operation(token.kind))
     {
@@ -737,7 +737,7 @@ stmt* parse_simple_statement(void)
         next_lexed_token();
         
         s = push_struct(arena, stmt);
-        expr* e = parse_expr();
+        expr *e = parse_expr();
         s->kind = STMT_ASSIGN;
         s->assign.operation = op;
         s->assign.value_expr = e;
@@ -764,21 +764,21 @@ stmt* parse_simple_statement(void)
     return s;
 }
 
-stmt* parse_statement(void);
+stmt *parse_statement(void);
 
-void parse_switch_cases(switch_stmt* switch_stmt)
+void parse_switch_cases(switch_stmt *switch_stmt)
 {
     bool default_case_defined = false;
 
-    switch_case** cases = 0;
-    switch_case* c = 0;
+    switch_case **cases = 0;
+    switch_case *c = 0;
 
     do
     {
         c = 0;
         bool case_is_default = false;
-        expr** case_exprs = 0;
-        expr* e = 0;
+        expr **case_exprs = 0;
+        expr *e = 0;
         
         do
         {
@@ -786,7 +786,7 @@ void parse_switch_cases(switch_stmt* switch_stmt)
 
             if (is_token_kind(TOKEN_KEYWORD))
             {
-                const char* keyword = token.name;
+                const char *keyword = token.name;
                 if (keyword == case_keyword)
                 {               
                     next_lexed_token();
@@ -857,9 +857,9 @@ void parse_switch_cases(switch_stmt* switch_stmt)
     buf_free(cases);
 }
 
-stmt* parse_if_statement(void)
+stmt *parse_if_statement(void)
 {
-    stmt* s = 0;
+    stmt *s = 0;
     if (token.name == if_keyword)
     {
         s = push_struct(arena, stmt);
@@ -884,13 +884,13 @@ stmt* parse_if_statement(void)
     return s;
 }
 
-stmt* parse_statement(void)
+stmt *parse_statement(void)
 {
-    stmt* s = 0;    
+    stmt *s = 0;    
     source_pos pos = token.pos;
     if (is_token_kind(TOKEN_KEYWORD))
     {
-        const char* keyword = token.name;
+        const char *keyword = token.name;
         if (keyword == return_keyword)
         {
             s = push_struct(arena, stmt);
@@ -916,7 +916,7 @@ stmt* parse_statement(void)
         else if (keyword == let_keyword
             || keyword == const_keyword)
         {
-            decl* d = parse_declaration();
+            decl *d = parse_declaration();
             s = push_struct(arena, stmt);
             s->decl_stmt.decl = d;
             s->kind = STMT_DECL;
@@ -1021,7 +1021,7 @@ stmt* parse_statement(void)
     }
     else if (is_token_kind(TOKEN_NAME))
     {        
-        decl* d = parse_declaration_optional();
+        decl *d = parse_declaration_optional();
         if (d)
         {
             s = push_struct(arena, stmt);
@@ -1065,9 +1065,9 @@ stmt* parse_statement(void)
 stmt_block parse_statement_block(void)
 {
     stmt_block result = {0};
-    stmt** buf = 0;
+    stmt **buf = 0;
 
-    stmt* s = parse_statement();
+    stmt *s = parse_statement();
     while (s)
     {
         buf_push(buf, s);
@@ -1117,7 +1117,7 @@ function_param_list parse_function_param_list()
 {
     expect_token_kind(TOKEN_LEFT_PAREN);
 
-    function_param* params = null;
+    function_param *params = null;
     while (is_token_kind(TOKEN_NAME) || is_token_kind(TOKEN_KEYWORD))
     {
         function_param p = parse_function_param();
@@ -1189,9 +1189,9 @@ aggregate_field parse_aggregate_field(void)
     return result;
 }
 
-void parse_aggregate_fields(aggregate_decl* decl)
+void parse_aggregate_fields(aggregate_decl *decl)
 {
-    aggregate_field* fields = null;
+    aggregate_field *fields = null;
 
     aggregate_field new_field = parse_aggregate_field();
     while (new_field.type)
@@ -1250,9 +1250,9 @@ enum_value parse_enum_value(void)
     return result;
 }
 
-void parse_enum(enum_decl* decl)
+void parse_enum(enum_decl *decl)
 {
-    enum_value* values = null;
+    enum_value *values = null;
 
     enum_value new_value = parse_enum_value();
     while (new_value.name)
@@ -1269,13 +1269,13 @@ void parse_enum(enum_decl* decl)
     }
 }
 
-decl* parse_declaration_optional(void)
+decl *parse_declaration_optional(void)
 {
-    decl* declaration = null;
+    decl *declaration = null;
     source_pos pos = token.pos;
     if (is_token_kind(TOKEN_KEYWORD))
     {
-        const char* decl_keyword = token.name;
+        const char *decl_keyword = token.name;
         if (decl_keyword == let_keyword)
         {
             declaration = push_struct(arena, decl);
@@ -1287,7 +1287,7 @@ decl* parse_declaration_optional(void)
             
             if (match_token_kind(TOKEN_COLON_ASSIGN))
             {
-                expr* expr = parse_expr();
+                expr *expr = parse_expr();
                 declaration->variable.expr = expr;
             }
             else
@@ -1303,7 +1303,7 @@ decl* parse_declaration_optional(void)
 
                 if (match_token_kind(TOKEN_ASSIGN))
                 {
-                    expr* expr = parse_expr();
+                    expr *expr = parse_expr();
                     declaration->variable.expr = expr;
                 }
             }
@@ -1319,7 +1319,7 @@ decl* parse_declaration_optional(void)
 
             if (expect_token_kind(TOKEN_ASSIGN))
             {
-                expr* expr = parse_expr();
+                expr *expr = parse_expr();
                 declaration->const_decl.expr = expr;
             }
         }       
@@ -1443,9 +1443,9 @@ decl* parse_declaration_optional(void)
     return declaration;
 }
 
-decl* parse_declaration(void)
+decl *parse_declaration(void)
 {
-    decl* d = parse_declaration_optional();
+    decl *d = parse_declaration_optional();
     if (d == 0)
     {
         fatal("expected declaration\n");
@@ -1453,7 +1453,7 @@ decl* parse_declaration(void)
     return d;
 }
 
-decl* parse_decl(char* str)
+decl *parse_decl(char *str)
 {
     init_stream(null, str);
     while (token.kind)
@@ -1463,17 +1463,17 @@ decl* parse_decl(char* str)
 
     get_first_lexed_token();
 
-    decl* result = parse_declaration();
+    decl *result = parse_declaration();
     return result;
 }
 
-void parse_text_and_print_s_exprs(char* test)
+void parse_text_and_print_s_exprs(char *test)
 {
     arena = allocate_memory_arena(megabytes(50));
     
     lex(null, test);
 
-    decl* result = 0;
+    decl *result = 0;
     do
     {
         result = parse_declaration_optional();
@@ -1487,9 +1487,7 @@ void parse_text_and_print_s_exprs(char* test)
 
 void parse_test(void)
 {
-    char* test_str = 0;
-
-    char* test_strs[] = {
+    char *test_strs[] = {
 #if 1
         "const x = a + -b << c + -d + e >> f",
         "let x := a ^ *b + c * -d + e | -f & g",
@@ -1575,14 +1573,14 @@ void parse_test(void)
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);
     for (int i = 0; i < arr_length; i++)
     {
-        char* str = test_strs[i];
+        char *str = test_strs[i];
         parse_text_and_print_s_exprs(str);
     }
 
     debug_breakpoint;
 }
 
-decl** parse(char* filename, char* source, bool print_s_expressions)
+decl **parse(char *filename, char *source, bool print_s_expressions)
 {
     free_memory_arena(arena);
     arena = allocate_memory_arena(megabytes(50));
@@ -1594,8 +1592,8 @@ decl** parse(char* filename, char* source, bool print_s_expressions)
         printf("/// PARSING ///\n\n");
     }
     
-    decl** decl_array = 0;
-    decl* d = 0;
+    decl **decl_array = 0;
+    decl *d = 0;
     do
     {
         d = parse_declaration_optional();

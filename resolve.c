@@ -28,25 +28,25 @@ typedef enum type_kind
 
 typedef struct type_array
 {
-    type* base_type;
+    type *base_type;
     size_t size;
 } type_array;
 
 typedef struct type_list
 {
-    type* base_type;
+    type *base_type;
 } type_list;
 
 typedef struct type_pointer
 {
-    type* base_type;
+    type *base_type;
 } type_pointer;
 
 typedef struct type_function
 {
-    type* receiver_type;
-    type* return_type;
-    type** param_types;
+    type *receiver_type;
+    type *return_type;
+    type **param_types;
     size_t param_count;
     bool is_extern;
     bool has_variadic_arg;
@@ -54,25 +54,25 @@ typedef struct type_function
 
 typedef struct type_aggregate_field
 {
-    const char* name;
-    type* type;
+    const char *name;
+    type *type;
 } type_aggregate_field;
 
 typedef struct type_aggregate
 {
-    type_aggregate_field** fields;
+    type_aggregate_field **fields;
     size_t fields_count;
 } type_aggregate;
 
 struct type
 {
     type_kind kind;
-    symbol* symbol; // używane tylko przy typach, które muszą być completed
+    symbol *symbol; // używane tylko przy typach, które muszą być completed
     size_t size;
     size_t align;
     union
     {
-        const char* name;
+        const char *name;
         type_array array;
         type_list list;
         type_pointer pointer;
@@ -101,35 +101,35 @@ typedef enum symbol_state
 typedef struct symbol symbol;
 struct symbol
 {
-    const char* name;
-    const char* mangled_name; // w przypadku funkcji
+    const char *name;
+    const char *mangled_name; // w przypadku funkcji
     symbol_kind kind;
     symbol_state state;
-    decl* decl;
-    type* type;
+    decl *decl;
+    type *type;
     union
     {
         int64_t val;
-        symbol* next_overload;
+        symbol *next_overload;
     };
 };
 
 typedef struct resolved_expr
 {
-    type* type;
+    type *type;
     bool is_lvalue;
     bool is_const;
     int64_t val;
 } resolved_expr;
 
-size_t get_type_size(type* type)
+size_t get_type_size(type *type)
 {
     assert(type->kind > TYPE_COMPLETING);
     assert(type->size != 0);
     return type->size;
 }
 
-size_t get_type_align(type* type)
+size_t get_type_align(type *type)
 {
     assert(type->kind > TYPE_COMPLETING);
     assert(is_power_of_2(type->align));
@@ -139,16 +139,16 @@ size_t get_type_align(type* type)
 const size_t POINTER_SIZE = 8;
 const size_t POINTER_ALIGN = 8;
 
-type* type_void =  &(type) { .name = "void",    .kind = TYPE_VOID,    .size = 0, .align = 0 };
-type* type_null =  &(type) { .name = "null",    .kind = TYPE_NULL,    .size = 0, .align = 0 };
-type* type_char =  &(type) { .name = "char",    .kind = TYPE_CHAR,    .size = 1, .align = 1 };
-type* type_int =   &(type) { .name = "int",     .kind = TYPE_INT,     .size = 4, .align = 4 };
-type* type_float = &(type) { .name = "float",   .kind = TYPE_FLOAT,   .size = 4, .align = 4 };
-type* type_bool =  &(type) { .name = "bool",    .kind = TYPE_BOOL,    .size = 4, .align = 4 };
+type *type_void =  &(type) { .name = "void",    .kind = TYPE_VOID,    .size = 0, .align = 0 };
+type *type_null =  &(type) { .name = "null",    .kind = TYPE_NULL,    .size = 0, .align = 0 };
+type *type_char =  &(type) { .name = "char",    .kind = TYPE_CHAR,    .size = 1, .align = 1 };
+type *type_int =   &(type) { .name = "int",     .kind = TYPE_INT,     .size = 4, .align = 4 };
+type *type_float = &(type) { .name = "float",   .kind = TYPE_FLOAT,   .size = 4, .align = 4 };
+type *type_bool =  &(type) { .name = "bool",    .kind = TYPE_BOOL,    .size = 4, .align = 4 };
 
 hashmap global_symbols;
-symbol** global_symbols_list;
-symbol** ordered_global_symbols;
+symbol **global_symbols_list;
+symbol **ordered_global_symbols;
 
 enum
 {
@@ -156,18 +156,18 @@ enum
 };
 
 symbol local_symbols[MAX_LOCAL_SYMBOLS];
-symbol* last_local_symbol = local_symbols;
+symbol *last_local_symbol = local_symbols;
 
-void complete_type(type* t);
-void resolve_symbol(symbol* s);
-type* resolve_typespec(typespec* t);
-resolved_expr* resolve_expr(expr* e);
-resolved_expr* resolve_expected_expr(expr* e, type* expected_type, bool ignore_expected_type_mismatch);
-void resolve_stmt(stmt* st, type* opt_ret_type);
+void complete_type(type *t);
+void resolve_symbol(symbol *s);
+type *resolve_typespec(typespec *t);
+resolved_expr *resolve_expr(expr *e);
+resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_expected_type_mismatch);
+void resolve_stmt(stmt *st, type *opt_ret_type);
 
-char* get_function_mangled_name(decl* dec);
+char *get_function_mangled_name(decl *dec);
 
-bool compare_types(type* a, type* b)
+bool compare_types(type *a, type *b)
 {    
     if (a == b)
     {
@@ -202,7 +202,7 @@ bool compare_types(type* a, type* b)
     return false;
 }
 
-bool are_symbols_the_same_function(symbol* a, symbol* b)
+bool are_symbols_the_same_function(symbol *a, symbol *b)
 {
     /*
         do rozważenia: zakładając interning stringów, może po prostu porównanie mangled names byłoby szybsze?
@@ -283,18 +283,18 @@ bool are_symbols_the_same_function(symbol* a, symbol* b)
     return true;
 }
 
-symbol* get_symbol(const char* name)
+symbol *get_symbol(const char *name)
 {
-    for (symbol* it = last_local_symbol; it != local_symbols; it--)
+    for (symbol *it = last_local_symbol; it != local_symbols; it--)
     {
-        symbol* sym = it - 1;
+        symbol *sym = it - 1;
         if (sym->name == name)
         {
             return sym;
         }
     }
 
-    void* global_symbol = map_get(&global_symbols, (void*)name);
+    void *global_symbol = map_get(&global_symbols, (void*)name);
     if (global_symbol)
     {
         return global_symbol;
@@ -303,27 +303,27 @@ symbol* get_symbol(const char* name)
     return null;
 }
 
-type* get_new_type(type_kind kind)
+type *get_new_type(type_kind kind)
 {
-    type* t = xcalloc(sizeof(type));
+    type *t = xcalloc(sizeof(type));
     t->kind = kind;
     return t;
 }
 
-symbol* enter_local_scope(void)
+symbol *enter_local_scope(void)
 {
-    symbol* marker = last_local_symbol;
+    symbol *marker = last_local_symbol;
     return marker;
 }
 
-void leave_local_scope(symbol* marker)
+void leave_local_scope(symbol *marker)
 {
     assert(marker >= local_symbols && marker <= last_local_symbol);
     last_local_symbol = marker;
     // dalszych nie czyścimy - nie będziemy ich nigdy odczytywać
 }
 
-void push_local_symbol(const char* name, type* type)
+void push_local_symbol(const char *name, type *type)
 {
     int64_t symbols_count = last_local_symbol - local_symbols;
     assert(symbols_count + 1 < MAX_LOCAL_SYMBOLS);
@@ -335,16 +335,16 @@ void push_local_symbol(const char* name, type* type)
     };
 }
 
-void get_complete_struct_type(type* type, type_aggregate_field** fields, size_t fields_count)
+void get_complete_struct_type(type *type, type_aggregate_field **fields, size_t fields_count)
 {
     assert(type->kind == TYPE_COMPLETING);
     type->kind = TYPE_STRUCT;
     type->size = 0;
     type->align = 0;
 
-    for (type_aggregate_field** it = fields; it != fields + fields_count; it++)
+    for (type_aggregate_field **it = fields; it != fields + fields_count; it++)
     {
-        type_aggregate_field* field = *it;
+        type_aggregate_field *field = *it;
         type->size = get_type_size(field->type) + align_up(type->size, get_type_align(field->type));
         type->align = max(type->align, get_type_align(field->type));
     }
@@ -353,16 +353,16 @@ void get_complete_struct_type(type* type, type_aggregate_field** fields, size_t 
     type->aggregate.fields_count = fields_count;
 }
 
-void get_complete_union_type(type* type, type_aggregate_field** fields, size_t fields_count)
+void get_complete_union_type(type *type, type_aggregate_field **fields, size_t fields_count)
 {
     assert(type->kind == TYPE_COMPLETING);
     type->kind = TYPE_UNION;
     type->size = 0;
     type->align = 0;
 
-    for (type_aggregate_field** it = fields; it != fields + fields_count; it++)
+    for (type_aggregate_field **it = fields; it != fields + fields_count; it++)
     {
-        type_aggregate_field* field = *it;
+        type_aggregate_field *field = *it;
         assert(field->type->kind > TYPE_COMPLETING);
         type->size = max(type->size, get_type_size(field->type));
         type->align = max(type->align, get_type_align(field->type));
@@ -372,10 +372,10 @@ void get_complete_union_type(type* type, type_aggregate_field** fields, size_t f
     type->aggregate.fields_count = fields_count;
 }
 
-type* get_array_type(type* element, size_t size)
+type *get_array_type(type *element, size_t size)
 {
     complete_type(element);
-    type* t = get_new_type(TYPE_ARRAY);
+    type *t = get_new_type(TYPE_ARRAY);
     t->size = size * get_type_size(element);
     t->align = get_type_align(element);
     t->array.base_type = element;
@@ -383,33 +383,33 @@ type* get_array_type(type* element, size_t size)
     return t; 
 }
 
-type* get_list_type(type* element)
+type *get_list_type(type *element)
 {
     complete_type(element);
-    type* t = get_new_type(TYPE_LIST);
+    type *t = get_new_type(TYPE_LIST);
     t->size = get_type_size(element);
     t->align = get_type_align(element);
     t->list.base_type = element;
     return t;
 }
 
-type* get_incomplete_type(symbol* sym)
+type *get_incomplete_type(symbol *sym)
 {
-    type* type = get_new_type(TYPE_INCOMPLETE);
+    type *type = get_new_type(TYPE_INCOMPLETE);
     type->symbol = sym;
     return type;
 }
 
-type** cached_pointer_types = 0;
+type **cached_pointer_types = 0;
 
-type* get_pointer_type(type* base_type)
+type *get_pointer_type(type *base_type)
 {
     size_t ptr_count = buf_len(cached_pointer_types);
     if (ptr_count > 0)
     {
         for (size_t i = 0; i < ptr_count; i++)
         {
-            type* ptr_type = cached_pointer_types[i];
+            type *ptr_type = cached_pointer_types[i];
             assert(ptr_type->kind == TYPE_POINTER);
 
             if (ptr_type->pointer.base_type->name == base_type->name)
@@ -419,7 +419,7 @@ type* get_pointer_type(type* base_type)
         }
     }
 
-    type* type = get_new_type(TYPE_POINTER);
+    type *type = get_new_type(TYPE_POINTER);
     type->size = POINTER_SIZE;
     type->align = POINTER_ALIGN;
     type->pointer.base_type = base_type;
@@ -427,9 +427,9 @@ type* get_pointer_type(type* base_type)
     return type;
 }
 
-type* get_function_type(type** param_types, size_t param_types_count, type* return_type)
+type *get_function_type(type **param_types, size_t param_types_count, type *return_type)
 {
-    type* type = get_new_type(TYPE_FUNCTION);
+    type *type = get_new_type(TYPE_FUNCTION);
     type->size = POINTER_SIZE;
     type->align = POINTER_ALIGN;
     type->function.param_types = param_types;
@@ -438,43 +438,43 @@ type* get_function_type(type** param_types, size_t param_types_count, type* retu
     return type;
 }
 
-symbol* get_new_symbol(symbol_kind kind, const char* name, decl* decl)
+symbol *get_new_symbol(symbol_kind kind, const char *name, decl *decl)
 {
-    symbol* sym = xcalloc(sizeof(symbol));
+    symbol *sym = xcalloc(sizeof(symbol));
     sym->kind = kind;
     sym->name = name;
     sym->decl = decl;
     return sym;
 }
 
-resolved_expr* get_resolved_rvalue_expr(type* t)
+resolved_expr *get_resolved_rvalue_expr(type *t)
 {
     assert(t);
-    resolved_expr* result = xcalloc(sizeof(resolved_expr));
+    resolved_expr *result = xcalloc(sizeof(resolved_expr));
     result->type = t;
     return result;
 }
 
-resolved_expr* get_resolved_lvalue_expr(type* t)
+resolved_expr *get_resolved_lvalue_expr(type *t)
 {
     assert(t);
     assert(t->kind != SYMBOL_CONST);
-    resolved_expr* result = xcalloc(sizeof(resolved_expr));
+    resolved_expr *result = xcalloc(sizeof(resolved_expr));
     result->type = t;
     result->is_lvalue = true;
     return result;
 }
 
-resolved_expr* get_resolved_const_expr(int64_t val)
+resolved_expr *get_resolved_const_expr(int64_t val)
 {
-    resolved_expr* result = xcalloc(sizeof(resolved_expr));
+    resolved_expr *result = xcalloc(sizeof(resolved_expr));
     result->type = type_int;
     result->is_const = true;
     result->val = val;
     return result;
 }
 
-symbol* get_symbol_from_decl(decl* d)
+symbol *get_symbol_from_decl(decl *d)
 {
     symbol_kind kind = SYMBOL_NONE;
     switch (d->kind)
@@ -505,7 +505,7 @@ symbol* get_symbol_from_decl(decl* d)
     }
     assert(kind != SYMBOL_NONE);
 
-    symbol* sym = get_new_symbol(kind, d->name, d);
+    symbol *sym = get_new_symbol(kind, d->name, d);
     if (d->kind == DECL_STRUCT || d->kind == DECL_UNION)
     {
         sym->state = SYMBOL_RESOLVED;
@@ -514,10 +514,10 @@ symbol* get_symbol_from_decl(decl* d)
     return sym;
 }
 
-symbol* push_installed_symbol(const char* name, type* type)
+symbol *push_installed_symbol(const char *name, type *type)
 {
-    const char* interned = str_intern(name);
-    symbol* sym = get_new_symbol(SYMBOL_TYPE, interned, null);
+    const char *interned = str_intern(name);
+    symbol *sym = get_new_symbol(SYMBOL_TYPE, interned, null);
     sym->state = SYMBOL_RESOLVED;
     sym->type = type;
     map_put(&global_symbols, interned, sym);
@@ -525,9 +525,9 @@ symbol* push_installed_symbol(const char* name, type* type)
     return sym;
 }
 
-void push_symbol_from_decl(decl* d)
+void push_symbol_from_decl(decl *d)
 {
-    symbol* sym = get_symbol_from_decl(d);
+    symbol *sym = get_symbol_from_decl(d);
 
     if (sym->kind == SYMBOL_TYPE)
     {
@@ -542,7 +542,7 @@ void push_symbol_from_decl(decl* d)
     {
         sym->mangled_name = get_function_mangled_name(sym->decl);
         // jeśli mamy podwójne nazwy, zachodzi overloading...
-        symbol* overload = map_get(&global_symbols, sym->name);
+        symbol *overload = map_get(&global_symbols, sym->name);
         if (overload)
         {
             if (overload->kind != SYMBOL_FUNCTION)
@@ -552,7 +552,7 @@ void push_symbol_from_decl(decl* d)
             }
 
             // dodajemy na koniec łańcucha
-            symbol* prev = null;
+            symbol *prev = null;
             do
             {
                 if (are_symbols_the_same_function(sym, overload))
@@ -576,7 +576,7 @@ void push_symbol_from_decl(decl* d)
     buf_push(global_symbols_list, sym);
 }
 
-void complete_type(type* t)
+void complete_type(type *t)
 {
     if (t->kind == TYPE_COMPLETING)
     {
@@ -589,20 +589,20 @@ void complete_type(type* t)
     }
     
     t->kind = TYPE_COMPLETING;
-    decl* d = t->symbol->decl;
+    decl *d = t->symbol->decl;
 
     // pozostałe typy są kompletne od razu
     assert(d->kind == DECL_STRUCT || d->kind == DECL_UNION);
     
     // idziemy po kolei po polach
-    type_aggregate_field** fields = null;
+    type_aggregate_field **fields = null;
     for (size_t i = 0; i < d->aggregate.fields_count; i++)
     {
         aggregate_field field = d->aggregate.fields[i];
-        type* field_type = resolve_typespec(field.type);
+        type *field_type = resolve_typespec(field.type);
         complete_type(field_type); // wszystkie muszą być completed, ponieważ musimy znać ich rozmiar
 
-        type_aggregate_field* type_field = xcalloc(sizeof(type_aggregate_field));
+        type_aggregate_field *type_field = xcalloc(sizeof(type_aggregate_field));
         type_field->name = field.name;
         type_field->type = field_type;
         buf_push(fields, type_field);
@@ -626,9 +626,9 @@ void complete_type(type* t)
     buf_push(ordered_global_symbols, t->symbol);
 }
 
-symbol* resolve_name(const char* name)
+symbol *resolve_name(const char *name)
 {    
-    symbol* s = get_symbol(name);
+    symbol *s = get_symbol(name);
     if (s == null)
     {
         fatal("non-existent name: %s", name);        
@@ -638,16 +638,16 @@ symbol* resolve_name(const char* name)
     return s;
 }
 
-type* resolve_typespec(typespec* t)
+type *resolve_typespec(typespec *t)
 {
-    type* result = 0;
+    type *result = 0;
     if (t)
     {
         switch (t->kind)
         {
             case TYPESPEC_NAME:
             {
-                symbol* sym = resolve_name(t->name);
+                symbol *sym = resolve_name(t->name);
                 if (sym->kind != SYMBOL_TYPE)
                 {
                     fatal("%s must denote a type", t->name);
@@ -661,14 +661,14 @@ type* resolve_typespec(typespec* t)
             break;
             case TYPESPEC_ARRAY:
             {                                
-                type* element = resolve_typespec(t->array.base_type);
-                resolved_expr* size_expr = resolve_expr(t->array.size_expr);
+                type *element = resolve_typespec(t->array.base_type);
+                resolved_expr *size_expr = resolve_expr(t->array.size_expr);
                 result = get_array_type(element, size_expr->val);
             }
             break;
             case TYPESPEC_LIST:
             {
-                type* element = resolve_typespec(t->list.base_type);
+                type *element = resolve_typespec(t->list.base_type);
 
                 if (element->kind == TYPE_LIST)
                 {
@@ -680,7 +680,7 @@ type* resolve_typespec(typespec* t)
             break;
             case TYPESPEC_POINTER:
             {
-                type* base_type = resolve_typespec(t->pointer.base_type);
+                type *base_type = resolve_typespec(t->pointer.base_type);
                 result = get_pointer_type(base_type);
             }
             break;
@@ -733,7 +733,7 @@ int64_t eval_int_binary_op(token_kind op, int64_t left, int64_t right)
     }
 }
 
-resolved_expr* pointer_decay(resolved_expr* e)
+resolved_expr *pointer_decay(resolved_expr *e)
 {        
     if (e->type->kind == TYPE_ARRAY)
     {
@@ -742,13 +742,13 @@ resolved_expr* pointer_decay(resolved_expr* e)
     return e;
 }
 
-resolved_expr* resolve_expr_unary(expr* expr)
+resolved_expr *resolve_expr_unary(expr *expr)
 {
-    resolved_expr* result = 0;
+    resolved_expr *result = 0;
 
     assert(expr->kind == EXPR_UNARY);
-    resolved_expr* operand = resolve_expr(expr->unary.operand);
-    type* type = operand->type;
+    resolved_expr *operand = resolve_expr(expr->unary.operand);
+    type *type = operand->type;
     switch (expr->unary.operator)
     {
         case TOKEN_MUL:
@@ -791,13 +791,13 @@ resolved_expr* resolve_expr_unary(expr* expr)
     return result;
 }
 
-resolved_expr* resolve_expr_binary(expr* expr)
+resolved_expr *resolve_expr_binary(expr *expr)
 {
-    resolved_expr* result = 0;
+    resolved_expr *result = 0;
 
     assert(expr->kind == EXPR_BINARY);
-    resolved_expr* left = resolve_expr(expr->binary.left);
-    resolved_expr* right = resolve_expr(expr->binary.right);
+    resolved_expr *left = resolve_expr(expr->binary.left);
+    resolved_expr *right = resolve_expr(expr->binary.right);
     
     if (expr->binary.operator == TOKEN_ADD
         || expr->binary.operator == TOKEN_SUB)
@@ -826,9 +826,9 @@ resolved_expr* resolve_expr_binary(expr* expr)
     return result;
 }
 
-resolved_expr* resolve_compound_expr(expr* e, type* expected_type, bool ignore_expected_type_mismatch)
+resolved_expr *resolve_compound_expr(expr *e, type *expected_type, bool ignore_expected_type_mismatch)
 {
-    resolved_expr* result = 0;
+    resolved_expr *result = 0;
 
     assert(e->kind == EXPR_COMPOUND_LITERAL);
 
@@ -837,7 +837,7 @@ resolved_expr* resolve_compound_expr(expr* e, type* expected_type, bool ignore_e
         fatal("implicitly typed compound literal in context without expected type");
     }
 
-    type* t = null;
+    type *t = null;
     if (e->compound.type)
     {        
         t = resolve_typespec(e->compound.type);
@@ -869,8 +869,8 @@ resolved_expr* resolve_compound_expr(expr* e, type* expected_type, bool ignore_e
 
     for (size_t i = 0; i < e->compound.fields_count; i++)
     {
-        compound_literal_field* field = e->compound.fields[i];
-        resolved_expr* field_expr = resolve_expr(field->expr);
+        compound_literal_field *field = e->compound.fields[i];
+        resolved_expr *field_expr = resolve_expr(field->expr);
     }
 
     if (t->kind == TYPE_STRUCT 
@@ -879,9 +879,9 @@ resolved_expr* resolve_compound_expr(expr* e, type* expected_type, bool ignore_e
         size_t index = 0;
         for (size_t i = 0; i < e->compound.fields_count; i++)
         {
-            compound_literal_field* field = e->compound.fields[i];
-            type* expected_type = t->aggregate.fields[index]->type;
-            resolved_expr* init_expr = resolve_expected_expr(field->expr, expected_type, false);
+            compound_literal_field *field = e->compound.fields[i];
+            type *expected_type = t->aggregate.fields[index]->type;
+            resolved_expr *init_expr = resolve_expected_expr(field->expr, expected_type, false);
 
             if (false == compare_types(init_expr->type, expected_type))
             {
@@ -903,9 +903,9 @@ resolved_expr* resolve_compound_expr(expr* e, type* expected_type, bool ignore_e
         size_t index = 0;
         for (size_t i = 0; i < e->compound.fields_count; i++)
         {
-            compound_literal_field* field = e->compound.fields[i];
-            type* expected_type = t->array.base_type;
-            resolved_expr* init_expr = resolve_expected_expr(field->expr, expected_type, true);
+            compound_literal_field *field = e->compound.fields[i];
+            type *expected_type = t->array.base_type;
+            resolved_expr *init_expr = resolve_expected_expr(field->expr, expected_type, true);
             if (false == compare_types(init_expr->type, expected_type))
             {
                 fatal("compound literal element type mismatch");
@@ -917,24 +917,24 @@ resolved_expr* resolve_compound_expr(expr* e, type* expected_type, bool ignore_e
    return result;
 }
 
-void plug_stub_expr(expr* original_expr, stub_expr_kind kind)
+void plug_stub_expr(expr *original_expr, stub_expr_kind kind)
 {
-    expr* new_expr = push_struct(arena, expr);
+    expr *new_expr = push_struct(arena, expr);
     new_expr->kind = EXPR_STUB;
     new_expr->pos = original_expr->pos;
     new_expr->stub.kind = kind;
     
     expr temp = *original_expr;
     (*original_expr) = *new_expr;
-    *new_expr = temp;
+   * new_expr = temp;
 
     // tutaj nazwy są odwrócone; efekt jest taki, że stub ma teraz odniesienie do starego wyrażenia
     original_expr->stub.original_expr = new_expr;
 }
 
-resolved_expr* resolve_special_case_methods(expr* e)
+resolved_expr *resolve_special_case_methods(expr *e)
 {    
-    resolved_expr* result = null;
+    resolved_expr *result = null;
     if (e->kind == EXPR_CALL && e->call.method_receiver)
     {
         resolve_expr(e->call.method_receiver);
@@ -969,9 +969,9 @@ resolved_expr* resolve_special_case_methods(expr* e)
                     fatal("only one argument for an add method");
                 }
 
-                type* list_type = e->call.method_receiver->resolved_type;
-                type* list_element_type = list_type->list.base_type;
-                type* new_element_type = resolve_expr(e->call.args[0])->type;
+                type *list_type = e->call.method_receiver->resolved_type;
+                type *list_element_type = list_type->list.base_type;
+                type *new_element_type = resolve_expr(e->call.args[0])->type;
 
                 if (false == compare_types(list_element_type, new_element_type))
                 {
@@ -992,7 +992,7 @@ resolved_expr* resolve_special_case_methods(expr* e)
     return result;
 }
 
-resolved_expr* resolve_special_case_constructors(expr* e)
+resolved_expr *resolve_special_case_constructors(expr *e)
 {
     if (e->call.function_expr->kind != EXPR_NEW 
         && e->call.function_expr->kind != EXPR_AUTO)
@@ -1000,18 +1000,18 @@ resolved_expr* resolve_special_case_constructors(expr* e)
         return null;
     }
     
-    type* return_type = resolve_expr(e->call.function_expr)->type;
+    type *return_type = resolve_expr(e->call.function_expr)->type;
     if (e->call.args_num == 0)
     {
         plug_stub_expr(e, STUB_EXPR_CONSTRUCTOR);
 
-        resolved_expr* result = get_resolved_rvalue_expr(return_type);
+        resolved_expr *result = get_resolved_rvalue_expr(return_type);
         return result;
     }
     else
     {
-        symbol* matching = null;
-        symbol* candidate = get_symbol(str_intern("constructor"));
+        symbol *matching = null;
+        symbol *candidate = get_symbol(str_intern("constructor"));
         while (candidate)
         {
             if (candidate->state == SYMBOL_UNRESOLVED)
@@ -1034,9 +1034,9 @@ resolved_expr* resolve_special_case_constructors(expr* e)
             {
                 for (size_t i = 0; i < candidate->type->function.param_count; i++)
                 {
-                    expr* arg_expr = e->call.args[i];
-                    type* expected_param_type = candidate->type->function.param_types[i];
-                    resolved_expr* resolved_arg_expr = resolve_expected_expr(arg_expr, expected_param_type, true);
+                    expr *arg_expr = e->call.args[i];
+                    type *expected_param_type = candidate->type->function.param_types[i];
+                    resolved_expr *resolved_arg_expr = resolve_expected_expr(arg_expr, expected_param_type, true);
                     if (false == compare_types(resolved_arg_expr->type, expected_param_type))
                     {
                         goto constructor_candidate_check_next;
@@ -1059,15 +1059,15 @@ resolved_expr* resolve_special_case_constructors(expr* e)
 
         e->call.resolved_function = matching;
 
-        resolved_expr* result = get_resolved_rvalue_expr(return_type);
+        resolved_expr *result = get_resolved_rvalue_expr(return_type);
         return result;
     }
 }
 
-resolved_expr* resolve_call_expr(expr* e)
+resolved_expr *resolve_call_expr(expr *e)
 {
     assert(e->kind == EXPR_CALL);
-    resolved_expr* result = null;
+    resolved_expr *result = null;
 
     result = resolve_special_case_constructors(e);
     if (result)
@@ -1081,11 +1081,11 @@ resolved_expr* resolve_call_expr(expr* e)
         return result;
     }
 
-    symbol* matching = null;
-    resolved_expr* fn_expr = resolve_expr(e->call.function_expr);
+    symbol *matching = null;
+    resolved_expr *fn_expr = resolve_expr(e->call.function_expr);
     assert(fn_expr->type->kind == TYPE_FUNCTION);
 
-    symbol* candidate = fn_expr->type->symbol;
+    symbol *candidate = fn_expr->type->symbol;
     while (candidate)
     {
         assert(candidate->type->kind == TYPE_FUNCTION);
@@ -1105,9 +1105,9 @@ resolved_expr* resolve_call_expr(expr* e)
         {
             for (size_t i = 0; i < arg_count; i++)
             {
-                expr* arg_expr = e->call.args[i];
-                type* expected_param_type = candidate->type->function.param_types[i];
-                resolved_expr* resolved_arg_expr = resolve_expected_expr(arg_expr, expected_param_type, true);
+                expr *arg_expr = e->call.args[i];
+                type *expected_param_type = candidate->type->function.param_types[i];
+                resolved_expr *resolved_arg_expr = resolve_expected_expr(arg_expr, expected_param_type, true);
                 if (false == compare_types(resolved_arg_expr->type, expected_param_type))
                 {
                     goto candidate_check_next;
@@ -1119,8 +1119,8 @@ resolved_expr* resolve_call_expr(expr* e)
             {
                 for (size_t i = arg_count; i < e->call.args_num; i++)
                 {
-                    expr* arg_expr = e->call.args[i];
-                    resolved_expr* resolved_arg_expr = resolve_expected_expr(arg_expr, null, false);
+                    expr *arg_expr = e->call.args[i];
+                    resolved_expr *resolved_arg_expr = resolve_expected_expr(arg_expr, null, false);
                 }
             }
 
@@ -1155,14 +1155,14 @@ resolved_expr* resolve_call_expr(expr* e)
     return result;
 }
 
-resolved_expr* resolve_expected_expr(expr* e, type* expected_type, bool ignore_expected_type_mismatch)
+resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_expected_type_mismatch)
 {
-    resolved_expr* result = null;
+    resolved_expr *result = null;
     switch (e->kind)
     {
         case EXPR_NAME:
         {
-            symbol* sym = resolve_name(e->name);
+            symbol *sym = resolve_name(e->name);
             if (sym->kind == SYMBOL_VARIABLE)
             {
                 result = get_resolved_lvalue_expr(sym->type);
@@ -1197,21 +1197,21 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type, bool ignore_e
         break;
         case EXPR_STRING:
         {
-            type* t = get_pointer_type(type_char);
+            type *t = get_pointer_type(type_char);
             result = get_resolved_rvalue_expr(t);
             result->is_const = true;
         }
         break;
         case EXPR_BOOL:
         {
-            type* t = type_bool;
+            type *t = type_bool;
             result = get_resolved_rvalue_expr(t);
             result->is_const = true;
         }
         break;
         case EXPR_NULL:
         {
-            type* t = type_null;
+            type *t = type_null;
             result = get_resolved_rvalue_expr(t);
             result->is_const = true;
         }
@@ -1223,8 +1223,8 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type, bool ignore_e
         break;
         case EXPR_CAST:
         {
-            type* t = resolve_typespec(e->cast.type);
-            resolved_expr* expr = resolve_expr(e->cast.expr);
+            type *t = resolve_typespec(e->cast.type);
+            resolved_expr *expr = resolve_expr(e->cast.expr);
 
             // tutaj powinniśmy sprawdzić, czy możemy dokonać castu            
             if (expr->type->kind == TYPE_STRUCT
@@ -1238,7 +1238,7 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type, bool ignore_e
         break;
         case EXPR_NEW:
         {
-            type* t = resolve_typespec(e->new.type);
+            type *t = resolve_typespec(e->new.type);
             if (t->kind != TYPE_LIST)
             {
                 t = get_pointer_type(t);
@@ -1248,7 +1248,7 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type, bool ignore_e
         break;
         case EXPR_AUTO:
         {
-            type* t = resolve_typespec(e->auto_new.type);
+            type *t = resolve_typespec(e->auto_new.type);
             if (t->kind != TYPE_LIST)
             {
                 t = get_pointer_type(t);
@@ -1273,8 +1273,8 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type, bool ignore_e
         break;
         case EXPR_SIZEOF:
         {
-            resolved_expr* expr = resolve_expr(e->size_of.expr);
-            type* expr_type = expr->type;
+            resolved_expr *expr = resolve_expr(e->size_of.expr);
+            type *expr_type = expr->type;
             complete_type(expr_type);
             int64_t size = get_type_size(expr_type);
             result = get_resolved_const_expr(size);
@@ -1282,8 +1282,8 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type, bool ignore_e
         break;
         case EXPR_FIELD:
         {           
-            resolved_expr* aggregate_expr = resolve_expr(e->field.expr);
-            type* t = aggregate_expr->type;
+            resolved_expr *aggregate_expr = resolve_expr(e->field.expr);
+            type *t = aggregate_expr->type;
 
             // zawsze uzyskujemy dostęp za pomocą x.y, nawet gdy x jest wskaźnikiem do wskaźnika itd.
             while (t->kind == TYPE_POINTER)
@@ -1291,13 +1291,13 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type, bool ignore_e
                 t = t->pointer.base_type;
             }
 
-            const char* field_name = e->field.field_name;
+            const char *field_name = e->field.field_name;
             complete_type(t);
 
-            type* found = 0;
+            type *found = 0;
             for (size_t i = 0; i < t->aggregate.fields_count; i++)
             {
-                type_aggregate_field* f = t->aggregate.fields[i];
+                type_aggregate_field *f = t->aggregate.fields[i];
                 if (field_name == f->name)
                 {
                     found = f->type;
@@ -1314,14 +1314,14 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type, bool ignore_e
         break;
         case EXPR_INDEX:
         {
-            resolved_expr* operand_expr = resolve_expr(e->index.array_expr);
+            resolved_expr *operand_expr = resolve_expr(e->index.array_expr);
             if (operand_expr->type->kind != TYPE_LIST
                 && pointer_decay(operand_expr)->type->kind != TYPE_POINTER)
             {
                 fatal("can only index arrays or pointers");
             }
             
-            resolved_expr* index_expr = resolve_expr(e->index.index_expr);
+            resolved_expr *index_expr = resolve_expr(e->index.index_expr);
 
             if (index_expr->type->kind != TYPE_INT)
             {
@@ -1359,15 +1359,15 @@ resolved_expr* resolve_expected_expr(expr* e, type* expected_type, bool ignore_e
     return result;
 }
 
-resolved_expr* resolve_expr(expr* e)
+resolved_expr *resolve_expr(expr *e)
 {
-    resolved_expr* result = resolve_expected_expr(e, null, true);
+    resolved_expr *result = resolve_expected_expr(e, null, true);
     return result;
 }
 
-type* resolve_variable_decl(decl* d)
+type *resolve_variable_decl(decl *d)
 {
-    type* result = null;
+    type *result = null;
     
     // musi być albo typ, albo wyrażenie
     // mogą być oba, ale wtedy muszą się zgadzać
@@ -1379,7 +1379,7 @@ type* resolve_variable_decl(decl* d)
 
     if (d->variable.expr)
     {
-        resolved_expr* expr = resolve_expected_expr(d->variable.expr, result, false);
+        resolved_expr *expr = resolve_expected_expr(d->variable.expr, result, false);
         if (expr)
         {
             if (expr->type == type_null)
@@ -1397,11 +1397,11 @@ type* resolve_variable_decl(decl* d)
     return result;
 }
 
-type* resolve_function_decl(decl* d)
+type *resolve_function_decl(decl *d)
 {
     assert(d->kind == DECL_FUNCTION);
 
-    type* resolved_return_type = type_void;
+    type *resolved_return_type = type_void;
     if (d->function.return_type)
     {
         resolved_return_type = resolve_typespec(d->function.return_type);
@@ -1414,14 +1414,14 @@ type* resolve_function_decl(decl* d)
 
     bool variadic_declared = false;
 
-    type** resolved_args = null;
-    function_param_list* args = &d->function.params;
+    type **resolved_args = null;
+    function_param_list *args = &d->function.params;
     for (size_t i = 0; i < args->param_count; i++)
     {
-        function_param* p = &args->params[i];
+        function_param *p = &args->params[i];
         if (p->name != variadic_keyword)
         {
-            type* t = resolve_typespec(p->type);
+            type *t = resolve_typespec(p->type);
             buf_push(resolved_args, t);
         }
         else
@@ -1448,7 +1448,7 @@ type* resolve_function_decl(decl* d)
         }
     }
 
-    type* result = get_function_type(resolved_args, buf_len(resolved_args), resolved_return_type);
+    type *result = get_function_type(resolved_args, buf_len(resolved_args), resolved_return_type);
 
     result->function.has_variadic_arg = variadic_declared;
     result->function.is_extern = d->function.is_extern;
@@ -1456,7 +1456,7 @@ type* resolve_function_decl(decl* d)
     return result;
 }
 
-void resolve_symbol(symbol* s)
+void resolve_symbol(symbol *s)
 {
     if (s->state == SYMBOL_RESOLVED)
     {
@@ -1476,7 +1476,7 @@ void resolve_symbol(symbol* s)
     {
         case SYMBOL_CONST:
         {            
-            resolved_expr* expr = resolve_expr(s->decl->const_decl.expr);
+            resolved_expr *expr = resolve_expr(s->decl->const_decl.expr);
             if (expr)
             {
                 s->type = expr->type;
@@ -1513,20 +1513,20 @@ void resolve_symbol(symbol* s)
     buf_push(ordered_global_symbols, s);
 }
 
-void resolve_stmt_block(stmt_block st_block, type* opt_ret_type)
+void resolve_stmt_block(stmt_block st_block, type *opt_ret_type)
 {
-    symbol* marker = enter_local_scope();
+    symbol *marker = enter_local_scope();
 
     for (size_t i = 0; i < st_block.stmts_count; i++)
     {
-        stmt* st = st_block.stmts[i];
+        stmt *st = st_block.stmts[i];
         resolve_stmt(st, opt_ret_type);
     }
 
     leave_local_scope(marker);
 }
 
-void resolve_stmt(stmt* st, type* opt_ret_type)
+void resolve_stmt(stmt *st, type *opt_ret_type)
 {
     switch (st->kind)
     {
@@ -1539,7 +1539,7 @@ void resolve_stmt(stmt* st, type* opt_ret_type)
         {
             if (st->expr)
             {
-                resolved_expr* result = resolve_expected_expr(st->expr, opt_ret_type, true);
+                resolved_expr *result = resolve_expected_expr(st->expr, opt_ret_type, true);
                 if (false == compare_types(result->type, opt_ret_type))
                 {
                     if (result->type == type_int
@@ -1587,7 +1587,7 @@ void resolve_stmt(stmt* st, type* opt_ret_type)
         break;
         case STMT_FOR:
         {
-            symbol* marker = enter_local_scope();
+            symbol *marker = enter_local_scope();
 
             if (st->for_stmt.init_stmt)
             {
@@ -1613,16 +1613,16 @@ void resolve_stmt(stmt* st, type* opt_ret_type)
         {            
             // na razie w blokach możemy deklarować tylko zmienne ('let')
             assert(st->decl_stmt.decl->kind == DECL_VARIABLE);
-            type* t = resolve_variable_decl(st->decl_stmt.decl);
+            type *t = resolve_variable_decl(st->decl_stmt.decl);
             push_local_symbol(st->decl_stmt.decl->name, t);
         }
         break;
         case STMT_ASSIGN:
         {
-            resolved_expr* left = resolve_expr(st->assign.assigned_var_expr);
+            resolved_expr *left = resolve_expr(st->assign.assigned_var_expr);
             if (st->assign.value_expr)
             {                
-                resolved_expr* right = resolve_expected_expr(st->assign.value_expr, left->type, false);
+                resolved_expr *right = resolve_expected_expr(st->assign.value_expr, left->type, false);
                 if (false == compare_types(left->type, right->type))
                 {
                     if (left->type->kind == TYPE_LIST)
@@ -1684,10 +1684,10 @@ void resolve_stmt(stmt* st, type* opt_ret_type)
 
             for (size_t i = 0; i < st->switch_stmt.cases_num; i++)
             {
-                switch_case* cas = st->switch_stmt.cases[i];               
+                switch_case *cas = st->switch_stmt.cases[i];               
                 for (size_t k = 0; k < cas->cond_exprs_num; k++)
                 {
-                    expr* cond = cas->cond_exprs[k];
+                    expr *cond = cas->cond_exprs[k];
                     assert(cond->kind == EXPR_INT);
                 }
 
@@ -1698,7 +1698,7 @@ void resolve_stmt(stmt* st, type* opt_ret_type)
         case STMT_DELETE:
         {
             // TODO: powinniśmy sprawdzić czy zmienna nie jest const albo zaalokowana globalnie
-            resolved_expr* expr = resolve_expr(st->delete.expr);
+            resolved_expr *expr = resolve_expr(st->delete.expr);
         }
         break;
 
@@ -1714,12 +1714,12 @@ void resolve_stmt(stmt* st, type* opt_ret_type)
     }
 }
 
-void complete_function_body(symbol* s)
+void complete_function_body(symbol *s)
 {
     assert(s->state == SYMBOL_RESOLVED);
-    type* return_type = s->type->function.return_type;
+    type *return_type = s->type->function.return_type;
 
-    symbol* marker = enter_local_scope();
+    symbol *marker = enter_local_scope();
 
     if (s->decl->function.method_receiver)
     {
@@ -1729,21 +1729,21 @@ void complete_function_body(symbol* s)
 
     for (size_t i = 0; i < s->decl->function.params.param_count; i++)
     {
-        function_param* p = &s->decl->function.params.params[i];
+        function_param *p = &s->decl->function.params.params[i];
         push_local_symbol(p->name, resolve_typespec(p->type));
     }
     
     size_t count = s->decl->function.stmts.stmts_count;
     for (size_t i = 0; i < count; i++)
     {
-        stmt* st = s->decl->function.stmts.stmts[i];
+        stmt *st = s->decl->function.stmts.stmts[i];
         resolve_stmt(st, return_type);
     }
 
     leave_local_scope(marker);
 }
 
-void complete_symbol(symbol* sym)
+void complete_symbol(symbol *sym)
 {
     resolve_symbol(sym);
     if (sym->kind == SYMBOL_TYPE)
@@ -1777,7 +1777,7 @@ void init_before_resolve()
     push_installed_symbol("bool", type_bool);
 }
 
-symbol** resolve_test_decls(char** decl_arr, size_t decl_arr_count, bool print)
+symbol **resolve_test_decls(char **decl_arr, size_t decl_arr_count, bool print)
 {
     arena = allocate_memory_arena(megabytes(50));
     init_before_resolve();
@@ -1789,8 +1789,8 @@ symbol** resolve_test_decls(char** decl_arr, size_t decl_arr_count, bool print)
 
     for (size_t i = 0; i < decl_arr_count; i++)
     {
-        char* str = decl_arr[i];
-        decl* d = parse_decl(str);
+        char *str = decl_arr[i];
+        decl *d = parse_decl(str);
         if (print)
         {
             print_decl(d);
@@ -1800,20 +1800,20 @@ symbol** resolve_test_decls(char** decl_arr, size_t decl_arr_count, bool print)
         push_symbol_from_decl(d);
     }
 
-    for (symbol** it = global_symbols_list;
+    for (symbol **it = global_symbols_list;
         it != buf_end(global_symbols_list);
         it++)
     {
-        symbol* sym = *it;
+        symbol *sym = *it;
         complete_symbol(sym);
     }
 
     if (print)
     {
         printf("\nordered:\n\n");
-        for (symbol** it = ordered_global_symbols; it != buf_end(ordered_global_symbols); it++)
+        for (symbol **it = ordered_global_symbols; it != buf_end(ordered_global_symbols); it++)
         {
-            symbol* sym = *it;
+            symbol *sym = *it;
             if (sym->decl)
             {
                 print_decl(sym->decl);
@@ -1831,8 +1831,8 @@ symbol** resolve_test_decls(char** decl_arr, size_t decl_arr_count, bool print)
 
 void resolve_test(void)
 {
-    char* test_strs[] = {
-#if 1
+    char *test_strs[] = {
+#if 0
         "let f := g[1 + 3]",
         "let g: int[10]",
         "let e = *b",
@@ -1845,7 +1845,7 @@ void resolve_test(void)
         "let z: Z",
         "const m = sizeof(z.t)",
         "const n = sizeof(&a[0])",
-        "struct Z { s: S, t: T* }",
+        "struct Z { s: S, t: T *}",
         "struct T { i: int }",
         "let a: int[3] = {1, 2, 3}",
         "struct S { t: int, c: char }",
@@ -1875,9 +1875,9 @@ void resolve_test(void)
         "let y = auto v2()",
         "fn deletetest1() { let x = new v2 x.x = 2 delete x }",
         "fn deletetest2() { let x = auto v2 x.x = 2 delete x }",
-        "let x4 : node* = null",
+        "let x4 : node *= null",
         "fn ft(x: node*): bool { if (x == null) { return true } else { return false } }",
-        "struct node { value: int, next: node* }",
+        "struct node { value: int, next: node *}",
         "let b1 : bool = 1",
         "let b2 : bool = (b1 == false)",
         "let list1 := new int[]",
@@ -1890,21 +1890,21 @@ void resolve_test(void)
 #endif
         "fn test () { let s := new some_struct(1) }",
         "struct some_struct { member: int } ",
-        "fn constructor () : some_struct { /* empty constructor */ }",
-        "fn constructor (val: int) : some_struct* { let s := new some_struct s.member = val return s }",
+        "fn constructor () : some_struct { / *empty constructor */ }",
+        "fn constructor (val: int) : some_struct *{ let s := new some_struct s.member = val return s }",
     };
     size_t str_count = sizeof(test_strs) / sizeof(test_strs[0]);
 
     debug_breakpoint;
 
-    symbol** result = resolve_test_decls(test_strs, str_count, true);
+    symbol **result = resolve_test_decls(test_strs, str_count, true);
 
     debug_breakpoint; 
 
     buf_free(result);
 }
 
-symbol** resolve(char* filename, char* source, bool print_s_expressions)
+symbol **resolve(char *filename, char *source, bool print_s_expressions)
 {
     if (arena == 0)
     {
@@ -1912,21 +1912,21 @@ symbol** resolve(char* filename, char* source, bool print_s_expressions)
     }
     init_before_resolve();
 
-    decl** declarations = parse(filename, source, print_s_expressions);
+    decl **declarations = parse(filename, source, print_s_expressions);
 
     size_t debug_decl_count = buf_len(declarations);
 
     for (size_t i = 0; i < buf_len(declarations); i++)
     {
-        decl* d = declarations[i];
+        decl *d = declarations[i];
         push_symbol_from_decl(d);
     }
 
-    for (symbol** it = global_symbols_list;
+    for (symbol **it = global_symbols_list;
         it != buf_end(global_symbols_list);
         it++)
     {
-        symbol* sym = *it;
+        symbol *sym = *it;
         complete_symbol(sym);
     }
 

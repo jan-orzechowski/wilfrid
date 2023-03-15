@@ -39,7 +39,7 @@ void compile_and_run(void)
             }
         }
        
-        symbol** resolved = resolve(test_file, file_buf.str, true);
+        symbol **resolved = resolve(test_file, file_buf.str, true);
 
         size_t debug_count = buf_len(resolved);
 
@@ -72,7 +72,7 @@ void compile_and_run(void)
 
 void common_includes_test(void);
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
     string_arena = allocate_memory_arena(megabytes(10));
 
@@ -98,7 +98,7 @@ int main(int argc, char** argv)
 
     //for (size_t i = 1; i < argc; i++)
     //{
-    //    char* arg = argv[i];
+    //    char *arg = argv[i];
     //    compile_and_run(arg);
     //}
 
@@ -112,7 +112,7 @@ int main(int argc, char** argv)
 
 void common_includes_test(void)
 {
-    ___list_hdr___* int_list = ___list_initialize___(4, sizeof(int), 0);
+    ___list_hdr___ *int_list = ___list_initialize___(4, sizeof(int), 0);
 
     assert(int_list->length == 0);
     assert(int_list->capacity == 4);
@@ -133,7 +133,7 @@ void common_includes_test(void)
     assert(___get_list_length___(int_list) == 0);
     assert(___get_list_capacity___(int_list) == 0);
 
-    ___list_hdr___* token_list = ___list_initialize___(16, sizeof(tok), 0);
+    ___list_hdr___ *token_list = ___list_initialize___(16, sizeof(tok), 0);
 
     assert(token_list->length == 0);
 

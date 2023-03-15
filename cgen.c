@@ -6,7 +6,7 @@ bool generate_line_hints = true;
 
 int gen_indent;
 
-char* gen_buf = null;
+char *gen_buf = null;
 source_pos gen_pos;
 
 #define gen_printf(...) buf_printf(gen_buf, __VA_ARGS__)
@@ -18,9 +18,9 @@ void _gen_printf_newline()
     gen_pos.line++;
 }
 
-const char* parenthesize(const char* str, bool parenthesize)
+const char *parenthesize(const char *str, bool parenthesize)
 {
-    const char* result = parenthesize ? xprintf("(%s)", str) : str;
+    const char *result = parenthesize ? xprintf("(%s)", str) : str;
     return result;
 }
 
@@ -39,25 +39,25 @@ void gen_line_hint(source_pos pos)
     }
 }
 
-void gen_stmt(stmt* s);
-void gen_expr(expr* e);
-void gen_func_decl(decl* d);
+void gen_stmt(stmt *s);
+void gen_expr(expr *e);
+void gen_func_decl(decl *d);
 
-const char* gen_expr_str(expr* e)
+const char *gen_expr_str(expr *e)
 {
     // tymczasowa podmiana, żeby wydrukował do nowego gen_buf
-    char* temp = gen_buf;
+    char *temp = gen_buf;
     gen_buf = null;
 
     gen_expr(e);
 
-    const char* result = gen_buf;
+    const char *result = gen_buf;
     gen_buf = temp;
 
     return result;
 }
 
-const char* cdecl_name(type* t)
+const char *cdecl_name(type *t)
 {
     switch (t->kind)
     {
@@ -80,7 +80,7 @@ const char* cdecl_name(type* t)
     return null;
 }
 
-char* type_to_cdecl(type* type, const char* name)
+char *type_to_cdecl(type *type, const char *name)
 {
     switch (type->kind)
     {
@@ -112,7 +112,7 @@ char* type_to_cdecl(type* type, const char* name)
         break;
         case TYPE_FUNCTION:
         {
-            char* result = null;
+            char *result = null;
             buf_printf(result, "%s(", xprintf("*%s", name));
             if (type->function.param_count == 0 
                 && type->function.receiver_type == null)
@@ -123,13 +123,13 @@ char* type_to_cdecl(type* type, const char* name)
             {
                 if (type->function.receiver_type)
                 {
-                    char* declstr = type_to_cdecl(type->function.receiver_type, "");
+                    char *declstr = type_to_cdecl(type->function.receiver_type, "");
                     buf_printf(result, "%s%s", type->function.param_count == 0 ? "" : ", ", declstr);
                 }
 
                 for (size_t i = 0; i < type->function.param_count; i++)
                 {
-                    char* declstr = type_to_cdecl(type->function.param_types[i], "");
+                    char *declstr = type_to_cdecl(type->function.param_types[i], "");
                     buf_printf(result, "%s%s", i == 0 ? "" : ", ", declstr);
                 }
             }
@@ -142,9 +142,9 @@ char* type_to_cdecl(type* type, const char* name)
     return null;
 }
 
-char* typespec_to_cdecl(typespec* t, const char* name)
+char *typespec_to_cdecl(typespec *t, const char *name)
 {
-    char* result = 0;
+    char *result = 0;
     switch (t->kind)
     {
         case TYPESPEC_NAME:
@@ -157,13 +157,13 @@ char* typespec_to_cdecl(typespec* t, const char* name)
         case TYPESPEC_POINTER:
         {
             // false podane zamiast name tymczasowo
-            const char* wrapped_name = parenthesize(xprintf("*%s", name), false); 
+            const char *wrapped_name = parenthesize(xprintf("*%s", name), false); 
             result = typespec_to_cdecl(t->pointer.base_type, wrapped_name);
         }
         break;
         case TYPESPEC_ARRAY:
         {
-            const char* wrapped_name = parenthesize(xprintf("%s[%s]", name, gen_expr_str(t->array.size_expr)), *name);
+            const char *wrapped_name = parenthesize(xprintf("%s[%s]", name, gen_expr_str(t->array.size_expr)), *name);
             result = typespec_to_cdecl(t->array.base_type, wrapped_name);
         }
         break;
@@ -195,7 +195,7 @@ char* typespec_to_cdecl(typespec* t, const char* name)
     return result;
 }
 
-void gen_aggregate(decl* decl)
+void gen_aggregate(decl *decl)
 {
     assert(decl->kind == DECL_STRUCT || decl->kind == DECL_UNION);
     gen_printf_newline("%s %s {", decl->kind == DECL_STRUCT ? "struct" : "union", decl->name);
@@ -222,7 +222,7 @@ void gen_stmt_block(stmt_block block)
     gen_printf_newline("}");
 }
 
-void gen_simple_stmt(stmt* stmt)
+void gen_simple_stmt(stmt *stmt)
 {
     switch (stmt->kind)
     {
@@ -241,7 +241,7 @@ void gen_simple_stmt(stmt* stmt)
                     {
                         if (stmt->decl_stmt.decl->variable.expr->resolved_type)
                         {
-                            char* decl_str = type_to_cdecl(
+                            char *decl_str = type_to_cdecl(
                                 stmt->decl_stmt.decl->variable.expr->resolved_type,
                                 stmt->decl_stmt.decl->name);
                             gen_printf(decl_str);
@@ -254,7 +254,7 @@ void gen_simple_stmt(stmt* stmt)
                     }
                     else
                     {
-                        char* decl_str = typespec_to_cdecl(
+                        char *decl_str = typespec_to_cdecl(
                             stmt->decl_stmt.decl->variable.type,
                             stmt->decl_stmt.decl->name);
                         gen_printf(decl_str);
@@ -317,7 +317,7 @@ void gen_simple_stmt(stmt* stmt)
     }
 }
 
-void gen_stmt(stmt* stmt)
+void gen_stmt(stmt *stmt)
 {
     gen_line_hint(stmt->pos);
     switch (stmt->kind)
@@ -409,7 +409,7 @@ void gen_stmt(stmt* stmt)
             gen_printf(") {");
             for (size_t i = 0; i < stmt->switch_stmt.cases_num; i++)
             {
-                switch_case* switch_case = stmt->switch_stmt.cases[i];
+                switch_case *switch_case = stmt->switch_stmt.cases[i];
                 for (size_t j = 0; j < switch_case->cond_exprs_num; j++)
                 {
                     gen_printf_newline("case ");
@@ -443,12 +443,12 @@ void gen_stmt(stmt* stmt)
     }
 }
 
-void gen_expr_stub(expr* e)
+void gen_expr_stub(expr *e)
 {
     assert(e->kind == EXPR_STUB);
     assert(e->stub.original_expr);
 
-    expr* receiver = null;
+    expr *receiver = null;
     if (e->stub.original_expr->kind == EXPR_CALL)
     {
         assert(e->stub.original_expr->call.method_receiver);
@@ -494,8 +494,8 @@ void gen_expr_stub(expr* e)
             gen_expr(e->stub.original_expr->call.args[0]);
             gen_printf("),");
             assert(receiver->resolved_type->kind == TYPE_LIST);
-            type* base_type = receiver->resolved_type->list.base_type;
-            char* type_str = type_to_cdecl(base_type, null);
+            type *base_type = receiver->resolved_type->list.base_type;
+            char *type_str = type_to_cdecl(base_type, null);
             gen_printf("%s)", type_str);
         }
         break;
@@ -510,7 +510,7 @@ void gen_expr_stub(expr* e)
     }
 }
 
-void gen_expr(expr* e)
+void gen_expr(expr *e)
 {
     switch (e->kind)
     {
@@ -645,12 +645,12 @@ void gen_expr(expr* e)
         {
             if (e->compound.type)
             {
-                char* decl = typespec_to_cdecl(e->compound.type, null);
+                char *decl = typespec_to_cdecl(e->compound.type, null);
                 gen_printf("(%s){", decl);
             }
             else
             {
-                char* decl = type_to_cdecl(e->resolved_type, null);
+                char *decl = type_to_cdecl(e->resolved_type, null);
                 gen_printf("(%s){", decl);
             }
 
@@ -661,7 +661,7 @@ void gen_expr(expr* e)
                     gen_printf(", ");
                 }
 
-                compound_literal_field* field = e->compound.fields[i];
+                compound_literal_field *field = e->compound.fields[i];
                 if (field->field_name)
                 {
                     gen_printf(".%s = ", field->field_name);                
@@ -689,7 +689,7 @@ void gen_expr(expr* e)
             }
             else
             {
-                char* c = typespec_to_cdecl(e->new.type, null);
+                char *c = typespec_to_cdecl(e->new.type, null);
                 gen_printf("(%s*)___alloc___(sizeof(%s))", c, c);
             }
         }
@@ -704,7 +704,7 @@ void gen_expr(expr* e)
             }
             else
             {
-                char* c = typespec_to_cdecl(e->new.type, null);
+                char *c = typespec_to_cdecl(e->new.type, null);
                 gen_printf("(%s*)___managed_alloc___(sizeof(%s))", c, c);
             }
         } 
@@ -713,21 +713,21 @@ void gen_expr(expr* e)
     }
 }
 
-void gen_aggregate_decl(symbol* sym)
+void gen_aggregate_decl(symbol *sym)
 {
     assert(sym->kind == SYMBOL_TYPE);
     assert(sym->decl->kind == DECL_STRUCT);
     printf("typedef struct %s {", sym->type->name);
     for (size_t i = 0; i < sym->type->aggregate.fields_count; i++)
     {
-        type_aggregate_field* f = sym->type->aggregate.fields[i];
+        type_aggregate_field *f = sym->type->aggregate.fields[i];
         type_to_cdecl(f->type, f->name);
     }
     printf("} %s;", sym->decl->name);
     print_newline();
 }
 
-void gen_var_decl(decl* decl, symbol* sym)
+void gen_var_decl(decl *decl, symbol *sym)
 {
     assert(decl->kind == DECL_VARIABLE);
  
@@ -747,13 +747,13 @@ void gen_var_decl(decl* decl, symbol* sym)
     gen_printf(";");
 }
 
-void gen_func_decl(decl* d, const char* mangled_name)
+void gen_func_decl(decl *d, const char *mangled_name)
 {
     assert(d->kind == DECL_FUNCTION);
 
     if (d->function.return_type)
     {
-        char* decl_str = typespec_to_cdecl(d->function.return_type, mangled_name);
+        char *decl_str = typespec_to_cdecl(d->function.return_type, mangled_name);
         gen_printf_newline("%s(", decl_str);
     }
     else
@@ -770,7 +770,7 @@ void gen_func_decl(decl* d, const char* mangled_name)
     {
         if (d->function.method_receiver)
         {
-            char* decl_str = typespec_to_cdecl(
+            char *decl_str = typespec_to_cdecl(
                 d->function.method_receiver->type, 
                 d->function.method_receiver->name);
             gen_printf("%s", decl_str);
@@ -788,18 +788,18 @@ void gen_func_decl(decl* d, const char* mangled_name)
                 gen_printf(", ");
             }
 
-            char* decl_str = typespec_to_cdecl(param.type, param.name);
+            char *decl_str = typespec_to_cdecl(param.type, param.name);
             gen_printf("%s", decl_str);
         }
     }
     gen_printf(")"); // bez średnika, bo potem może być ciało
 }
 
-void gen_forward_decls(symbol** resolved)
+void gen_forward_decls(symbol **resolved)
 {
     for (size_t i = 0; i < buf_len(resolved); i++)
     {        
-        symbol* sym = resolved[i];
+        symbol *sym = resolved[i];
         if (sym->decl)
         {
             switch (sym->decl->kind)
@@ -841,13 +841,13 @@ void gen_forward_decls(symbol** resolved)
     }
 }
 
-void gen_symbol_decl(symbol* sym)
+void gen_symbol_decl(symbol *sym)
 {
     // zakładamy, że forward declarations zostały już wygenerowane
 
     assert(sym);
 
-    decl* decl = sym->decl;
+    decl *decl = sym->decl;
     if (!decl)
     {
         return;
@@ -871,7 +871,7 @@ void gen_symbol_decl(symbol* sym)
             }
             else
             {            
-                char* decl_str = type_to_cdecl(
+                char *decl_str = type_to_cdecl(
                     sym->type, sym->name);
                 gen_printf_newline(decl_str);                
                 gen_printf(" = ");
@@ -915,14 +915,14 @@ void gen_symbol_decl(symbol* sym)
 
 void gen_entry_point(void)
 {
-    symbol* main_found = null;
-    const char* main_str = str_intern("main");
+    symbol *main_found = null;
+    const char *main_str = str_intern("main");
 
-    for (symbol** it = global_symbols_list;
+    for (symbol **it = global_symbols_list;
         it != buf_end(global_symbols_list);
         it++)
     {
-        symbol* sym = *it;
+        symbol *sym = *it;
         if (sym->name == main_str)
         {
             if (main_found)
@@ -944,8 +944,8 @@ void gen_entry_point(void)
     if (main_found->mangled_name == str_intern("___main___0l___0s___0v"))
     {
         gen_printf(
-"int main(int argc, char** argv) {\
-  string* buf = 0;\
+"int main(int argc, char **argv) {\
+  string *buf = 0;\
   for(int i = 0; i < argc; i++) {\
     string s = get_string(argv[i]);\
     buf_push(buf, s);\
@@ -958,7 +958,7 @@ void gen_entry_point(void)
     else if (main_found->mangled_name == str_intern("___main___0v"))
     {
         gen_printf(
-"int main(int argc, char** argv) {\
+"int main(int argc, char **argv) {\
   ___main___0v();\
 }");
     }
@@ -970,7 +970,7 @@ void gen_entry_point(void)
 
 void gen_common_includes(void)
 {
-    char* test_file = "common_include.c";
+    char *test_file = "common_include.c";
     string_ref file_buf = read_file(test_file);
     gen_printf(file_buf.str);
 
@@ -991,7 +991,7 @@ void cgen_test(void)
 {
     generate_line_hints = false;
 
-    char* test_strs[] = {
+    char *test_strs[] = {
 #if 0
         "const x = 10",        
         "let y := (vec3){1, 2, 3}",
@@ -1013,7 +1013,7 @@ void cgen_test(void)
         
     };
     
-    symbol** resolved = resolve_test_decls(test_strs, sizeof(test_strs) / sizeof(test_strs[0]), false);
+    symbol **resolved = resolve_test_decls(test_strs, sizeof(test_strs) / sizeof(test_strs[0]), false);
 
     gen_printf_newline("// FORWARD DECLARATIONS\n");
 
@@ -1033,10 +1033,10 @@ void cgen_test(void)
     debug_breakpoint;
 }
 
-char* get_typespec_mangled_name(typespec* typ)
+char *get_typespec_mangled_name(typespec *typ)
 {
     assert(typ);
-    char* result = null;
+    char *result = null;
     buf_printf(result, "___");
     switch (typ->kind)
     {
@@ -1081,7 +1081,7 @@ char* get_typespec_mangled_name(typespec* typ)
             // ___0a_16___type
             buf_printf(result, "0a");
 
-            resolved_expr* e = resolve_expr(typ->array.size_expr);
+            resolved_expr *e = resolve_expr(typ->array.size_expr);
             size_t arr_count = e->val;
 
             buf_printf(result, xprintf("_%lld", arr_count));
@@ -1107,7 +1107,7 @@ char* get_typespec_mangled_name(typespec* typ)
     return result;
 }
 
-char* get_function_mangled_name(decl* dec)
+char *get_function_mangled_name(decl *dec)
 {
     // ___function_name___arg_type1___arg_type2___ret_type
     
@@ -1119,12 +1119,12 @@ char* get_function_mangled_name(decl* dec)
         return dec->name;
     }
 
-    char* mangled = null;
+    char *mangled = null;
            
     if (dec->function.method_receiver)
     {
-        typespec* t = dec->function.method_receiver->type;
-        char* mangled_rec = get_typespec_mangled_name(t);
+        typespec *t = dec->function.method_receiver->type;
+        char *mangled_rec = get_typespec_mangled_name(t);
         buf_printf(mangled, mangled_rec);
     }
 
@@ -1132,14 +1132,14 @@ char* get_function_mangled_name(decl* dec)
     buf_printf(mangled, dec->name);
     for (size_t i = 0; i < dec->function.params.param_count; i++)
     {
-        typespec* t = dec->function.params.params[i].type;
-        char* mangled_arg = get_typespec_mangled_name(t);
+        typespec *t = dec->function.params.params[i].type;
+        char *mangled_arg = get_typespec_mangled_name(t);
         buf_printf(mangled, mangled_arg);
     }
 
     if (dec->function.return_type)
     {
-        char* mangled_ret = get_typespec_mangled_name(dec->function.return_type);
+        char *mangled_ret = get_typespec_mangled_name(dec->function.return_type);
         buf_printf(mangled, mangled_ret);
     }
     else
@@ -1147,7 +1147,7 @@ char* get_function_mangled_name(decl* dec)
         buf_printf(mangled, "___0v");
     }
     
-    const char* result = str_intern(mangled);
+    const char *result = str_intern(mangled);
     buf_free(mangled);
     return result;
 }
@@ -1155,7 +1155,7 @@ char* get_function_mangled_name(decl* dec)
 void mangled_names_test()
 {
     // uwaga: reordering podczas resolve może zepsuć test
-    char* test_strs[] = {
+    char *test_strs[] = {
         "struct tee { i: int }",
         "union zet { s: tee, t: zet* }",
         "fn funkcja (x: int, y: int) { return } ",     
@@ -1171,7 +1171,7 @@ void mangled_names_test()
         "fn (x: int) funkcja () : { }",
     };
 
-    char* cmp_strs[] = {
+    char *cmp_strs[] = {
         "not tested",
         "not tested",
         "___funkcja___0i___0i___0v",       
@@ -1189,11 +1189,11 @@ void mangled_names_test()
 
     assert((sizeof(test_strs) / sizeof(test_strs[0])) == sizeof(cmp_strs) / sizeof(cmp_strs[0]))
 
-    symbol** resolved = resolve_test_decls(test_strs, sizeof(test_strs) / sizeof(test_strs[0]), false);
+    symbol **resolved = resolve_test_decls(test_strs, sizeof(test_strs) / sizeof(test_strs[0]), false);
     for (size_t i = 2 /* dwa pierwsze pomijamy!*/; i < buf_len(resolved); i++)
     {
-        symbol* sym = resolved[i]; 
-        char* mangled_name = get_function_mangled_name(sym->decl);
+        symbol *sym = resolved[i]; 
+        char *mangled_name = get_function_mangled_name(sym->decl);
         if (0 != strcmp(mangled_name, cmp_strs[i]))
         {
             // błąd!

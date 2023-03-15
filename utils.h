@@ -21,7 +21,7 @@
 
 #define define_struct(name) typedef struct name name; struct name
 
-void* xrealloc(void* ptr, size_t num_bytes)
+void *xrealloc(void *ptr, size_t num_bytes)
 {
     ptr = realloc(ptr, num_bytes);
     if (!ptr)
@@ -32,9 +32,9 @@ void* xrealloc(void* ptr, size_t num_bytes)
     return ptr;
 }
 
-void* xmalloc(size_t num_bytes)
+void *xmalloc(size_t num_bytes)
 {
-    void* ptr = malloc(num_bytes);
+    void *ptr = malloc(num_bytes);
     if (!ptr)
     {
         perror("xmalloc failed");
@@ -43,9 +43,9 @@ void* xmalloc(size_t num_bytes)
     return ptr;
 }
 
-void* xcalloc(size_t num_bytes)
+void *xcalloc(size_t num_bytes)
 {
-    void* ptr = calloc(num_bytes, sizeof(char));
+    void *ptr = calloc(num_bytes, sizeof(char));
     if (!ptr)
     {
         perror("xmalloc failed");
@@ -54,9 +54,9 @@ void* xcalloc(size_t num_bytes)
     return ptr;
 }
 
-void* xmempcy(void* src, size_t size)
+void *xmempcy(void *src, size_t size)
 {
-    void* dest = xmalloc(size);
+    void *dest = xmalloc(size);
     memcpy(dest, src, size);
     return dest;
 }
@@ -68,38 +68,38 @@ void* xmempcy(void* src, size_t size)
 
 typedef struct memory_arena
 {
-    void* base_address;
+    void *base_address;
     size_t max_size;
     size_t current_size;
 } memory_arena;
 
-memory_arena* allocate_memory_arena(size_t size)
+memory_arena *allocate_memory_arena(size_t size)
 {
-    memory_arena* result = (memory_arena*)xcalloc(size);
+    memory_arena *result = (memory_arena*)xcalloc(size);
     result->base_address = result;
     result->max_size = size;
     result->current_size = sizeof(memory_arena);
     return result;
 }
 
-void free_memory_arena(memory_arena* arena)
+void free_memory_arena(memory_arena *arena)
 {
     free(arena);
 }
 
 #define push_struct(arena, type) (type*)push_size(arena, sizeof(type))
 
-void* push_size(memory_arena* arena, size_t size)
+void *push_size(memory_arena *arena, size_t size)
 {
     assert(arena->current_size + size < arena->max_size);
 
-    void* result = (void*)((char*)arena->base_address + arena->current_size);
+    void *result = (void*)((char*)arena->base_address + arena->current_size);
     arena->current_size += size;
 
     return result;
 }
 
-void fatal(const char* format, ...)
+void fatal(const char *format, ...)
 {
     va_list args;
     va_start(args, format);
@@ -115,7 +115,7 @@ void fatal(const char* format, ...)
     exit(1);
 }
 
-char* xprintf(const char* format, ...)
+char *xprintf(const char *format, ...)
 {
     va_list args;
 
@@ -123,7 +123,7 @@ char* xprintf(const char* format, ...)
     size_t length = 1 + vsnprintf(null, 0, format, args);
     va_end(args);
 
-    char* str = xmalloc(length);
+    char *str = xmalloc(length);
     
     va_start(args, format);
     vsnprintf(str, length, format, args);
@@ -141,7 +141,7 @@ typedef struct buffer_header
 buffer_header;
 
 // offsetof zwraca pozycję pola w ramach structu
-// chodzi o to, że z buffer_header korzystamy tak, jak ze zwykłego void* 
+// chodzi o to, że z buffer_header korzystamy tak, jak ze zwykłego void *
 // ale potajemnie mamy zaalokowane zawsze trochę więcej, z przodu
 #define __buf_header(b) ((buffer_header*)((char*)(b) - offsetof(buffer_header, buf)))
 #define buf_len(b) ((b) ? __buf_header(b)->len : 0)
@@ -157,18 +157,18 @@ buffer_header;
 #define buf_remove_at(b, i) ((b) && buf_len(b) > (i) ? ((b)[i] = (b)[buf_len(b) - 1], (b)[buf_len(b) - 1] = 0, __buf_header(b)->len--) : 0) 
 
 // do debugowania - w watch window makra nie działają...
-buffer_header* __get_buf_header(void* ptr)
+buffer_header *__get_buf_header(void *ptr)
 {
-    buffer_header* header = (buffer_header*)((char*)ptr - offsetof(buffer_header, buf));
+    buffer_header *header = (buffer_header*)((char*)ptr - offsetof(buffer_header, buf));
     return header;
 }
 
-void* __buf_grow(const void* buf, size_t new_len, size_t elem_size)
+void *__buf_grow(const void *buf, size_t new_len, size_t elem_size)
 {
     size_t new_cap = max(1 + 2 * buf_cap(buf), new_len);
     assert(new_len <= new_cap);
     size_t new_size = offsetof(buffer_header, buf) + new_cap * elem_size;
-    buffer_header* new_hdr;
+    buffer_header *new_hdr;
     if (buf)
     {
         new_hdr = __buf_header(buf);
@@ -185,7 +185,7 @@ void* __buf_grow(const void* buf, size_t new_len, size_t elem_size)
 
 #define buf_printf(b, ...) ((b) = __buf_printf((b), __VA_ARGS__))
 
-char* __buf_printf(char* buf, const char* format, ...)
+char *__buf_printf(char *buf, const char *format, ...)
 {
     va_list args;
 
@@ -214,12 +214,12 @@ char* __buf_printf(char* buf, const char* format, ...)
 
 void copy_test(void);
 
-void* __copy_buf_to_arena(memory_arena* arena, const void* buf, size_t elem_size)
+void *__copy_buf_to_arena(memory_arena *arena, const void *buf, size_t elem_size)
 {
-    void* dest = null;    
+    void *dest = null;    
     if (buf)
     {
-        buffer_header* hdr = __buf_header(buf);
+        buffer_header *hdr = __buf_header(buf);
         dest = push_size(arena, hdr->len * elem_size);
         memcpy(dest, buf, hdr->len * elem_size);
     }
@@ -229,15 +229,15 @@ void* __copy_buf_to_arena(memory_arena* arena, const void* buf, size_t elem_size
 
 void copy_test(void)
 {
-    memory_arena* test = allocate_memory_arena(kilobytes(1));
+    memory_arena *test = allocate_memory_arena(kilobytes(1));
 
-    int* buffer = 0;
+    int *buffer = 0;
     for (int i = 0; i < 128; i++)
     {
         buf_push(buffer, i);
     }
 
-    int* new_array = (int*)copy_buf_to_arena(test, buffer);
+    int *new_array = (int*)copy_buf_to_arena(test, buffer);
 
     for (int i = 0; i < 128; i++)
     {
@@ -253,7 +253,7 @@ void copy_test(void)
 
 void buf_remove_at_test()
 {
-    int* integers = 0;
+    int *integers = 0;
     assert(buf_len(integers) == 0);
     buf_push(integers, 0);
     buf_push(integers, 1);
@@ -278,12 +278,12 @@ uint64_t hash_uint64(uint64_t x)
     return x;
 }
 
-uint64_t hash_ptr(void* ptr)
+uint64_t hash_ptr(void *ptr)
 {
     return hash_uint64((uintptr_t)ptr);
 }
 
-uint64_t hash_bytes(const char* buf, size_t len)
+uint64_t hash_bytes(const char *buf, size_t len)
 {
     // FNV hash
     uint64_t x = 0xcbf29ce484222325;
@@ -298,13 +298,13 @@ uint64_t hash_bytes(const char* buf, size_t len)
 
 typedef struct hashmap
 {
-    void** keys;
-    void** values;
+    void* *keys;
+    void* *values;
     size_t count;
     size_t capacity;
 } hashmap;
 
-void* map_get(hashmap* map, void* key)
+void *map_get(hashmap *map, void *key)
 {
     if (map->count == 0)
     {
@@ -331,9 +331,9 @@ void* map_get(hashmap* map, void* key)
     return null;
 }
 
-void map_put(hashmap* map, void* key, void* val);
+void map_put(hashmap *map, void *key, void *val);
 
-void map_grow(hashmap* map, size_t new_capacity)
+void map_grow(hashmap *map, size_t new_capacity)
 {
     new_capacity = max(16, new_capacity);
     hashmap new_map = {
@@ -351,10 +351,10 @@ void map_grow(hashmap* map, size_t new_capacity)
     }
     free(map->keys);
     free(map->values);
-    *map = new_map;
+   * map = new_map;
 }
 
-void map_put(hashmap* map, void* key, void* val)
+void map_put(hashmap *map, void *key, void *val)
 {
     assert(key);
     assert(val);
@@ -399,7 +399,7 @@ void map_test(void)
 
     for (size_t i = 1; i < N; i++)
     {
-        void* val = map_get(&map, (void*)i);
+        void *val = map_get(&map, (void*)i);
         assert(val == (void*)(i + 1));
     }
 
@@ -410,23 +410,23 @@ typedef struct intern_str intern_str;
 struct intern_str
 {
     size_t len;
-    intern_str* next;
+    intern_str *next;
     char str[];
 };
 
-hashmap* interns;
-memory_arena* string_arena;
+hashmap *interns;
+memory_arena *string_arena;
 
-const char* str_intern_range(const char* start, const char* end)
+const char *str_intern_range(const char *start, const char *end)
 {
     size_t len = end - start;
 
     uint64_t hash = hash_bytes(start, len);
     // wartość 0 jest zarezerwowana jako sentinel - na niej przerwiemy wyszukiwanie
-    void* key = (void*)(uintptr_t)(hash ? hash : 1);
+    void *key = (void*)(uintptr_t)(hash ? hash : 1);
 
-    intern_str* intern = map_get(interns, key);
-    for (intern_str* it = intern; it; it = it->next)
+    intern_str *intern = map_get(interns, key);
+    for (intern_str *it = intern; it; it = it->next)
     {
         // musimy wcześniej sprawdzić długość, by uniknąć sytuacji, w której 
         // tylko prefix się zgadza - strncmp nie sprawdza długości
@@ -437,7 +437,7 @@ const char* str_intern_range(const char* start, const char* end)
     }
 
     // jeśli nie znaleźliśmy
-    intern_str* new_intern = push_size(string_arena, offsetof(intern_str, str) + len + 1);
+    intern_str *new_intern = push_size(string_arena, offsetof(intern_str, str) + len + 1);
     new_intern->len = len;
     new_intern->next = intern;
 
@@ -448,7 +448,7 @@ const char* str_intern_range(const char* start, const char* end)
     return new_intern->str;
 }
 
-const char* str_intern(const char* str)
+const char *str_intern(const char *str)
 {
     return str_intern_range(str, str + strlen(str));
 }
@@ -463,18 +463,18 @@ void intern_str_test(void)
 
     assert(x != y);
 
-    const char* px = str_intern(x);
-    const char* py = str_intern(y);
+    const char *px = str_intern(x);
+    const char *py = str_intern(y);
     assert(px == py);
 
     char z[] = "hello!";
-    const char* pz = str_intern(z);
+    const char *pz = str_intern(z);
     assert(pz != px);
 }
 
 void stretchy_buffers_test(void)
 {
-    intern_str* str = 0;
+    intern_str *str = 0;
 
     assert(buf_len(str) == 0);
 
@@ -494,7 +494,7 @@ void stretchy_buffers_test(void)
 
     assert(buf_len(str) == 0);
 
-    char* char_buf = 0;
+    char *char_buf = 0;
     buf_printf(char_buf, "One: %d\n", 1);
     assert(strcmp(char_buf, "One: 1\n") == 0);
     buf_printf(char_buf, "Hex: 0x%x\n", 0x12345678);
@@ -505,22 +505,22 @@ void stretchy_buffers_test(void)
 
 define_struct(hashmap_value)
 {
-    void* key;
-    void* value;
-    hashmap_value* next;
+    void *key;
+    void *value;
+    hashmap_value *next;
 };
 
 define_struct(chained_hashmap)
 {
-    hashmap_value** values;
+    hashmap_value* *values;
     size_t total_count;
     size_t used_capacity;
     size_t capacity;
 };
 
-void* map_get_from_chain(chained_hashmap* map, void* key)
+void *map_get_from_chain(chained_hashmap *map, void *key)
 {
-    hashmap_value* val = null;
+    hashmap_value *val = null;
     size_t index = (size_t)hash_ptr(key) & (map->capacity - 1);
     val = map->values[index];
     while (val)
@@ -542,14 +542,14 @@ void* map_get_from_chain(chained_hashmap* map, void* key)
     return null;
 }
 
-void map_delete_from_chain(chained_hashmap* map, void* key)
+void map_delete_from_chain(chained_hashmap *map, void *key)
 {
     size_t index = (size_t)hash_ptr(key) & (map->capacity - 1);
-    hashmap_value* val = map->values[index];
+    hashmap_value *val = map->values[index];
 
     bool found = false;
-    hashmap_value* prev_val = 0;
-    hashmap_value* debug_first_val = val;
+    hashmap_value *prev_val = 0;
+    hashmap_value *debug_first_val = val;
 
     size_t chain_length = 0;
 
@@ -599,9 +599,9 @@ void map_delete_from_chain(chained_hashmap* map, void* key)
     }
 }
 
-void map_add_to_chain(chained_hashmap* map, void* key, void* value);
+void map_add_to_chain(chained_hashmap *map, void *key, void *value);
 
-void map_chain_grow(chained_hashmap* map, size_t new_capacity)
+void map_chain_grow(chained_hashmap *map, size_t new_capacity)
 {
     new_capacity = max(16, new_capacity);
     chained_hashmap new_map = {
@@ -611,7 +611,7 @@ void map_chain_grow(chained_hashmap* map, size_t new_capacity)
     for (size_t i = 0; i < map->capacity; i++)
     {
         // rehashing już umieszczonych wartości
-        hashmap_value* val = map->values[i];
+        hashmap_value *val = map->values[i];
         while (val)
         {
             map_add_to_chain(&new_map, val->key, val->value);
@@ -619,13 +619,13 @@ void map_chain_grow(chained_hashmap* map, size_t new_capacity)
         }
     }
     free(map->values);
-    *map = new_map;
+   * map = new_map;
 }
 
-void map_add_to_chain(chained_hashmap* map, void* key, void* value)
+void map_add_to_chain(chained_hashmap *map, void *key, void *value)
 {
     size_t index = (size_t)hash_ptr(key) & (map->capacity - 1);
-    hashmap_value* val = map->values[index];
+    hashmap_value *val = map->values[index];
 
     if (val)
     {
@@ -636,7 +636,7 @@ void map_add_to_chain(chained_hashmap* map, void* key, void* value)
     }
     else
     {
-        hashmap_value* new_value = xcalloc(sizeof(hashmap_value));
+        hashmap_value *new_value = xcalloc(sizeof(hashmap_value));
         new_value->key = key;
         new_value->value = value;
 
@@ -664,14 +664,14 @@ void map_add_to_chain(chained_hashmap* map, void* key, void* value)
 
 typedef struct string_ref
 {
-    char* str;
+    char *str;
     size_t length;
 } string_ref;
 
 
-string_ref read_file(char* filename)
+string_ref read_file(char *filename)
 {
-    FILE* src;
+    FILE *src;
     errno_t err = fopen_s(&src, filename, "rb");
     if (err != 0)
     {
@@ -685,7 +685,7 @@ string_ref read_file(char* filename)
 
     if (size > 0)
     {
-        char* str_buf = xmalloc(size + 1);
+        char *str_buf = xmalloc(size + 1);
         str_buf[size] = 0; // null terminator
 
         size_t objects_read = fread(str_buf, size, 1, src);
@@ -708,9 +708,9 @@ string_ref read_file(char* filename)
     }
 }
 
-bool write_file(const char* path, const char* buf, size_t len)
+bool write_file(const char *path, const char *buf, size_t len)
 {
-    FILE* file;
+    FILE *file;
     errno_t err = fopen_s(&file, path, "w");
     if (err != 0)
     {

@@ -8,14 +8,14 @@ define_struct(allocation_header)
 define_struct(something_to_gc)
 {
     int test_number;
-    something_to_gc* gc_obj_ptr;
+    something_to_gc *gc_obj_ptr;
 };
 
 typedef struct globals_wrapper
 {
-    something_to_gc* static_gc_to_save_1;
-    something_to_gc* static_gc_to_save_2;
-    something_to_gc* static_gc_to_save_3;
+    something_to_gc *static_gc_to_save_1;
+    something_to_gc *static_gc_to_save_2;
+    something_to_gc *static_gc_to_save_3;
 } globals_wrapper;
 struct globals_wrapper globals = {(something_to_gc*)666,(something_to_gc*)777,(something_to_gc*)888};
 
@@ -32,8 +32,8 @@ void gc_init()
 define_struct(non_gc_object)
 {
     int test_number;
-    non_gc_object* non_gc_obj_ptr;
-    something_to_gc* gc_obj_ptr;
+    non_gc_object *non_gc_obj_ptr;
+    something_to_gc *gc_obj_ptr;
 };
 
 // dwie cyfry heksadecymalne - np. 0xFF -> jeden bajt, 0-255, więc 64 bity, czyli 8 bajtów -> 16 cyfr
@@ -54,9 +54,9 @@ void* alloc_wrapper(size_t num_bytes, bool garbage_collect)
 {
     assert(num_bytes <= 0x7FFFFFFFFFFFFFFF);
 
-    void* memory = xcalloc(num_bytes + sizeof(allocation_header));
+    void *memory = xcalloc(num_bytes + sizeof(allocation_header));
 
-    allocation_header* hdr = (allocation_header*)memory;
+    allocation_header *hdr = (allocation_header*)memory;
     hdr->size = num_bytes;
 
     assert((hdr->size & alive_tag) == 0);
@@ -91,17 +91,17 @@ typedef enum garbage_collected
     GARBAGE_COLLECT_FALSE = 0
 } garbage_collected;
 
-void* gc_alloc(size_t num_bytes)
+void *gc_alloc(size_t num_bytes)
 {
     return alloc_wrapper(num_bytes, GARBAGE_COLLECT_TRUE);
 }
 
-void* alloc(size_t num_bytes)
+void *alloc(size_t num_bytes)
 {
     return alloc_wrapper(num_bytes, GARBAGE_COLLECT_FALSE);
 }
 
-//void free_wrapper(void* ptr)
+//void free_wrapper(void *ptr)
 //{
 //    if (ptr)
 //    {
@@ -130,7 +130,7 @@ void scan_for_pointers(uintptr_t memory_block_begin, size_t byte_count)
             uintptr_t obj_ptr = (uintptr_t)map_get_from_chain(gc_allocations, (void*)potential_managed_ptr);
             if (obj_ptr)
             {               
-                allocation_header* hdr = get_hdr_ptr(obj_ptr);
+                allocation_header *hdr = get_hdr_ptr(obj_ptr);
                 if (hdr->size & alive_tag)
                 {
                     // mamy cykl - nie skanujemy dalej
@@ -168,10 +168,10 @@ void mark(void)
     // no i to, co sami zaalokowaliśmy
     for (size_t i = 0; i < allocations->capacity; i++)
     {
-        hashmap_value* val = allocations->values[i];
+        hashmap_value *val = allocations->values[i];
         while (val)
         {
-            allocation_header* hdr = get_hdr_ptr(val->value);
+            allocation_header *hdr = get_hdr_ptr(val->value);
             assert(~(hdr->size & alive_tag));
             scan_for_pointers((uintptr_t)val->value, hdr->size);
             val = val->next;            
@@ -183,11 +183,11 @@ void sweep(void)
 {
     for (size_t i = 0; i < gc_allocations->capacity; i++)
     {
-        hashmap_value* val = gc_allocations->values[i];
+        hashmap_value *val = gc_allocations->values[i];
         if (val)
         {
-            hashmap_value* next = val->next;
-            allocation_header* hdr = get_hdr_ptr(val->value);
+            hashmap_value *next = val->next;
+            allocation_header *hdr = get_hdr_ptr(val->value);
 
             if (false == (hdr->size & alive_tag))
             {
@@ -211,14 +211,14 @@ void gc(void)
 
 void print_values_from_list(bool gc)
 {
-    chained_hashmap* map = gc ? gc_allocations : allocations;
+    chained_hashmap *map = gc ? gc_allocations : allocations;
     printf(gc ? "\nGC: \n" : "\nNON GC: \n");
     for (size_t i = 0; i < map->capacity; i++)
     {
         if (map->values[i])
         {
-            hashmap_value* val = map->values[i];
-            allocation_header* hdr = get_hdr_ptr(val->value);
+            hashmap_value *val = map->values[i];
+            allocation_header *hdr = get_hdr_ptr(val->value);
             int number = 0;
             if (gc)
             {
@@ -236,7 +236,7 @@ void print_values_from_list(bool gc)
 
 void gc_test(void)
 {
-    something_to_gc* stack_gc_to_save = null;
+    something_to_gc *stack_gc_to_save = null;
 
     allocations = xcalloc(sizeof(chained_hashmap));
     gc_allocations = xcalloc(sizeof(chained_hashmap));
@@ -246,9 +246,9 @@ void gc_test(void)
 #if 1
     for (size_t i = 0; i < 1000; i++)
     {
-        non_gc_object* nongc = alloc(sizeof(non_gc_object));
+        non_gc_object *nongc = alloc(sizeof(non_gc_object));
         nongc->test_number = i + 1;
-        something_to_gc* gc = gc_alloc(sizeof(something_to_gc));
+        something_to_gc *gc = gc_alloc(sizeof(something_to_gc));
         int option = i % 3;
         switch (option)
         {
@@ -262,7 +262,7 @@ void gc_test(void)
             case 1:
             {
                 // tutaj też powinniśmy skasować
-                something_to_gc* gc2 = gc_alloc(sizeof(something_to_gc));
+                something_to_gc *gc2 = gc_alloc(sizeof(something_to_gc));
                 gc2->test_number = i;
                 gc2->gc_obj_ptr = gc;
             }
@@ -293,9 +293,9 @@ void gc_test(void)
 #endif
 
 #if 0
-    non_gc_object* nongc = alloc(sizeof(non_gc_object));
+    non_gc_object *nongc = alloc(sizeof(non_gc_object));
     nongc->value = 555;
-    something_to_gc* gcobj = gc_alloc(sizeof(something_to_gc));
+    something_to_gc *gcobj = gc_alloc(sizeof(something_to_gc));
     globals.static_gc_to_save_1 = gcobj;
     stack_gc_to_save = gcobj;
 

@@ -21,25 +21,25 @@ typedef enum typespec_kind
 
 typedef struct typespec_array
 {
-    typespec* base_type;
-    expr* size_expr;
+    typespec *base_type;
+    expr *size_expr;
 } typespec_array;
 
 typedef struct typespec_list
 {
-    typespec* base_type;
-    expr* size_expr;
+    typespec *base_type;
+    expr *size_expr;
 } typespec_list;
 
 typedef struct typespec_pointer
 {
-    typespec* base_type;
+    typespec *base_type;
 } typespec_pointer;
 
 typedef struct typespec_function
 {
-    typespec* ret_type;
-    typespec** param_types;
+    typespec *ret_type;
+    typespec **param_types;
     size_t param_count;
 } typespec_function;
 
@@ -49,7 +49,7 @@ struct typespec
     source_pos pos;
     union
     {
-        const char* name;
+        const char *name;
         typespec_array array;
         typespec_list list;
         typespec_pointer pointer;
@@ -91,76 +91,76 @@ typedef struct ternary_expr ternary_expr;
 struct unary_expr
 {
     token_kind operator;
-    expr* operand;
+    expr *operand;
 };
 
 struct binary_expr
 {
     token_kind operator;
-    expr* left;
-    expr* right;
+    expr *left;
+    expr *right;
 };
 
 struct ternary_expr
 {
-    expr* condition;
-    expr* if_true;
-    expr* if_false;
+    expr *condition;
+    expr *if_true;
+    expr *if_false;
 };
 
 typedef struct call_expr
 {
-    expr* function_expr;
-    expr** args;
+    expr *function_expr;
+    expr **args;
     size_t args_num;
-    expr* method_receiver;
-    symbol* resolved_function; // określa, które z przeciążeń wezwać
+    expr *method_receiver;
+    symbol *resolved_function; // określa, które z przeciążeń wezwać
 } call_expr;
 
 typedef struct index_expr
 {
-    expr* array_expr;
-    expr* index_expr;
+    expr *array_expr;
+    expr *index_expr;
 } index_expr;
 
 typedef struct field_expr
 {
-    expr* expr;
-    const char* field_name;
+    expr *expr;
+    const char *field_name;
 } field_expr;
 
 typedef struct compound_literal_field
 {
-    expr* expr;
-    const char* field_name;
+    expr *expr;
+    const char *field_name;
 } compound_literal_field;
 
 typedef struct compound_literal_expr
 {
-    typespec* type;
-    compound_literal_field** fields;
+    typespec *type;
+    compound_literal_field **fields;
     size_t fields_count;
 } compound_literal_expr;
 
 typedef struct new_expr
 {
-    typespec* type;
+    typespec *type;
 } new_expr;
 
 typedef struct auto_expr
 {
-    typespec* type;
+    typespec *type;
 } auto_expr;
 
 typedef struct sizeof_expr
 {
-    expr* expr;
+    expr *expr;
 } sizeof_expr;
 
 typedef struct cast_expr
 {
-    typespec* type;
-    expr* expr;
+    typespec *type;
+    expr *expr;
 } cast_expr;
 
 typedef enum stub_expr_kind
@@ -177,20 +177,20 @@ typedef enum stub_expr_kind
 typedef struct stub_expr
 {
     stub_expr_kind kind;
-    expr* original_expr;
+    expr *original_expr;
 } stub_expr;
 
 struct expr
 {
     expr_kind kind;
-    type* resolved_type; // dodawany po parsowaniu
+    type *resolved_type; // dodawany po parsowaniu
     source_pos pos;
     union
     {
         int number_value;
         bool bool_value;
-        const char* name;
-        const char* string_value;
+        const char *name;
+        const char *string_value;
         unary_expr unary;
         binary_expr binary;
         ternary_expr ternary;
@@ -226,51 +226,51 @@ typedef enum stmt_kind
 
 typedef struct stmt_block
 {
-    stmt** stmts;
+    stmt **stmts;
     size_t stmts_count;
 } stmt_block;
 
 typedef struct if_else_stmt
 {
-    expr* cond_expr;
+    expr *cond_expr;
     stmt_block then_block;
-    stmt* else_stmt;
+    stmt *else_stmt;
 } if_else_stmt;
 
 typedef struct return_stmt
 {
-    expr* ret_expr;
+    expr *ret_expr;
 } return_stmt;
 
 typedef struct decl_stmt
 {
-    decl* decl;
+    decl *decl;
 } decl_stmt;
 
 typedef struct while_stmt
 {
-    expr* cond_expr;
+    expr *cond_expr;
     stmt_block stmts;    
 } while_stmt;
 
 typedef struct for_stmt
 {
-    stmt* init_stmt;
-    expr* cond_expr;
-    stmt* next_stmt;
+    stmt *init_stmt;
+    expr *cond_expr;
+    stmt *next_stmt;
     stmt_block stmts;
 } for_stmt;
 
 typedef struct assign_stmt
 {
-    expr* assigned_var_expr;
+    expr *assigned_var_expr;
     token_kind operation;
-    expr* value_expr;
+    expr *value_expr;
 } assign_stmt;
 
 typedef struct switch_case
 {
-    expr** cond_exprs;
+    expr **cond_exprs;
     size_t cond_exprs_num;
     stmt_block stmts;
     bool is_default;
@@ -279,14 +279,14 @@ typedef struct switch_case
 
 typedef struct switch_stmt
 {
-    expr* var_expr;
-    switch_case** cases;
+    expr *var_expr;
+    switch_case **cases;
     size_t cases_num;    
 } switch_stmt;
 
 typedef struct delete_stmt
 {
-    expr* expr;
+    expr *expr;
 } delete_stmt;
 
 struct stmt
@@ -300,7 +300,7 @@ struct stmt
         decl_stmt decl_stmt;
         for_stmt for_stmt;
         assign_stmt assign;
-        expr* expr;
+        expr *expr;
         stmt_block block;
         while_stmt while_stmt;
         while_stmt do_while_stmt;
@@ -321,53 +321,53 @@ typedef enum decl_kind
 
 typedef struct aggregate_field
 {
-    const char* name;
-    typespec* type;
+    const char *name;
+    typespec *type;
     source_pos pos;
 } aggregate_field;
 
 typedef struct aggregate_decl
 {
-    aggregate_field* fields;
+    aggregate_field *fields;
     size_t fields_count;
 } aggregate_decl;
 
 typedef struct variable_decl
 {
-    typespec* type; 
-    expr* expr;
+    typespec *type; 
+    expr *expr;
 } variable_decl;
 
 typedef struct const_decl
 {
-    expr* expr;
+    expr *expr;
 } const_decl;
 
 typedef struct function_param
 {
-    const char* name;
-    typespec* type;
+    const char *name;
+    typespec *type;
     source_pos pos;
 } function_param;
 
 typedef struct function_param_list
 {
-    function_param* params;
+    function_param *params;
     int param_count;
 } function_param_list;
 
 typedef struct function_decl
 {
     function_param_list params;
-    typespec* return_type;
-    function_param* method_receiver;
+    typespec *return_type;
+    function_param *method_receiver;
     stmt_block stmts;
     bool is_extern;
 } function_decl;
 
 typedef struct enum_value
 {
-    const char* name;
+    const char *name;
     bool value_set;
     int64_t value;
     source_pos pos;
@@ -375,13 +375,13 @@ typedef struct enum_value
 
 typedef struct enum_decl
 {
-    enum_value* values;
+    enum_value *values;
     size_t values_count;
 } enum_decl;
 
 struct decl
 {
-    const char* name;
+    const char *name;
     decl_kind kind;
     source_pos pos;
     union

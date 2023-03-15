@@ -8,11 +8,11 @@ void print_newline(void)
     printf("\n%.*s", 2 * indent, "                                                                               ");
 }
 
-void print_decl(decl* d);
+void print_decl(decl *d);
 void print_stmt_block(stmt_block block);
-void print_typespec(typespec* t);
+void print_typespec(typespec *t);
 
-void print_expr(expr* e)
+void print_expr(expr *e)
 {
     if (e == null)
     {
@@ -139,7 +139,7 @@ void print_expr(expr* e)
 
             for (size_t i = 0; i < e->compound.fields_count; i++)
             {
-                compound_literal_field* f = e->compound.fields[i];
+                compound_literal_field *f = e->compound.fields[i];
                 if (f->field_name)
                 {
                     printf("(%s ", f->field_name);
@@ -205,7 +205,7 @@ void print_expr(expr* e)
     }
 }
 
-void print_statement(stmt* s)
+void print_statement(stmt *s)
 {
     if (s == null)
     {
@@ -333,10 +333,10 @@ void print_statement(stmt* s)
             {
                 print_newline();
                 printf("(case ");
-                switch_case* c = s->switch_stmt.cases[i];
+                switch_case *c = s->switch_stmt.cases[i];
                 for (size_t j = 0; j < c->cond_exprs_num; j++)
                 {
-                    expr* e = c->cond_exprs[j];
+                    expr *e = c->cond_exprs[j];
                     print_expr(e);
                     if (j != c->cond_exprs_num - 1)
                     {
@@ -396,7 +396,7 @@ void print_stmt_block(stmt_block block)
     indent--;
 }
 
-void print_typespec(typespec* t)
+void print_typespec(typespec *t)
 {
     if (t != 0)
     {
@@ -435,7 +435,7 @@ void print_typespec(typespec* t)
                 printf("(function (");                
                 for (size_t i = 0; i < t->function.param_count; i++)
                 {
-                    typespec* p = t->function.param_types[i];
+                    typespec *p = t->function.param_types[i];
                     print_typespec(p);
                     if (i != t->function.param_count - 1)
                     {
@@ -456,7 +456,7 @@ void print_typespec(typespec* t)
     }
 }
 
-void print_decl(decl* d)
+void print_decl(decl *d)
 {
     if (d == null)
     {
@@ -491,7 +491,7 @@ void print_decl(decl* d)
                 printf(" ");
                 for (int index = 0; index < d->function.params.param_count; index++)
                 {
-                    function_param* p = &d->function.params.params[index];
+                    function_param *p = &d->function.params.params[index];
                     printf("(%s ", p->name);
                     print_typespec(p->type);
                     printf(")");
@@ -603,7 +603,7 @@ void print_decl(decl* d)
                 index++)
             {
                 print_newline();
-                enum_value* value = &d->enum_decl.values[index];
+                enum_value *value = &d->enum_decl.values[index];
                 printf("(%s", value->name);
                 if (value->value_set)
                 {
