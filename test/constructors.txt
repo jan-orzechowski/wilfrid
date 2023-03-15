@@ -1,0 +1,40 @@
+extern fn printf(str: char*, variadic) : int
+
+struct some_struct 
+{ 
+    member: int 
+} 
+
+fn main () 
+{
+    let s := new some_struct(1)    
+    printf("s value: %d", s.member)
+
+    let p := new some_struct(2, 3)
+    printf("p value: %d", p.member)
+
+    let q := new some_struct()
+    printf("q value: %d", q.member)
+
+    let r := new some_struct
+    printf("r value: %d", r.member)
+}
+
+fn constructor () : some_struct 
+{ 
+    printf("this constructor is never called")
+}
+
+fn constructor (val: int) : some_struct* 
+{ 
+    let s := new some_struct 
+    s.member = val 
+    return s 
+}
+
+fn constructor (val_a: int, val_b: int) : some_struct* 
+{ 
+    let s := new some_struct 
+    s.member = val_a + val_b
+    return s 
+}

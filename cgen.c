@@ -41,7 +41,6 @@ void gen_line_hint(source_pos pos)
 
 void gen_stmt(stmt* s);
 void gen_expr(expr* e);
-void gen_expr_assign(expr* e);
 void gen_func_decl(decl* d);
 
 const char* gen_expr_str(expr* e)
@@ -263,19 +262,9 @@ void gen_simple_stmt(stmt* stmt)
                     }                  
 
                     if (stmt->decl_stmt.decl->variable.expr)
-                    {
-                        if (stmt->decl_stmt.decl->variable.expr->kind == EXPR_NEW
-                            || stmt->decl_stmt.decl->variable.expr->kind == EXPR_AUTO)
-                        {                       
-                            gen_printf(" = ");
-                            gen_expr_assign(stmt->decl_stmt.decl->variable.expr);
-                            debug_breakpoint;
-                        }
-                        else
-                        {
-                            gen_printf(" = ");
-                            gen_expr(stmt->decl_stmt.decl->variable.expr);
-                        }
+                    {                       
+                        gen_printf(" = ");
+                        gen_expr(stmt->decl_stmt.decl->variable.expr);                        
                     }
                     else
                     {
@@ -300,16 +289,7 @@ void gen_simple_stmt(stmt* stmt)
             if (stmt->assign.value_expr)
             {
                 gen_printf(" %s ", get_token_kind_name(stmt->assign.operation));                
-                if (stmt->assign.value_expr->kind == EXPR_NEW
-                    || stmt->assign.value_expr->kind == EXPR_AUTO)
-                {
-                    gen_expr_assign(stmt->assign.value_expr);
-                    debug_breakpoint;
-                }
-                else
-                {
-                    gen_expr(stmt->assign.value_expr);
-                }
+                gen_expr(stmt->assign.value_expr);
             }
             else
             {
@@ -463,55 +443,19 @@ void gen_stmt(stmt* stmt)
     }
 }
 
-void gen_expr_assign(expr* e)
-{
-    switch (e->kind)
-    {
-        case EXPR_NEW:
-        {
-            if (e->new.type->kind == TYPESPEC_LIST)
-            {
-                assert(e->resolved_type);
-                gen_printf("___list_initialize___(8, sizeof(%s), 0)", 
-                    e->resolved_type->list.base_type->name);
-            }
-            else
-            {
-                char* c = typespec_to_cdecl(e->new.type, null);
-                gen_printf("(%s*)___alloc___(sizeof(%s))", c, c);
-            }
-        }
-        break;
-        case EXPR_AUTO:
-        {
-            if (e->new.type->kind == TYPESPEC_LIST)
-            {
-                assert(e->resolved_type);
-                gen_printf("___list_initialize___(8, sizeof(%s), 1)", 
-                    e->resolved_type->list.base_type->name);
-            }
-            else
-            {
-                char* c = typespec_to_cdecl(e->new.type, null);
-                gen_printf("(%s*)___managed_alloc___(sizeof(%s))", c, c);
-            }
-        }
-        break;
-        invalid_default_case;
-    }
-}
-
 void gen_expr_stub(expr* e)
 {
     assert(e->kind == EXPR_STUB);
     assert(e->stub.original_expr);
-    assert(e->stub.original_expr->kind == EXPR_CALL);
-    assert(e->stub.original_expr->call.method_receiver);
 
-    expr* receiver = e->stub.original_expr->call.method_receiver;
-
-    assert(receiver->resolved_type);
-    assert(receiver->resolved_type->kind == TYPE_LIST);
+    expr* receiver = null;
+    if (e->stub.original_expr->kind == EXPR_CALL)
+    {
+        assert(e->stub.original_expr->call.method_receiver);
+        receiver = e->stub.original_expr->call.method_receiver;
+        assert(receiver->resolved_type);
+        assert(receiver->resolved_type->kind == TYPE_LIST);
+    }
 
     switch (e->stub.kind)
     {
@@ -553,6 +497,13 @@ void gen_expr_stub(expr* e)
             type* base_type = receiver->resolved_type->list.base_type;
             char* type_str = type_to_cdecl(base_type, null);
             gen_printf("%s)", type_str);
+        }
+        break;
+        case STUB_EXPR_CONSTRUCTOR:
+        {
+            assert(e->stub.original_expr->kind == EXPR_CALL);
+            assert(e->stub.original_expr->call.resolved_function);
+            gen_expr(e->stub.original_expr);
         }
         break;
         invalid_default_case;
@@ -659,6 +610,7 @@ void gen_expr(expr* e)
         case EXPR_FIELD:
         {
             gen_expr(e->field.expr);
+            assert(e->field.expr->resolved_type);
             if (e->field.expr->resolved_type->kind == TYPE_POINTER)
             {
                 gen_printf("->%s", e->field.field_name);
@@ -727,8 +679,36 @@ void gen_expr(expr* e)
         }
         break;
         case EXPR_NONE:
-        case EXPR_NEW: // zob gen_expr_assign
-        case EXPR_AUTO: // zob gen_expr_assign
+        case EXPR_NEW: 
+        {
+            if (e->new.type->kind == TYPESPEC_LIST)
+            {
+                assert(e->resolved_type);
+                gen_printf("___list_initialize___(8, sizeof(%s), 0)",
+                    e->resolved_type->list.base_type->name);
+            }
+            else
+            {
+                char* c = typespec_to_cdecl(e->new.type, null);
+                gen_printf("(%s*)___alloc___(sizeof(%s))", c, c);
+            }
+        }
+        break;
+        case EXPR_AUTO: 
+        {
+            if (e->new.type->kind == TYPESPEC_LIST)
+            {
+                assert(e->resolved_type);
+                gen_printf("___list_initialize___(8, sizeof(%s), 1)",
+                    e->resolved_type->list.base_type->name);
+            }
+            else
+            {
+                char* c = typespec_to_cdecl(e->new.type, null);
+                gen_printf("(%s*)___managed_alloc___(sizeof(%s))", c, c);
+            }
+        } 
+        break;
         invalid_default_case;
     }
 }

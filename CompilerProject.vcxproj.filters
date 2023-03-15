@@ -26,5 +26,6 @@
     <Text Include="test\overloading.txt" />
     <Text Include="test\extern.txt" />
     <Text Include="test\loops.txt" />
+    <Text Include="test\constructors.txt" />
   </ItemGroup>
 </Project>

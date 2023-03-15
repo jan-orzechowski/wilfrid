@@ -171,6 +171,7 @@ typedef enum stub_expr_kind
     STUB_EXPR_LIST_LENGTH,
     STUB_EXPR_LIST_CAPACITY,
     STUB_EXPR_LIST_ADD,
+    STUB_EXPR_CONSTRUCTOR
 } stub_expr_kind;
 
 typedef struct stub_expr

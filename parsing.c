@@ -521,6 +521,14 @@ expr* parse_complex_expr(void)
             parse_function_call_arguments(result);
 
             expect_token_kind(TOKEN_RIGHT_PAREN);
+
+            // szczególny przypadek - 'new x()' i 'new x' traktujemy tak samo
+            if (result->call.args_num == 0 
+                && (result->call.function_expr->kind == EXPR_NEW
+                    || result->call.function_expr->kind == EXPR_AUTO))
+            {
+                result = result->call.function_expr;
+            }
         }
         else if (is_token_kind(TOKEN_LEFT_BRACKET))
         {
@@ -1556,8 +1564,12 @@ void parse_test(void)
         "let chain := some_object.method().other_method().yet_other_method()",
         "extern fn strlen(str: char*) : int",
         "extern fn printf(str: char*, variadic) : int",
-#endif
         "fn /* comment /* other comment /* other comment */ */ */ x /* comment */(i:int) :int { return i }",
+#endif
+        "let x = new X(1 ,2)",
+        "let x = new X(new y(), new z())",
+        "let x = new memory(1000)",
+        "let x = auto memory(100)",
     };
 
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);

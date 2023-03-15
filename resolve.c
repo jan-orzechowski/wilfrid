@@ -917,6 +917,21 @@ resolved_expr* resolve_compound_expr(expr* e, type* expected_type, bool ignore_e
    return result;
 }
 
+void plug_stub_expr(expr* original_expr, stub_expr_kind kind)
+{
+    expr* new_expr = push_struct(arena, expr);
+    new_expr->kind = EXPR_STUB;
+    new_expr->pos = original_expr->pos;
+    new_expr->stub.kind = kind;
+    
+    expr temp = *original_expr;
+    (*original_expr) = *new_expr;
+    *new_expr = temp;
+
+    // tutaj nazwy są odwrócone; efekt jest taki, że stub ma teraz odniesienie do starego wyrażenia
+    original_expr->stub.original_expr = new_expr;
+}
+
 resolved_expr* resolve_special_case_methods(expr* e)
 {    
     resolved_expr* result = null;
@@ -969,16 +984,7 @@ resolved_expr* resolve_special_case_methods(expr* e)
 
             if (stub_kind)
             {
-                expr* new_expr = push_struct(arena, expr);
-                new_expr->kind = EXPR_STUB;
-                new_expr->pos = e->pos;
-                new_expr->stub.kind = stub_kind;
-                new_expr->stub.original_expr = e;
-
-                expr temp = *e;
-                (*e) = *new_expr;
-                *new_expr = temp;
-                e->stub.original_expr = new_expr;
+                plug_stub_expr(e, stub_kind);
             }
         }
     }
@@ -986,10 +992,88 @@ resolved_expr* resolve_special_case_methods(expr* e)
     return result;
 }
 
+resolved_expr* resolve_special_case_constructors(expr* e)
+{
+    if (e->call.function_expr->kind != EXPR_NEW 
+        && e->call.function_expr->kind != EXPR_AUTO)
+    {
+        return null;
+    }
+    
+    type* return_type = resolve_expr(e->call.function_expr)->type;
+    if (e->call.args_num == 0)
+    {
+        plug_stub_expr(e, STUB_EXPR_CONSTRUCTOR);
+
+        resolved_expr* result = get_resolved_rvalue_expr(return_type);
+        return result;
+    }
+    else
+    {
+        symbol* matching = null;
+        symbol* candidate = get_symbol(str_intern("constructor"));
+        while (candidate)
+        {
+            if (candidate->state == SYMBOL_UNRESOLVED)
+            {
+                resolve_symbol(candidate);
+            }
+
+            assert(candidate->type->kind == TYPE_FUNCTION);
+            if (candidate->type->function.has_variadic_arg)
+            {
+                goto constructor_candidate_check_next;
+            }
+
+            if (false == compare_types(candidate->type->function.return_type, return_type))
+            {
+                goto constructor_candidate_check_next;
+            }
+
+            if (candidate->type->function.param_count == e->call.args_num)
+            {
+                for (size_t i = 0; i < candidate->type->function.param_count; i++)
+                {
+                    expr* arg_expr = e->call.args[i];
+                    type* expected_param_type = candidate->type->function.param_types[i];
+                    resolved_expr* resolved_arg_expr = resolve_expected_expr(arg_expr, expected_param_type, true);
+                    if (false == compare_types(resolved_arg_expr->type, expected_param_type))
+                    {
+                        goto constructor_candidate_check_next;
+                    }
+                }
+
+                matching = candidate;
+                break;
+            }
+
+        constructor_candidate_check_next:
+
+            candidate = candidate->next_overload;
+        }
+
+        if (matching == null)
+        {
+            fatal("no overload is matching types of constructor arguments");
+        }
+
+        e->call.resolved_function = matching;
+
+        resolved_expr* result = get_resolved_rvalue_expr(return_type);
+        return result;
+    }
+}
+
 resolved_expr* resolve_call_expr(expr* e)
 {
     assert(e->kind == EXPR_CALL);
     resolved_expr* result = null;
+
+    result = resolve_special_case_constructors(e);
+    if (result)
+    {
+        return result;
+    }
 
     result = resolve_special_case_methods(e);
     if (result)
@@ -1027,6 +1111,16 @@ resolved_expr* resolve_call_expr(expr* e)
                 if (false == compare_types(resolved_arg_expr->type, expected_param_type))
                 {
                     goto candidate_check_next;
+                }
+            }
+
+            // w przypadku variadic potrzebujemy resolve pozostałych argumentów
+            if (e->call.args_num > arg_count)
+            {
+                for (size_t i = arg_count; i < e->call.args_num; i++)
+                {
+                    expr* arg_expr = e->call.args[i];
+                    resolved_expr* resolved_arg_expr = resolve_expected_expr(arg_expr, null, false);
                 }
             }
 
@@ -1755,7 +1849,6 @@ void resolve_test(void)
         "struct T { i: int }",
         "let a: int[3] = {1, 2, 3}",
         "struct S { t: int, c: char }",
-#endif
         "let x2 = fun(1, 2)",
         "let i: int = 1",
         "fn fun2(vec: v2): int {\
@@ -1768,7 +1861,6 @@ void resolve_test(void)
         "let y = fuu(fuu(7, x), {3, 4})",
         "fn fzz(x: int, y: int) : v2 { return {x + 1, y - 1} }",
         "fn fuu(x: int, v: v2) : int { return v.x + x } ",
-#if 1
         "fn ftest1(x: int): int { if (x) { return -x } else if (x % 2 == 0) { return x } else { return 0 } }",
         "fn ftest2(x: int): int { let p := 1 while (x) { p *= 2 x-- } return p }",
         "fn ftest3(x: int): int { let p := 1 do { p *= 2 x-- } while (x) return p }",
@@ -1796,6 +1888,10 @@ void resolve_test(void)
         "let printed_chars3 := printf(\"numbers: %d, %d, %d\", 1, 2, 3)",
         "extern fn printf(str: char*, variadic) : int",
 #endif
+        "fn test () { let s := new some_struct(1) }",
+        "struct some_struct { member: int } ",
+        "fn constructor () : some_struct { /* empty constructor */ }",
+        "fn constructor (val: int) : some_struct* { let s := new some_struct s.member = val return s }",
     };
     size_t str_count = sizeof(test_strs) / sizeof(test_strs[0]);
 
