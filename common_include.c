@@ -8,7 +8,10 @@
 
 #define null 0
 #define offsetof(s,m) ((size_t)&(((s*)0)->m))
+
+#if !defined(max)
 #define max(a,b) ((a) > (b) ? (a) : (b))
+#endif 
 
 void* ___alloc___(size_t num_bytes)
 {
