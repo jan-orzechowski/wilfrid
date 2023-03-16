@@ -366,9 +366,8 @@ bool lex_next_token(void)
         break;
         case ';':
         {
-            tok.kind = TOKEN_SEMICOLON;
-            stream++;
-            tok.name = str_intern_range(tok.start, stream);
+            // usuwamy i zastępujemy whitespace
+            *(stream) = ' ';
         }
         break;
         case '[':

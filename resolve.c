@@ -1864,7 +1864,7 @@ void resolve_test(void)
         "fn ftest1(x: int): int { if (x) { return -x } else if (x % 2 == 0) { return x } else { return 0 } }",
         "fn ftest2(x: int): int { let p := 1 while (x) { p *= 2 x-- } return p }",
         "fn ftest3(x: int): int { let p := 1 do { p *= 2 x-- } while (x) return p }",
-        "fn ftest4(x: int): int { for (let i := 0; i < x; i++) { if (i % 3 == 0) { return x } } return 0 }",
+        "fn ftest4(x: int): int { for (let i := 0, i < x, i++) { if (i % 3 == 0) { return x } } return 0 }",
         "fn ftest5(x: int): int { switch(x) { case 0: case 1: { return 5 } case 3: default: { return -1 } } }",
         "fn return_value_test(arg: int):int{\
             if(arg>0){let i := return_value_test(arg - 2) return i } else { return 0 } }}",

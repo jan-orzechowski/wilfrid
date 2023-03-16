@@ -934,11 +934,11 @@ stmt *parse_statement(void)
 
             s->for_stmt.init_stmt = parse_statement();
 
-            expect_token_kind(TOKEN_SEMICOLON);
+            expect_token_kind(TOKEN_COMMA);
 
             s->for_stmt.cond_expr = parse_expr();
 
-            expect_token_kind(TOKEN_SEMICOLON);
+            expect_token_kind(TOKEN_COMMA);
 
             s->for_stmt.next_stmt = parse_statement();
 
@@ -1501,7 +1501,7 @@ void parse_test(void)
         "union some_union { a: int, b: float }",
         "enum some_enum { A = 1, B, C, D = 4 }",
         "fn some_function() : int { let x = 100\
-            for (let i = 0; i < x; i++) { x = x + 1 } return x }",
+            for (let i = 0, i < x, i++) { x = x + 1 } return x }",
         "let x = 2 + f(1, 2) + g(3) + 4",
         "fn f() { x *= 2 y |= !x z &= 8 w /= z u &&= ~y v ||= z a ^= b } ",
         "fn f(ind: int) { x.arr[ind] = y[ind] }",

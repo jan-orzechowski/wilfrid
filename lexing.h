@@ -8,7 +8,6 @@ typedef enum token_kind
     TOKEN_COMMA,
     TOKEN_DOT,
     TOKEN_COLON,
-    TOKEN_SEMICOLON,
     TOKEN_QUESTION,
     TOKEN_LEFT_PAREN,
     TOKEN_RIGHT_PAREN,
@@ -94,7 +93,6 @@ const char* token_kind_names[] = {
     [TOKEN_COMMA] = ",",
     [TOKEN_DOT] = ".",
     [TOKEN_QUESTION] = "?",
-    [TOKEN_SEMICOLON] = ";",
     [TOKEN_NOT] = "!",
     [TOKEN_BITWISE_NOT] = "~",
 

@@ -5,7 +5,7 @@ extern fn printf(str: char*, variadic) : int
 fn main()
 {
     let sum := 0
-    for (let i := 0; i < 10; i++)
+    for (let i := 0, i < 10, i++)
     {
         sum++
     }
@@ -31,7 +31,7 @@ fn main()
     }
     while (false == loop)
 
-    for (;;f())
+    for (,,f())
     {
         sum++
 
