@@ -103,16 +103,16 @@ bool is_name_keyword(const char *name)
 }
 
 char *stream;
-tok token;
-tok **all_tokens;
+token tok;
+token **all_tokens;
 int lexed_token_index;
 
 int nested_comments_level = 0;
 
-bool next_token(void)
+bool lex_next_token(void)
 {
     bool discard_token = false;
-    token.start = stream;
+    tok.start = stream;
     switch (*stream)
     {
         case '0': case '1': case '2': case '3': case '4': case '5':
@@ -126,8 +126,8 @@ bool next_token(void)
                 val += *stream++ - '0'; // przerabiamy char na integer
             }
             //stream--; // w ostatnim przejściu pętli posunęliśmy się o 1 za daleko
-            token.kind = TOKEN_INT;
-            token.val = val;
+            tok.kind = TOKEN_INT;
+            tok.val = val;
         }
         break;
         case 'a': case 'b': case 'c': case 'd': case 'e': case 'f':
@@ -147,14 +147,14 @@ bool next_token(void)
             {
                 stream++;
             }
-            token.name = str_intern_range(token.start, stream);
-            if (is_name_keyword(token.name))
+            tok.name = str_intern_range(tok.start, stream);
+            if (is_name_keyword(tok.name))
             {
-                token.kind = TOKEN_KEYWORD;
+                tok.kind = TOKEN_KEYWORD;
             }
             else
             {
-                token.kind = TOKEN_NAME;
+                tok.kind = TOKEN_NAME;
             }
         }
         break;
@@ -163,20 +163,20 @@ bool next_token(void)
             if (*(stream + 1) == '+')
             {
                 stream += 2;
-                token.kind = TOKEN_INC;
-                token.name = str_intern_range(token.start, stream);
+                tok.kind = TOKEN_INC;
+                tok.name = str_intern_range(tok.start, stream);
             }
             else if (*(stream + 1) == '=')
             {
                 stream += 2;
-                token.kind = TOKEN_ADD_ASSIGN;
-                token.name = str_intern_range(token.start, stream);
+                tok.kind = TOKEN_ADD_ASSIGN;
+                tok.name = str_intern_range(tok.start, stream);
             }
             else
             {
                 stream++;
-                token.kind = TOKEN_ADD;
-                token.name = str_intern_range(token.start, stream);
+                tok.kind = TOKEN_ADD;
+                tok.name = str_intern_range(tok.start, stream);
             }
         }
         break;
@@ -185,20 +185,20 @@ bool next_token(void)
             if (*(stream + 1) == '-')
             {
                 stream += 2;
-                token.kind = TOKEN_DEC;
-                token.name = str_intern_range(token.start, stream);
+                tok.kind = TOKEN_DEC;
+                tok.name = str_intern_range(tok.start, stream);
             }
             else if (*(stream + 1) == '=')
             {
                 stream += 2;
-                token.kind = TOKEN_SUB_ASSIGN;
-                token.name = str_intern_range(token.start, stream);
+                tok.kind = TOKEN_SUB_ASSIGN;
+                tok.name = str_intern_range(tok.start, stream);
             }
             else
             {
                 stream++;
-                token.kind = TOKEN_SUB;
-                token.name = str_intern_range(token.start, stream);
+                tok.kind = TOKEN_SUB;
+                tok.name = str_intern_range(tok.start, stream);
             }
         }
         break;
@@ -207,14 +207,14 @@ bool next_token(void)
             if (*(stream + 1) == '=')
             {
                 stream += 2;
-                token.kind = TOKEN_MUL_ASSIGN;
-                token.name = str_intern_range(token.start, stream);
+                tok.kind = TOKEN_MUL_ASSIGN;
+                tok.name = str_intern_range(tok.start, stream);
             }
             else
             {
-                token.kind = TOKEN_MUL;
+                tok.kind = TOKEN_MUL;
                 stream++;
-                token.name = str_intern_range(token.start, stream);
+                tok.name = str_intern_range(tok.start, stream);
             }
         }
         break;
@@ -242,8 +242,8 @@ bool next_token(void)
             else if (*(stream + 1) == '=')
             {
                 stream += 2;
-                token.kind = TOKEN_DIV_ASSIGN;
-                token.name = str_intern_range(token.start, stream);
+                tok.kind = TOKEN_DIV_ASSIGN;
+                tok.name = str_intern_range(tok.start, stream);
             }
             else if (*(stream + 1) == '*')
             {
@@ -279,15 +279,15 @@ bool next_token(void)
             }
             else
             {
-                token.kind = TOKEN_DIV;
+                tok.kind = TOKEN_DIV;
                 stream++;
-                token.name = str_intern_range(token.start, stream);
+                tok.name = str_intern_range(tok.start, stream);
             }
         }
         break;
         case '"':
         {
-            token.kind = TOKEN_STRING;
+            tok.kind = TOKEN_STRING;
             stream++;
             for (;;)
             {
@@ -299,7 +299,7 @@ bool next_token(void)
 
                 if (*(stream) == '"')
                 {
-                    token.string_val = str_intern_range(token.start + 1, stream);
+                    tok.string_val = str_intern_range(tok.start + 1, stream);
                     stream++;
                     break;
                 }
@@ -308,44 +308,44 @@ bool next_token(void)
         break;
         case '(':
         {
-            token.kind = TOKEN_LEFT_PAREN;
+            tok.kind = TOKEN_LEFT_PAREN;
             stream++;
-            token.name = str_intern_range(token.start, stream);
+            tok.name = str_intern_range(tok.start, stream);
         }
         break;
         case ')':
         {
-            token.kind = TOKEN_RIGHT_PAREN;
+            tok.kind = TOKEN_RIGHT_PAREN;
             stream++;
-            token.name = str_intern_range(token.start, stream);
+            tok.name = str_intern_range(tok.start, stream);
         }
         break;
         case '{':
         {
-            token.kind = TOKEN_LEFT_BRACE;
+            tok.kind = TOKEN_LEFT_BRACE;
             stream++;
-            token.name = str_intern_range(token.start, stream);
+            tok.name = str_intern_range(tok.start, stream);
         }
         break;
         case '}':
         {
-            token.kind = TOKEN_RIGHT_BRACE;
+            tok.kind = TOKEN_RIGHT_BRACE;
             stream++;
-            token.name = str_intern_range(token.start, stream);
+            tok.name = str_intern_range(tok.start, stream);
         }
         break;
         case ',':
         {
-            token.kind = TOKEN_COMMA;
+            tok.kind = TOKEN_COMMA;
             stream++;
-            token.name = str_intern_range(token.start, stream);
+            tok.name = str_intern_range(tok.start, stream);
         }
         break;
         case '.':
         {
-            token.kind = TOKEN_DOT;
+            tok.kind = TOKEN_DOT;
             stream++;
-            token.name = str_intern_range(token.start, stream);
+            tok.name = str_intern_range(tok.start, stream);
         }
         break;
         case '%':
@@ -353,36 +353,36 @@ bool next_token(void)
             if (*(stream + 1) == '=')
             {
                 stream += 2;
-                token.kind = TOKEN_MOD_ASSIGN;
-                token.name = str_intern_range(token.start, stream);
+                tok.kind = TOKEN_MOD_ASSIGN;
+                tok.name = str_intern_range(tok.start, stream);
             }
             else
             {
-                token.kind = TOKEN_MOD;
+                tok.kind = TOKEN_MOD;
                 stream++;
-                token.name = str_intern_range(token.start, stream);
+                tok.name = str_intern_range(tok.start, stream);
             }
         }
         break;
         case ';':
         {
-            token.kind = TOKEN_SEMICOLON;
+            tok.kind = TOKEN_SEMICOLON;
             stream++;
-            token.name = str_intern_range(token.start, stream);
+            tok.name = str_intern_range(tok.start, stream);
         }
         break;
         case '[':
         {
-            token.kind = TOKEN_LEFT_BRACKET;
+            tok.kind = TOKEN_LEFT_BRACKET;
             stream++;
-            token.name = str_intern_range(token.start, stream);
+            tok.name = str_intern_range(tok.start, stream);
         }
         break;
         case ']':
         {
-            token.kind = TOKEN_RIGHT_BRACKET;
+            tok.kind = TOKEN_RIGHT_BRACKET;
             stream++;
-            token.name = str_intern_range(token.start, stream);
+            tok.name = str_intern_range(tok.start, stream);
         }
         break;
         case '<':
@@ -390,29 +390,29 @@ bool next_token(void)
             if (*(stream + 1) == '=')
             {              
                 stream += 2;
-                token.kind = TOKEN_LEQ;
-                token.name = str_intern_range(token.start, stream);                
+                tok.kind = TOKEN_LEQ;
+                tok.name = str_intern_range(tok.start, stream);                
             }
             else if (*(stream + 1) == '<')
             {
                 if (*(stream + 1) == '=')
                 {
                     stream += 3;
-                    token.kind = TOKEN_LEFT_SHIFT_ASSIGN;
-                    token.name = str_intern_range(token.start, stream);
+                    tok.kind = TOKEN_LEFT_SHIFT_ASSIGN;
+                    tok.name = str_intern_range(tok.start, stream);
                 }
                 else
                 {
                     stream += 2;
-                    token.kind = TOKEN_LEFT_SHIFT;
-                    token.name = str_intern_range(token.start, stream);
+                    tok.kind = TOKEN_LEFT_SHIFT;
+                    tok.name = str_intern_range(tok.start, stream);
                 }
             }
             else
             {
                 stream++;
-                token.kind = TOKEN_LT;
-                token.name = str_intern_range(token.start, stream);
+                tok.kind = TOKEN_LT;
+                tok.name = str_intern_range(tok.start, stream);
             }            
         }
         break;
@@ -421,29 +421,29 @@ bool next_token(void)
             if (*(stream + 1) == '=')
             {             
                 stream += 2;
-                token.kind = TOKEN_GEQ;
-                token.name = str_intern_range(token.start, stream);
+                tok.kind = TOKEN_GEQ;
+                tok.name = str_intern_range(tok.start, stream);
             }
             else if (*(stream + 1) == '>')
             {
                 if (*(stream + 1) == '=')
                 {
                     stream += 3;
-                    token.kind = TOKEN_RIGHT_SHIFT_ASSIGN;
-                    token.name = str_intern_range(token.start, stream);
+                    tok.kind = TOKEN_RIGHT_SHIFT_ASSIGN;
+                    tok.name = str_intern_range(tok.start, stream);
                 }
                 else
                 {
                     stream += 2;
-                    token.kind = TOKEN_RIGHT_SHIFT;
-                    token.name = str_intern_range(token.start, stream);
+                    tok.kind = TOKEN_RIGHT_SHIFT;
+                    tok.name = str_intern_range(tok.start, stream);
                 }              
             }
             else
             {
                 stream++;
-                token.kind = TOKEN_GT;
-                token.name = str_intern_range(token.start, stream);
+                tok.kind = TOKEN_GT;
+                tok.name = str_intern_range(tok.start, stream);
             }
         }
         break;
@@ -454,27 +454,27 @@ bool next_token(void)
                 if (*(stream + 2) == '=')
                 {
                     stream += 3;
-                    token.kind = TOKEN_OR_ASSIGN;
-                    token.name = str_intern_range(token.start, stream);
+                    tok.kind = TOKEN_OR_ASSIGN;
+                    tok.name = str_intern_range(tok.start, stream);
                 }
                 else
                 {
                     stream += 2;
-                    token.kind = TOKEN_OR;
-                    token.name = str_intern_range(token.start, stream);
+                    tok.kind = TOKEN_OR;
+                    tok.name = str_intern_range(tok.start, stream);
                 }
             }
             else if (*(stream + 1) == '=')
             {
                 stream += 2;
-                token.kind = TOKEN_BITWISE_OR_ASSIGN;
-                token.name = str_intern_range(token.start, stream);
+                tok.kind = TOKEN_BITWISE_OR_ASSIGN;
+                tok.name = str_intern_range(tok.start, stream);
             }
             else
             {
                 stream++;
-                token.kind = TOKEN_BITWISE_OR;
-                token.name = str_intern_range(token.start, stream);
+                tok.kind = TOKEN_BITWISE_OR;
+                tok.name = str_intern_range(tok.start, stream);
             }
         }
         break;
@@ -485,27 +485,27 @@ bool next_token(void)
                 if (*(stream + 2) == '=')
                 {
                     stream += 3;
-                    token.kind = TOKEN_AND_ASSIGN;
-                    token.name = str_intern_range(token.start, stream);
+                    tok.kind = TOKEN_AND_ASSIGN;
+                    tok.name = str_intern_range(tok.start, stream);
                 }
                 else
                 {
                     stream += 2;
-                    token.kind = TOKEN_AND;
-                    token.name = str_intern_range(token.start, stream);
+                    tok.kind = TOKEN_AND;
+                    tok.name = str_intern_range(tok.start, stream);
                 }               
             }
             else if (*(stream + 1) == '=')
             {
                 stream += 2;
-                token.kind = TOKEN_BITWISE_AND_ASSIGN;
-                token.name = str_intern_range(token.start, stream);
+                tok.kind = TOKEN_BITWISE_AND_ASSIGN;
+                tok.name = str_intern_range(tok.start, stream);
             }
             else
             {
                 stream++;
-                token.kind = TOKEN_BITWISE_AND;
-                token.name = str_intern_range(token.start, stream);
+                tok.kind = TOKEN_BITWISE_AND;
+                tok.name = str_intern_range(tok.start, stream);
             }
         }
         break;
@@ -514,14 +514,14 @@ bool next_token(void)
             if (*(stream + 1) == '=')
             {
                 stream += 2;
-                token.kind = TOKEN_XOR_ASSIGN;
-                token.name = str_intern_range(token.start, stream);
+                tok.kind = TOKEN_XOR_ASSIGN;
+                tok.name = str_intern_range(tok.start, stream);
             }
             else
             {
                 stream++;
-                token.kind = TOKEN_XOR;
-                token.name = str_intern_range(token.start, stream);
+                tok.kind = TOKEN_XOR;
+                tok.name = str_intern_range(tok.start, stream);
             }
         }
         break;
@@ -530,22 +530,22 @@ bool next_token(void)
             if (*(stream + 1) == '=')
             {
                 stream += 2;
-                token.kind = TOKEN_NEQ;
-                token.name = str_intern_range(token.start, stream);
+                tok.kind = TOKEN_NEQ;
+                tok.name = str_intern_range(tok.start, stream);
             }
             else
             {
                 stream++;
-                token.kind = TOKEN_NOT;
-                token.name = str_intern_range(token.start, stream);
+                tok.kind = TOKEN_NOT;
+                tok.name = str_intern_range(tok.start, stream);
             }
         }
         break;
         case '~':
         {
             stream++;
-            token.kind = TOKEN_BITWISE_NOT;
-            token.name = str_intern_range(token.start, stream);
+            tok.kind = TOKEN_BITWISE_NOT;
+            tok.name = str_intern_range(tok.start, stream);
         }
         break;
         case '=':
@@ -553,14 +553,14 @@ bool next_token(void)
             if (*(stream + 1) == '=')
             {
                 stream += 2;
-                token.kind = TOKEN_EQ;
-                token.name = str_intern_range(token.start, stream);
+                tok.kind = TOKEN_EQ;
+                tok.name = str_intern_range(tok.start, stream);
             }
             else
             {
                 stream++;
-                token.kind = TOKEN_ASSIGN;
-                token.name = str_intern_range(token.start, stream);
+                tok.kind = TOKEN_ASSIGN;
+                tok.name = str_intern_range(tok.start, stream);
             }
         }
         break;
@@ -569,22 +569,22 @@ bool next_token(void)
             if (*(stream + 1) == '=')
             {
                 stream += 2;
-                token.kind = TOKEN_COLON_ASSIGN;
-                token.name = str_intern_range(token.start, stream);
+                tok.kind = TOKEN_COLON_ASSIGN;
+                tok.name = str_intern_range(tok.start, stream);
             }
             else
             {
                 stream++;
-                token.kind = TOKEN_COLON;
-                token.name = str_intern_range(token.start, stream);
+                tok.kind = TOKEN_COLON;
+                tok.name = str_intern_range(tok.start, stream);
             }
         }
         break;
         case '?':
         {
             stream++;
-            token.kind = TOKEN_QUESTION;
-            token.name = str_intern_range(token.start, stream);
+            tok.kind = TOKEN_QUESTION;
+            tok.name = str_intern_range(tok.start, stream);
         }
         break;
         case '\n':
@@ -596,70 +596,67 @@ bool next_token(void)
             discard_token = true;            
             if (*stream == '\n')
             {
-                token.pos.line++;
+                tok.pos.line++;
             }
             stream++;
         }
         break;       
         default:
         {
-            token.kind = *stream++;
+            tok.kind = *stream++;
         }
         break;
     }
 
-    token.end = stream;    
+    tok.end = stream;    
 
     if (false == discard_token)
     {
-        tok *new_tok = xmalloc(sizeof(token));
-        memcpy(new_tok, &token, sizeof(token));
+        token *new_tok = xmalloc(sizeof(token));
+        memcpy(new_tok, &tok, sizeof(token));
         buf_push(all_tokens, new_tok);
     }
 
-    assert((token.kind != TOKEN_NAME && token.kind != TOKEN_KEYWORD) 
-        || token.name == str_intern(token.name));
+    assert((tok.kind != TOKEN_NAME && tok.kind != TOKEN_KEYWORD) 
+        || tok.name == str_intern(tok.name));
 
-    bool is_at_end = (token.kind == TOKEN_EOF && false == discard_token);
+    bool is_at_end = (tok.kind == TOKEN_EOF && false == discard_token);
     return (false == is_at_end);
 }
 
-void init_stream(char *filename, char *str)
+void init_stream(char *source, char *filename)
 {
     init_keywords(); 
-    stream = str;
-    token.pos.filename = filename ? filename : "<string>";
-    token.pos.line = 1;
+    stream = source;
+    tok.pos.filename = filename ? filename : "<string>";
+    tok.pos.line = 1;
     buf_free(all_tokens);
-    next_token();
-}
-
-void get_first_lexed_token(void)
-{
-    token = *all_tokens[0];
-    lexed_token_index = 1;
+    lex_next_token();
 }
 
 void next_lexed_token(void)
 {
     if (lexed_token_index + 1 < buf_len(all_tokens))
     {
-        tok *next_token = all_tokens[lexed_token_index];
+        token *next_token = all_tokens[lexed_token_index];
         if (next_token)
         {
-            token = *next_token;
+            tok = *next_token;
             lexed_token_index++;
         }
     }
     else
     {
-        token.kind = TOKEN_EOF;
+        tok.kind = TOKEN_EOF;
     }
 }
 
-void lex(char *filename, char *test)
+void lex(char *source, char *filename)
 {
-    init_stream(filename, test);
-    while (next_token());
-    get_first_lexed_token();
+    init_stream(filename, source);
+
+    while (lex_next_token());
+
+    tok = *all_tokens[0];
+    lexed_token_index = 1;
 }

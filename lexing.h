@@ -151,7 +151,7 @@ typedef struct source_pos
     int line;
 } source_pos;
 
-typedef struct tok
+typedef struct token
 {
     token_kind kind;
     source_pos pos;
@@ -163,5 +163,4 @@ typedef struct tok
         const char *name;
         const char *string_val;
     };
-}
-tok;
+} token;

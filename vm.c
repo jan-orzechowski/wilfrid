@@ -100,13 +100,8 @@ void stack_vm_test(int *code)
 
 void parsing_and_vm_test(char *expr, int value)
 {
-    init_stream(null, expr);
-    while (token.kind)
-    {
-        next_token();
-    }
+    lex(expr, null);
 
-    get_first_lexed_token();
     //parse_expr();
     buf_push(code, POP);
 
