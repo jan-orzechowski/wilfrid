@@ -41,7 +41,7 @@ void gen_line_hint(source_pos pos)
 
 void gen_stmt(stmt *s);
 void gen_expr(expr *e);
-void gen_func_decl(decl *d);
+void gen_func_decl(decl *d, const char *mangled_name);
 
 const char *gen_expr_str(expr *e)
 {
@@ -1033,7 +1033,7 @@ void cgen_test(void)
     debug_breakpoint;
 }
 
-char *get_typespec_mangled_name(typespec *typ)
+const char *get_typespec_mangled_name(typespec *typ)
 {
     assert(typ);
     char *result = null;
@@ -1107,7 +1107,7 @@ char *get_typespec_mangled_name(typespec *typ)
     return result;
 }
 
-char *get_function_mangled_name(decl *dec)
+const char *get_function_mangled_name(decl *dec)
 {
     // ___function_name___arg_type1___arg_type2___ret_type
     
@@ -1124,7 +1124,7 @@ char *get_function_mangled_name(decl *dec)
     if (dec->function.method_receiver)
     {
         typespec *t = dec->function.method_receiver->type;
-        char *mangled_rec = get_typespec_mangled_name(t);
+        const char *mangled_rec = get_typespec_mangled_name(t);
         buf_printf(mangled, mangled_rec);
     }
 
@@ -1133,13 +1133,13 @@ char *get_function_mangled_name(decl *dec)
     for (size_t i = 0; i < dec->function.params.param_count; i++)
     {
         typespec *t = dec->function.params.params[i].type;
-        char *mangled_arg = get_typespec_mangled_name(t);
+        const char *mangled_arg = get_typespec_mangled_name(t);
         buf_printf(mangled, mangled_arg);
     }
 
     if (dec->function.return_type)
     {
-        char *mangled_ret = get_typespec_mangled_name(dec->function.return_type);
+        const char *mangled_ret = get_typespec_mangled_name(dec->function.return_type);
         buf_printf(mangled, mangled_ret);
     }
     else
@@ -1193,7 +1193,7 @@ void mangled_names_test()
     for (size_t i = 2 /* dwa pierwsze pomijamy!*/; i < buf_len(resolved); i++)
     {
         symbol *sym = resolved[i]; 
-        char *mangled_name = get_function_mangled_name(sym->decl);
+        const char *mangled_name = get_function_mangled_name(sym->decl);
         if (0 != strcmp(mangled_name, cmp_strs[i]))
         {
             // błąd!

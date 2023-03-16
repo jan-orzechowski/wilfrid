@@ -190,9 +190,9 @@ typespec *push_typespec_name(source_pos pos, const char *name)
     return result;
 }
 
-char *parse_identifier(void)
+const char *parse_identifier(void)
 {
-    char *result = null;
+    const char *result = null;
     if (is_token_kind(TOKEN_NAME))
     {
         result = tok.name;

@@ -165,7 +165,7 @@ resolved_expr *resolve_expr(expr *e);
 resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_expected_type_mismatch);
 void resolve_stmt(stmt *st, type *opt_ret_type);
 
-char *get_function_mangled_name(decl *dec);
+const char *get_function_mangled_name(decl *dec);
 
 bool compare_types(type *a, type *b)
 {    
