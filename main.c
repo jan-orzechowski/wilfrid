@@ -66,6 +66,9 @@ void compile_and_run(void)
 
         write_file("test/testcode.c", gen_buf, buf_len(gen_buf));
 
+        print_errors();
+        print_warnings();
+
         free(file_buf.str);
     }
 }

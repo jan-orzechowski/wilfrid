@@ -9,6 +9,12 @@ memory_arena *arena;
 
 int *code;
 
+void parsing_error(const char *error_text)
+{
+    error(error_text, tok.pos, tok.end - tok.start);
+    ignore_tokens_until_newline();
+}
+
 bool is_name_reserved(const char *name)
 {
     size_t len = strlen(name);
@@ -50,7 +56,8 @@ bool expect_token_kind(token_kind kind)
     bool result = match_token_kind(kind);
     if (false == result)
     {
-        fatal("expected token of different kind: %s", get_token_kind_name(kind));
+        parsing_error(xprintf("Expected %s token, got %s", 
+            get_token_kind_name(kind), get_token_kind_name(tok.kind)));
     }
     return result;
 }
@@ -198,13 +205,13 @@ const char *parse_identifier(void)
         result = tok.name;
         if (is_name_reserved(result))
         {
-            fatal("identifiers with triple underscore ('___') are reserved");
+            parsing_error("Identifiers with triple underscore ('___') are reserved");
         }
         next_lexed_token();
     }
     else
     {
-        fatal("name expected");
+        parsing_error("Name expected, got %s", get_token_kind_name(tok.kind));
     }
     return result;
 }
@@ -418,7 +425,7 @@ expr *parse_base_expr(void)
         }
         else
         {
-            fatal("unexpected keyword");
+            parsing_error("Unexpected keyword");
         }
     }
     else if (is_token_kind(TOKEN_LEFT_BRACE))
@@ -443,7 +450,7 @@ expr *parse_base_expr(void)
             {
                 if (result->kind != EXPR_NAME)
                 {
-                    fatal("only names supported in casts");
+                    parsing_error("Only names are supported in casts");
                 }
 
                 expr *e = parse_expr();
@@ -455,7 +462,7 @@ expr *parse_base_expr(void)
             {
                 if (result->kind != EXPR_NAME)
                 {
-                    fatal("only names supported as explicit compound literal types");
+                    parsing_error("Only names are supported as explicit compound literal types");
                 }
 
                 result = parse_compound_literal();
@@ -467,7 +474,7 @@ expr *parse_base_expr(void)
             {
                 if (result->kind != EXPR_NAME)
                 {
-                    fatal("only names supported in casts");
+                    parsing_error("Only names are supported in casts");
                 }
 
                 expr *e = parse_base_expr();
@@ -804,7 +811,7 @@ void parse_switch_cases(switch_stmt *switch_stmt)
                 }
                 else
                 {
-                    fatal("switch statement error: case or default keyword expected");
+                    parsing_error("Switch statement error: 'case' or 'default' keywords expected");
                 }
             }
         }
@@ -975,7 +982,7 @@ stmt *parse_statement(void)
             }
             else
             {
-                fatal("missing while clause in do while\n");
+                parsing_error("Missing while clause in do while statement\n");
             }
         }
         else if (keyword == while_keyword)
@@ -1107,7 +1114,7 @@ function_param parse_function_param(void)
         }
         else
         {
-            fatal("expected typespec");
+            parsing_error("Expected typespec");
         }        
     }
     return p;
@@ -1147,7 +1154,7 @@ function_param_list parse_function_param_list()
             {
                 if (params[i].name == params[j].name)
                 {
-                    fatal("two or more parameters with the same name in the function declaration");
+                    parsing_error("Two or more parameters with the same name in the function declaration");
                 }
             }
         }
@@ -1209,7 +1216,7 @@ void parse_aggregate_fields(aggregate_decl *decl)
             {
                 if (fields[i].name == fields[j].name)
                 {
-                    fatal("two or more fields with the same name in the struct declaration");
+                    parsing_error("Two or more fields with the same name in the struct declaration");
                 }
             }
         }
@@ -1297,7 +1304,7 @@ decl *parse_declaration_optional(void)
                     declaration->variable.type = parse_typespec();
                     if (declaration->variable.type == 0)
                     {
-                        fatal("expected typespec after colon");
+                        parsing_error("Expected typespec after colon");
                     }
                 }
 
@@ -1361,7 +1368,7 @@ decl *parse_declaration_optional(void)
 
                 if (match_token_kind(TOKEN_COMMA))
                 {
-                    fatal("only one argument allowed in a receiver method");
+                    parsing_error("Only one argument is allowed as a receiver of a method");
                 }
 
                 expect_token_kind(TOKEN_RIGHT_PAREN);
@@ -1392,7 +1399,7 @@ decl *parse_declaration_optional(void)
             if (false == is_token_kind(TOKEN_KEYWORD)
                 || false == (tok.name == fn_keyword))
             {
-                fatal("only functions can be marked extern");
+                parsing_error("Only functions can be marked as extern");
             }
 
             declaration = push_struct(arena, decl);
@@ -1417,7 +1424,7 @@ decl *parse_declaration_optional(void)
 
             if (is_token_kind(TOKEN_LEFT_BRACE))
             {
-                fatal("function body not allowed for extern");
+                parsing_error("Function body not allowed for extern functions");
             }
         }
         else if (decl_keyword == enum_keyword)
@@ -1437,7 +1444,7 @@ decl *parse_declaration_optional(void)
         }
         else
         {
-            fatal("unknown keyword");
+            parsing_error(xprintf("unknown keyword: %s", decl_keyword));
         }
     }
     return declaration;
@@ -1446,9 +1453,9 @@ decl *parse_declaration_optional(void)
 decl *parse_declaration(void)
 {
     decl *d = parse_declaration_optional();
-    if (d == 0)
+    if (d == null)
     {
-        fatal("expected declaration\n");
+        parsing_error("Expected a declaration");
     }
     return d;
 }
@@ -1467,7 +1474,7 @@ void parse_text_and_print_s_exprs(char *test)
     
     lex(null, test);
 
-    decl *result = 0;
+    decl *result = null;
     do
     {
         result = parse_declaration_optional();
@@ -1567,8 +1574,14 @@ void parse_test(void)
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);
     for (int i = 0; i < arr_length; i++)
     {
+        buf_free(warnings);
+        buf_free(errors);
+
         char *str = test_strs[i];
         parse_text_and_print_s_exprs(str);
+
+        print_errors();
+        print_warnings();
     }
 
     debug_breakpoint;

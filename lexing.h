@@ -5,6 +5,7 @@
 typedef enum token_kind
 {
     TOKEN_EOF,
+    TOKEN_NEWLINE, // używany do synchronizacji w wypadku błędu parsowania
     TOKEN_COMMA,
     TOKEN_DOT,
     TOKEN_COLON,
@@ -83,6 +84,7 @@ typedef enum token_kind
 const char* token_kind_names[] = {
  
     [TOKEN_EOF] = "EOF",
+    [TOKEN_NEWLINE] = "NEWLINE",
     [TOKEN_COLON] = ":",
     [TOKEN_LEFT_PAREN] = "(",
     [TOKEN_RIGHT_PAREN] = ")",
@@ -142,13 +144,6 @@ const char* token_kind_names[] = {
     [TOKEN_INC] = "++",
     [TOKEN_DEC] = "--",
 };
-
-typedef struct source_pos
-{
-    const char *filename;
-    int line;
-    int character;
-} source_pos;
 
 typedef struct token
 {

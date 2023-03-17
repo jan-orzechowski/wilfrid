@@ -370,6 +370,7 @@ bool lex_next_token(void)
         {
             // usuwamy i zastępujemy whitespace
             *(stream) = ' ';
+            warning("Semicolons are ignored", tok.pos, 1);
         }
         break;
         case '[':
@@ -653,6 +654,32 @@ void next_lexed_token(void)
     else
     {
         tok.kind = TOKEN_EOF;
+    }
+}
+
+void ignore_tokens_until_newline(void)
+{
+    while (true)
+    {
+        if (lexed_token_index + 1 < buf_len(all_tokens))
+        {
+            token *next_token = all_tokens[lexed_token_index];
+            if (next_token->kind == TOKEN_NEWLINE)
+            {
+                tok = *next_token;
+                lexed_token_index++;
+                break;
+            }
+            else if (next_token->kind == TOKEN_EOF)
+            {
+                break;
+            }
+            lexed_token_index++;
+        }
+        else
+        {
+            break;
+        }
     }
 }
 

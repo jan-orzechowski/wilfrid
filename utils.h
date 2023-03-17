@@ -662,12 +662,80 @@ void map_add_to_chain(chained_hashmap *map, void *key, void *value)
     }
 }
 
+typedef struct source_pos
+{
+    const char *filename;
+    int line;
+    int character;
+} source_pos;
+
+typedef struct error_message
+{
+    const char *text;
+    source_pos pos;
+    size_t length;
+} error_message;
+
+error_message *warnings;
+error_message *errors;
+
+void warning(const char* warning_text, source_pos pos, size_t length)
+{
+    error_message message = 
+    {
+        .text = warning_text,
+        .pos = pos,
+        .length = length
+    };
+    buf_push(warnings, message);
+}
+
+void error(const char *error_text, source_pos pos, size_t length)
+{
+    error_message message =
+    {
+        .text = error_text,
+        .pos = pos,
+        .length = length
+    };
+    buf_push(errors, message);
+}
+
+void print_warnings(void)
+{
+    size_t warnings_count = buf_len(warnings);
+    if (warnings_count > 0)
+    {
+        printf("\n%lld warnings:\n", warnings_count);
+        for (size_t i = 0; i < warnings_count; i++)
+        {
+            error_message msg = warnings[i];
+            printf("%s (file '%s', line %d, position %d)\n", msg.text,
+                msg.pos.filename, msg.pos.line, msg.pos.character);
+        }
+    }
+}
+
+void print_errors(void)
+{
+    size_t errors_count = buf_len(errors);
+    if (errors_count > 0)
+    {
+        printf("\n%lld errors:\n", errors_count);
+        for (size_t i = 0; i < errors_count; i++)
+        {
+            error_message msg = errors[i];
+            printf("%s (file '%s', line %d, position %d)\n", msg.text,
+                msg.pos.filename, msg.pos.line, msg.pos.character);
+        }
+    }
+}
+
 typedef struct string_ref
 {
     char *str;
     size_t length;
 } string_ref;
-
 
 string_ref read_file(char *filename)
 {
