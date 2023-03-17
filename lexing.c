@@ -107,11 +107,13 @@ token tok;
 token **all_tokens;
 int lexed_token_index;
 
-int nested_comments_level = 0;
+int nested_comments_level;
+char *current_line_beginning;
 
 bool lex_next_token(void)
 {
     bool discard_token = false;
+
     tok.start = stream;
     switch (*stream)
     {
@@ -596,6 +598,7 @@ bool lex_next_token(void)
             if (*stream == '\n')
             {
                 tok.pos.line++;
+                current_line_beginning = stream + 1;
             }
             stream++;
         }
@@ -607,6 +610,7 @@ bool lex_next_token(void)
         break;
     }
 
+    tok.pos.character = tok.start - current_line_beginning + 1;
     tok.end = stream;    
 
     if (false == discard_token)
@@ -627,8 +631,10 @@ void init_stream(char *source, char *filename)
 {
     init_keywords(); 
     stream = source;
+    current_line_beginning = stream;
     tok.pos.filename = filename ? filename : "<string>";
     tok.pos.line = 1;
+    tok.pos.character = 1;
     buf_free(all_tokens);
     lex_next_token();
 }

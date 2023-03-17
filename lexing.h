@@ -147,6 +147,7 @@ typedef struct source_pos
 {
     const char *filename;
     int line;
+    int character;
 } source_pos;
 
 typedef struct token
