@@ -665,8 +665,8 @@ void map_add_to_chain(chained_hashmap *map, void *key, void *value)
 typedef struct source_pos
 {
     const char *filename;
-    int line;
-    int character;
+    size_t line;
+    size_t character;
 } source_pos;
 
 typedef struct error_message
@@ -710,7 +710,7 @@ void print_warnings(void)
         for (size_t i = 0; i < warnings_count; i++)
         {
             error_message msg = warnings[i];
-            printf("%s (file '%s', line %d, position %d)\n", msg.text,
+            printf("%s (file '%s', line %lld, position %lld)\n", msg.text,
                 msg.pos.filename, msg.pos.line, msg.pos.character);
         }
     }
@@ -725,7 +725,7 @@ void print_errors(void)
         for (size_t i = 0; i < errors_count; i++)
         {
             error_message msg = errors[i];
-            printf("%s (file '%s', line %d, position %d)\n", msg.text,
+            printf("%s (file '%s', line %lld, position %lld)\n", msg.text,
                 msg.pos.filename, msg.pos.line, msg.pos.character);
         }
     }

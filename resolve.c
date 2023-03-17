@@ -167,6 +167,11 @@ void resolve_stmt(stmt *st, type *opt_ret_type);
 
 const char *get_function_mangled_name(decl *dec);
 
+void resolve_error(const char *error_text, source_pos pos)
+{
+    error(error_text, tok.pos, 0);
+}
+
 bool compare_types(type *a, type *b)
 {    
     if (a == b)
@@ -400,7 +405,7 @@ type *get_incomplete_type(symbol *sym)
     return type;
 }
 
-type **cached_pointer_types = 0;
+type **cached_pointer_types;
 
 type *get_pointer_type(type *base_type)
 {
@@ -534,7 +539,7 @@ void push_symbol_from_decl(decl *d)
         // nie zezwalamy na podwójne nazwy
         if (map_get(&global_symbols, sym->name))
         {
-            fatal("duplicate identifiers!");
+            resolve_error("Duplicate identifiers", d->pos);
             return;
         }
     }
@@ -548,7 +553,8 @@ void push_symbol_from_decl(decl *d)
             if (overload->kind != SYMBOL_FUNCTION)
             {
                 // być może to można zmienić
-                fatal("cannot name structs the same as functions");
+                resolve_error("Structs and functions cannot share names", d->pos);
+                return;
             }
 
             // dodajemy na koniec łańcucha
@@ -557,7 +563,7 @@ void push_symbol_from_decl(decl *d)
             {
                 if (are_symbols_the_same_function(sym, overload))
                 {
-                    fatal("duplicate overloaded functions!");
+                    resolve_error("Duplicate overloaded functions", d->pos);
                     return;
                 }
 
@@ -580,7 +586,7 @@ void complete_type(type *t)
 {
     if (t->kind == TYPE_COMPLETING)
     {
-        fatal("detected type completion cycle");
+        resolve_error("Detected type completion cycle", (source_pos){0});
         return;
     }
     else if (t->kind != TYPE_INCOMPLETE)
@@ -610,7 +616,8 @@ void complete_type(type *t)
 
     if (buf_len(fields) == 0)
     {
-        fatal("struct/union has no fields");
+        resolve_error("Struct/union has no fields", d->pos);
+        return;
     }
 
     if (d->kind == DECL_STRUCT)
@@ -631,7 +638,7 @@ symbol *resolve_name(const char *name)
     symbol *s = get_symbol(name);
     if (s == null)
     {
-        fatal("non-existent name: %s", name);        
+        resolve_error(xprintf("Non-existent name: %s", name), (source_pos){0});
         return null;
     }
     resolve_symbol(s);
@@ -640,7 +647,7 @@ symbol *resolve_name(const char *name)
 
 type *resolve_typespec(typespec *t)
 {
-    type *result = 0;
+    type *result = null;
     if (t)
     {
         switch (t->kind)
@@ -650,8 +657,8 @@ type *resolve_typespec(typespec *t)
                 symbol *sym = resolve_name(t->name);
                 if (sym->kind != SYMBOL_TYPE)
                 {
-                    fatal("%s must denote a type", t->name);
-                    result = 0;
+                    resolve_error(xprintf("%s must denote a type", t->name), t->pos);
+                    return null;
                 }
                 else
                 {
@@ -672,7 +679,8 @@ type *resolve_typespec(typespec *t)
 
                 if (element->kind == TYPE_LIST)
                 {
-                    fatal("no dynamic lists of dynamic lists allowed yet");
+                    resolve_error("no dynamic lists of dynamic lists allowed yet", t->pos);
+                    return null;
                 }
 
                 result = get_list_type(element);
@@ -744,7 +752,7 @@ resolved_expr *pointer_decay(resolved_expr *e)
 
 resolved_expr *resolve_expr_unary(expr *expr)
 {
-    resolved_expr *result = 0;
+    resolved_expr *result = null;
 
     assert(expr->kind == EXPR_UNARY);
     resolved_expr *operand = resolve_expr(expr->unary.operand);
@@ -756,7 +764,8 @@ resolved_expr *resolve_expr_unary(expr *expr)
             operand = pointer_decay(operand);
             if (type->kind != TYPE_POINTER)
             {
-                fatal("Cannot dereference non-pointer type");
+                resolve_error("Cannot dereference non-pointer type", expr->pos);
+                return null;
             }
             result = get_resolved_lvalue_expr(type->pointer.base_type);
         }
@@ -765,7 +774,8 @@ resolved_expr *resolve_expr_unary(expr *expr)
         {
             if (false == operand->is_lvalue)
             {
-                fatal("Cannot take address of non-lvalue");
+                resolve_error("Cannot take address of non-lvalue", expr->pos);
+                return null;
             }
             result = get_resolved_rvalue_expr(get_pointer_type(type));
         }
@@ -774,7 +784,8 @@ resolved_expr *resolve_expr_unary(expr *expr)
         {
             if (type->kind != TYPE_INT)
             {
-                fatal("Can only use unary %s with ints", get_token_kind_name(expr->unary.operator));
+                resolve_error(xprintf("Can only use unary %s with ints", get_token_kind_name(expr->unary.operator)), expr->pos);
+                return null;
             }
             if (operand->is_const)
             {
@@ -793,7 +804,7 @@ resolved_expr *resolve_expr_unary(expr *expr)
 
 resolved_expr *resolve_expr_binary(expr *expr)
 {
-    resolved_expr *result = 0;
+    resolved_expr *result = null;
 
     assert(expr->kind == EXPR_BINARY);
     resolved_expr *left = resolve_expr(expr->binary.left);
@@ -809,7 +820,8 @@ resolved_expr *resolve_expr_binary(expr *expr)
         }
         else
         {
-            fatal("operands of +- must be both ints, floats or pointers");
+            resolve_error("operands of +- must be both ints, floats or pointers", expr->pos);
+            return null;
         }
     }
 
@@ -828,13 +840,14 @@ resolved_expr *resolve_expr_binary(expr *expr)
 
 resolved_expr *resolve_compound_expr(expr *e, type *expected_type, bool ignore_expected_type_mismatch)
 {
-    resolved_expr *result = 0;
+    resolved_expr *result = null;
 
     assert(e->kind == EXPR_COMPOUND_LITERAL);
 
     if (e->compound.type == 0 && expected_type == 0)
     {
-        fatal("implicitly typed compound literal in context without expected type");
+        resolve_error("Implicitly typed compound literal in context without expected type", e->pos);
+        return null;
     }
 
     type *t = null;
@@ -845,7 +858,8 @@ resolved_expr *resolve_compound_expr(expr *e, type *expected_type, bool ignore_e
         {
             if (false == ignore_expected_type_mismatch)
             {
-                fatal("compound literal has different type than expected");
+                resolve_error("Compound literal has different type than expected", e->pos);
+                return null;
             }
             else
             {
@@ -864,7 +878,8 @@ resolved_expr *resolve_compound_expr(expr *e, type *expected_type, bool ignore_e
         && t->kind != TYPE_UNION 
         && t->kind != TYPE_ARRAY)
     {
-        fatal("compound literals can only be used with struct and array types");
+        resolve_error("Compound literals can only be used with struct and array types", e->pos);
+        return null;
     }
 
     for (size_t i = 0; i < e->compound.fields_count; i++)
@@ -892,7 +907,8 @@ resolved_expr *resolve_compound_expr(expr *e, type *expected_type, bool ignore_e
                 }
                 else
                 {
-                    fatal("compound literal field type mismatch");
+                    resolve_error("Compound literal field type mismatch", field->expr->pos);
+                    return null;
                 }
             }
         }
@@ -908,7 +924,8 @@ resolved_expr *resolve_compound_expr(expr *e, type *expected_type, bool ignore_e
             resolved_expr *init_expr = resolve_expected_expr(field->expr, expected_type, true);
             if (false == compare_types(init_expr->type, expected_type))
             {
-                fatal("compound literal element type mismatch");
+                resolve_error("Compound literal element type mismatch", field->expr->pos);
+                return null;
             }
         }
     }
@@ -946,7 +963,8 @@ resolved_expr *resolve_special_case_methods(expr *e)
             {
                 if (e->call.args_num != 0)
                 {
-                    fatal("capacity method accepts no arguments");
+                    resolve_error("Capacity method accepts no arguments", e->pos);
+                    return null;
                 }
                 
                 stub_kind = STUB_EXPR_LIST_CAPACITY;
@@ -956,7 +974,8 @@ resolved_expr *resolve_special_case_methods(expr *e)
             {
                 if (e->call.args_num != 0)
                 {
-                    fatal("length method accept no arguments");
+                    resolve_error("Length method accepts no arguments", e->pos);
+                    return null;
                 }
 
                 stub_kind = STUB_EXPR_LIST_LENGTH;
@@ -966,7 +985,8 @@ resolved_expr *resolve_special_case_methods(expr *e)
             {
                 if (e->call.args_num != 1)
                 {
-                    fatal("only one argument for an add method");
+                    resolve_error("Add method accepts only one argument", e->pos);
+                    return null;
                 }
 
                 type *list_type = e->call.method_receiver->resolved_type;
@@ -975,7 +995,8 @@ resolved_expr *resolve_special_case_methods(expr *e)
 
                 if (false == compare_types(list_element_type, new_element_type))
                 {
-                    fatal("wrong type of argument for a list");
+                    resolve_error("Wrong type of argument for a list", e->pos);
+                    return null;
                 }
                 
                 stub_kind = STUB_EXPR_LIST_ADD;
@@ -1054,7 +1075,8 @@ resolved_expr *resolve_special_case_constructors(expr *e)
 
         if (matching == null)
         {
-            fatal("no overload is matching types of constructor arguments");
+            resolve_error("No overload is matching types of constructor arguments", e->pos);
+            return null;
         }
 
         e->call.resolved_function = matching;
@@ -1146,7 +1168,8 @@ resolved_expr *resolve_call_expr(expr *e)
 
     if (matching == null)
     {
-        fatal("no overload is matching types of arguments");
+        resolve_error("No overload is matching types of arguments", e->pos);
+        return null;
     }
 
     e->call.resolved_function = matching;
@@ -1184,7 +1207,8 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
             }
             else
             {
-                fatal("not expected symbol kind");
+                resolve_error(xprintf("Not expected symbol kind: %d", sym->kind), e->pos);
+                return null;
             } 
         }
         break;
@@ -1268,7 +1292,9 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
         break;
         case EXPR_TERNARY:
         {
-            fatal("ternary exprs not allowed as constants");
+            // w sumie czemu nie?
+            resolve_error("Ternary expressions not allowed as constants", e->pos);
+            return null;
         }
         break;
         case EXPR_SIZEOF:
@@ -1306,7 +1332,7 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
             }
             if (!found)
             {                
-                fatal("no field of name: %s", field_name);
+                resolve_error(xprintf("No field of name: %s", field_name), e->pos);
             }
 
             result = get_resolved_lvalue_expr(found);
@@ -1318,14 +1344,14 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
             if (operand_expr->type->kind != TYPE_LIST
                 && pointer_decay(operand_expr)->type->kind != TYPE_POINTER)
             {
-                fatal("can only index arrays or pointers");
+                resolve_error("Can only index arrays or pointers", e->pos);
             }
             
             resolved_expr *index_expr = resolve_expr(e->index.index_expr);
 
             if (index_expr->type->kind != TYPE_INT)
             {
-                fatal("index must be an integer");
+                resolve_error("Index must be an integer", e->pos);
             }
 
             result = get_resolved_lvalue_expr(operand_expr->type->pointer.base_type);
@@ -1428,17 +1454,20 @@ type *resolve_function_decl(decl *d)
         {           
             if (d->function.is_extern == false)
             {
-                fatal("variadic allowed only in extern functions");
+                resolve_error("Variadic allowed only in extern functions", d->pos);
+                return null;
             }
             else
             {                
                 if (variadic_declared)
                 {
-                    fatal("there can only be one variadic argument");
+                    resolve_error("There can only be one variadic argument", d->pos);
+                    return null;
                 }
                 else if (i < args->param_count - 1)
                 {
-                    fatal("variadic must be the last argument");
+                    resolve_error("Variadic must be the last argument", d->pos);
+                    return null;
                 }
                 else
                 {
@@ -1549,7 +1578,8 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
                     }
                     else
                     {
-                        fatal("return type mismatch");
+                        resolve_error("Return type mismatch", st->pos);
+                        return;
                     }
                 }
             }
@@ -1557,7 +1587,8 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
             {
                 if (opt_ret_type != type_void)
                 {
-                    fatal("empty return expr for function with non-void return type");
+                    resolve_error("Empty return expression for function with non-void return type", st->pos);
+                    return;
                 }
             }
             break;
@@ -1633,7 +1664,8 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
                         }
                         else
                         {
-                            fatal("list of different type");
+                            resolve_error("list of different type", st->assign.value_expr->pos);
+                            return;
                         }
                     }
                     else if (left->type->kind == TYPE_POINTER && right->type->kind == TYPE_NULL)
@@ -1649,17 +1681,22 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
                     }
                     else
                     {
-                        fatal("types do not match in assignment statement");
+                        resolve_error("types do not match in assignment statement", st->assign.assigned_var_expr->pos);
+                        return;
                     }
                 }
             }
+            
             if (false == left->is_lvalue)
             {
-                fatal("cannot assign to non-lvalue");
+                resolve_error("Cannot assign to non-lvalue", st->pos);
+                return;
             }
+
             if (st->assign.operation != TOKEN_ASSIGN && left->type != type_int)
             {
-                fatal("for now can only use assignment operators with type int");
+                resolve_error("For now can only use assignment operators with type int", st->pos);
+                return;
             }
         }
         break; 
@@ -1679,7 +1716,8 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
 
             if (st->switch_stmt.var_expr->kind != EXPR_NAME)
             {
-                fatal("only names allowed in switch condition expression");
+                resolve_error("only names allowed in switch condition expression", st->pos);
+                return;
             }
 
             for (size_t i = 0; i < st->switch_stmt.cases_num; i++)
@@ -1782,6 +1820,9 @@ symbol **resolve_test_decls(char **decl_arr, size_t decl_arr_count, bool print)
     arena = allocate_memory_arena(megabytes(50));
     init_before_resolve();
 
+    buf_free(warnings);
+    buf_free(errors);
+
     if (print)
     {
         printf("original:\n\n");
@@ -1826,13 +1867,16 @@ symbol **resolve_test_decls(char **decl_arr, size_t decl_arr_count, bool print)
         }
     }
 
+    print_errors();
+    print_warnings();
+
     return ordered_global_symbols;
 }
 
 void resolve_test(void)
 {
     char *test_strs[] = {
-#if 0
+#if 1
         "let f := g[1 + 3]",
         "let g: int[10]",
         "let e = *b",

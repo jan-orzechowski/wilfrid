@@ -211,7 +211,7 @@ const char *parse_identifier(void)
     }
     else
     {
-        parsing_error("Name expected, got %s", get_token_kind_name(tok.kind));
+        parsing_error(xprintf("Name expected, got %s", get_token_kind_name(tok.kind)));
     }
     return result;
 }
@@ -1462,7 +1462,7 @@ decl *parse_declaration(void)
 
 decl *parse_decl(char *source)
 {
-    lex(source, null);
+    lex(null, source);
 
     decl *result = parse_declaration();
     return result;
@@ -1472,6 +1472,9 @@ void parse_text_and_print_s_exprs(char *test)
 {
     arena = allocate_memory_arena(megabytes(50));
     
+    buf_free(warnings);
+    buf_free(errors);
+
     lex(null, test);
 
     decl *result = null;
@@ -1482,7 +1485,10 @@ void parse_text_and_print_s_exprs(char *test)
         printf("\n");       
     }
     while (result);
-  
+
+    print_errors();
+    print_warnings();
+
     free_memory_arena(arena);
 }
 
@@ -1574,14 +1580,8 @@ void parse_test(void)
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);
     for (int i = 0; i < arr_length; i++)
     {
-        buf_free(warnings);
-        buf_free(errors);
-
         char *str = test_strs[i];
         parse_text_and_print_s_exprs(str);
-
-        print_errors();
-        print_warnings();
     }
 
     debug_breakpoint;

@@ -611,7 +611,7 @@ bool lex_next_token(void)
         break;
     }
 
-    tok.pos.character = tok.start - current_line_beginning + 1;
+    tok.pos.character = tok.start - current_line_beginning + 1LL;
     tok.end = stream;    
 
     if (false == discard_token)
