@@ -218,7 +218,7 @@ const char *parse_identifier(void)
 
 typespec *parse_basic_typespec(void)
 {
-    typespec *t = 0;
+    typespec *t = null;
 
     if (is_token_kind(TOKEN_NAME))
     {
@@ -233,8 +233,8 @@ typespec *parse_basic_typespec(void)
 
         expect_token_kind(TOKEN_LEFT_PAREN);
         {
-            typespec **params = 0;
-            typespec *param = 0;
+            typespec **params = null;
+            typespec *param = null;
             do
             {
                 param = parse_typespec();
@@ -314,18 +314,18 @@ typespec *parse_typespec(void)
 
 expr *parse_compound_literal(void)
 {
-    expr *e = 0;
+    expr *e = null;
     if (match_token_kind(TOKEN_LEFT_BRACE))
     {
         e = push_struct(arena, expr);
         e->kind = EXPR_COMPOUND_LITERAL;
 
-        compound_literal_field **fields = 0;
-        compound_literal_field *field = 0;
+        compound_literal_field **fields = null;
+        compound_literal_field *field = null;
 
         do
         {
-            field = 0;
+            field = null;
 
             expr *val = parse_expr();
             if (val)
@@ -370,7 +370,7 @@ expr *parse_compound_literal(void)
 
 expr *parse_base_expr(void)
 {
-    expr *result = 0;
+    expr *result = null;
     if (is_token_kind(TOKEN_INT))
     {
         result = push_int_expr(tok.pos, tok.val);
@@ -735,7 +735,7 @@ stmt_block parse_statement_block(void);
 
 stmt *parse_simple_statement(void)
 { 
-    stmt *s = 0; 
+    stmt *s = null; 
     expr *left_expr = parse_expr();
 
     if (is_assign_operation(tok.kind))
@@ -777,19 +777,19 @@ void parse_switch_cases(switch_stmt *switch_stmt)
 {
     bool default_case_defined = false;
 
-    switch_case **cases = 0;
-    switch_case *c = 0;
+    switch_case **cases = null;
+    switch_case *c = null;
 
     do
     {
-        c = 0;
+        c = null;
         bool case_is_default = false;
-        expr **case_exprs = 0;
-        expr *e = 0;
+        expr **case_exprs = null;
+        expr *e = null;
         
         do
         {
-            e = 0;
+            e = null;
 
             if (is_token_kind(TOKEN_KEYWORD))
             {
@@ -866,7 +866,7 @@ void parse_switch_cases(switch_stmt *switch_stmt)
 
 stmt *parse_if_statement(void)
 {
-    stmt *s = 0;
+    stmt *s = null;
     if (tok.name == if_keyword)
     {
         s = push_struct(arena, stmt);
@@ -891,7 +891,7 @@ stmt *parse_if_statement(void)
 
 stmt *parse_statement(void)
 {
-    stmt *s = 0;    
+    stmt *s = null;    
     source_pos pos = tok.pos;
     if (is_token_kind(TOKEN_KEYWORD))
     {
@@ -1601,8 +1601,8 @@ decl **parse(char *filename, char *source, bool print_s_expressions)
         printf("/// PARSING ///\n\n");
     }
     
-    decl **decl_array = 0;
-    decl *d = 0;
+    decl **decl_array = null;
+    decl *d = null;
     do
     {
         d = parse_declaration_optional();

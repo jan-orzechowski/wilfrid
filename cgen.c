@@ -144,7 +144,7 @@ char *type_to_cdecl(type *type, const char *name)
 
 char *typespec_to_cdecl(typespec *t, const char *name)
 {
-    char *result = 0;
+    char *result = null;
     switch (t->kind)
     {
         case TYPESPEC_NAME:

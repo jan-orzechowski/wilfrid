@@ -231,7 +231,7 @@ void copy_test(void)
 {
     memory_arena *test = allocate_memory_arena(kilobytes(1));
 
-    int *buffer = 0;
+    int *buffer = null;
     for (int i = 0; i < 128; i++)
     {
         buf_push(buffer, i);
@@ -253,7 +253,7 @@ void copy_test(void)
 
 void buf_remove_at_test()
 {
-    int *integers = 0;
+    int *integers = null;
     assert(buf_len(integers) == 0);
     buf_push(integers, 0);
     buf_push(integers, 1);
@@ -474,7 +474,7 @@ void intern_str_test(void)
 
 void stretchy_buffers_test(void)
 {
-    intern_str *str = 0;
+    intern_str *str = null;
 
     assert(buf_len(str) == 0);
 
@@ -494,7 +494,7 @@ void stretchy_buffers_test(void)
 
     assert(buf_len(str) == 0);
 
-    char *char_buf = 0;
+    char *char_buf = null;
     buf_printf(char_buf, "One: %d\n", 1);
     assert(strcmp(char_buf, "One: 1\n") == 0);
     buf_printf(char_buf, "Hex: 0x%x\n", 0x12345678);
