@@ -701,33 +701,55 @@ void error(const char *error_text, source_pos pos, size_t length)
     buf_push(errors, message);
 }
 
-void print_warnings(void)
+char* print_warnings(void)
 {
+    char *buffer = null;
     size_t warnings_count = buf_len(warnings);
     if (warnings_count > 0)
     {
-        printf("\n%lld warnings:\n", warnings_count);
+        buf_printf(buffer, "\n%lld warnings:\n", warnings_count);
         for (size_t i = 0; i < warnings_count; i++)
         {
             error_message msg = warnings[i];
-            printf("%s (file '%s', line %lld, position %lld)\n", msg.text,
+            buf_printf(buffer, "%s (file '%s', line %lld, position %lld)\n", msg.text,
                 msg.pos.filename, msg.pos.line, msg.pos.character);
         }
     }
+    return buffer;
 }
 
-void print_errors(void)
+char *print_errors(void)
 {
+    char *buffer = null;
     size_t errors_count = buf_len(errors);
     if (errors_count > 0)
     {
-        printf("\n%lld errors:\n", errors_count);
+        buf_printf(buffer, "\n%lld errors:\n", errors_count);
         for (size_t i = 0; i < errors_count; i++)
         {
             error_message msg = errors[i];
-            printf("%s (file '%s', line %lld, position %lld)\n", msg.text,
+            buf_printf(buffer, "%s (file '%s', line %lld, position %lld)\n", msg.text,
                 msg.pos.filename, msg.pos.line, msg.pos.character);
         }
+    }
+    return buffer;
+}
+
+void print_warnings_to_console(void)
+{
+    char *list = print_warnings();
+    if (list)
+    {
+        printf("%s", list);
+    }
+}
+
+void print_errors_to_console(void)
+{
+    char *list = print_errors();
+    if (list)
+    {
+        printf("%s", list);
     }
 }
 

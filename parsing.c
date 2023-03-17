@@ -834,10 +834,8 @@ void parse_switch_cases(switch_stmt *switch_stmt)
                 c = push_struct(arena, switch_case);
                 c->is_default = true;
             }
-
-            expect_token_kind(TOKEN_LEFT_BRACE);
+            
             c->stmts = parse_statement_block();
-            expect_token_kind(TOKEN_RIGHT_BRACE);
 
             if (is_token_kind(TOKEN_KEYWORD)
                 && tok.name == break_keyword)
@@ -864,6 +862,8 @@ void parse_switch_cases(switch_stmt *switch_stmt)
     buf_free(cases);
 }
 
+#define expect_token_kind_or_return(kind) if (false == expect_token_kind(kind)) { return null; }
+
 stmt *parse_if_statement(void)
 {
     stmt *s = 0;
@@ -877,9 +877,7 @@ stmt *parse_if_statement(void)
         s->if_else.cond_expr = parse_expr();
         expect_token_kind(TOKEN_RIGHT_PAREN);
 
-        expect_token_kind(TOKEN_LEFT_BRACE);
         s->if_else.then_block = parse_statement_block();
-        expect_token_kind(TOKEN_RIGHT_BRACE);
 
         if (is_token_kind(TOKEN_KEYWORD) 
             && tok.name == else_keyword)
@@ -937,23 +935,21 @@ stmt *parse_statement(void)
 
             next_lexed_token();
 
-            expect_token_kind(TOKEN_LEFT_PAREN);
+            expect_token_kind_or_return(TOKEN_LEFT_PAREN);
 
             s->for_stmt.init_stmt = parse_statement();
 
-            expect_token_kind(TOKEN_COMMA);
+            expect_token_kind_or_return(TOKEN_COMMA);
 
             s->for_stmt.cond_expr = parse_expr();
 
-            expect_token_kind(TOKEN_COMMA);
+            expect_token_kind_or_return(TOKEN_COMMA);
 
             s->for_stmt.next_stmt = parse_statement();
 
-            expect_token_kind(TOKEN_RIGHT_PAREN);
+            expect_token_kind_or_return(TOKEN_RIGHT_PAREN);
 
-            expect_token_kind(TOKEN_LEFT_BRACE);
             s->for_stmt.stmts = parse_statement_block();
-            expect_token_kind(TOKEN_RIGHT_BRACE);
         }
         else if (keyword == if_keyword)
         {
@@ -968,17 +964,15 @@ stmt *parse_statement(void)
 
             next_lexed_token();
 
-            expect_token_kind(TOKEN_LEFT_BRACE);
             s->do_while_stmt.stmts = parse_statement_block();
-            expect_token_kind(TOKEN_RIGHT_BRACE);
             
             if (is_token_kind(TOKEN_KEYWORD) 
                 && tok.name == while_keyword)
             {
                 next_lexed_token();
-                expect_token_kind(TOKEN_LEFT_PAREN);
+                expect_token_kind_or_return(TOKEN_LEFT_PAREN);
                 s->do_while_stmt.cond_expr = parse_expr();
-                expect_token_kind(TOKEN_RIGHT_PAREN);
+                expect_token_kind_or_return(TOKEN_RIGHT_PAREN);
             }
             else
             {
@@ -993,13 +987,11 @@ stmt *parse_statement(void)
 
             next_lexed_token();
 
-            expect_token_kind(TOKEN_LEFT_PAREN);
+            expect_token_kind_or_return(TOKEN_LEFT_PAREN);
             s->while_stmt.cond_expr = parse_expr();
-            expect_token_kind(TOKEN_RIGHT_PAREN);
+            expect_token_kind_or_return(TOKEN_RIGHT_PAREN);
 
-            expect_token_kind(TOKEN_LEFT_BRACE);
             s->while_stmt.stmts = parse_statement_block();
-            expect_token_kind(TOKEN_RIGHT_BRACE);
         }
         else if (keyword == switch_keyword)
         {
@@ -1009,13 +1001,13 @@ stmt *parse_statement(void)
 
             next_lexed_token();
 
-            expect_token_kind(TOKEN_LEFT_PAREN);
+            expect_token_kind_or_return(TOKEN_LEFT_PAREN);
             s->switch_stmt.var_expr = parse_expr();
-            expect_token_kind(TOKEN_RIGHT_PAREN);
+            expect_token_kind_or_return(TOKEN_RIGHT_PAREN);
 
-            expect_token_kind(TOKEN_LEFT_BRACE);
+            expect_token_kind_or_return(TOKEN_LEFT_BRACE);
             parse_switch_cases(&s->switch_stmt);
-            expect_token_kind(TOKEN_RIGHT_BRACE);
+            expect_token_kind_or_return(TOKEN_RIGHT_BRACE);
         }
         else if (keyword == delete_keyword)
         {
@@ -1024,6 +1016,11 @@ stmt *parse_statement(void)
             s->pos = pos;
             next_lexed_token();
             s->delete.expr = parse_expr();
+        }
+        else
+        {
+            parsing_error(xprintf("Keyword %s not allowed in statement", keyword));
+            next_lexed_token();
         }
     }
     else if (is_token_kind(TOKEN_NAME))
@@ -1052,8 +1049,6 @@ stmt *parse_statement(void)
     }
     else if (is_token_kind(TOKEN_LEFT_BRACE))
     {
-        next_lexed_token();
-
         stmt_block block = parse_statement_block();
         if (block.stmts_count > 0)
         {
@@ -1062,8 +1057,6 @@ stmt *parse_statement(void)
             s->block = block;
             s->pos = pos;
         }
-
-        expect_token_kind(TOKEN_RIGHT_BRACE);
     }
 
     return s;
@@ -1071,22 +1064,35 @@ stmt *parse_statement(void)
 
 stmt_block parse_statement_block(void)
 {
+    expect_token_kind(TOKEN_LEFT_BRACE);
+
     stmt_block result = {0};
-    stmt **buf = 0;
-
-    stmt *s = parse_statement();
-    while (s)
+    stmt **statements = null;
+    
+    while (true)
     {
-        buf_push(buf, s);
-        s = parse_statement();
+        stmt *st = parse_statement();
+        if (st)
+        {
+            buf_push(statements, st);
+        }
+
+        if (is_token_kind(TOKEN_RIGHT_BRACE)
+            || is_token_kind(TOKEN_EOF))
+        {
+            break;
+        }
     }
 
-    int s_count = (int)buf_len(buf);
-    if (s_count > 0)
+    size_t count = buf_len(statements);
+    if (count > 0)
     {
-        result.stmts = copy_buf_to_arena(arena, buf);
-        result.stmts_count = s_count;
+        result.stmts = copy_buf_to_arena(arena, statements);
+        result.stmts_count = count;
     }
+
+    expect_token_kind(TOKEN_RIGHT_BRACE);
+
     return result;
 }
 
@@ -1387,11 +1393,7 @@ decl *parse_declaration_optional(void)
                 }
             }
 
-            expect_token_kind(TOKEN_LEFT_BRACE);
-            
             declaration->function.stmts = parse_statement_block();
-
-            expect_token_kind(TOKEN_RIGHT_BRACE);
         }
         else if (decl_keyword == extern_keyword)
         {
@@ -1486,8 +1488,8 @@ void parse_text_and_print_s_exprs(char *test)
     }
     while (result);
 
-    print_errors();
-    print_warnings();
+    print_errors_to_console();
+    print_warnings_to_console();
 
     free_memory_arena(arena);
 }

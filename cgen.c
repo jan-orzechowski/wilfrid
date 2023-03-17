@@ -912,7 +912,6 @@ void gen_symbol_decl(symbol *sym)
     }
 }
 
-
 void gen_entry_point(void)
 {
     symbol *main_found = null;
@@ -927,7 +926,7 @@ void gen_entry_point(void)
         {
             if (main_found)
             {
-                fatal("only one function 'main' allowed");
+                error_in_resolving("only one function 'main' allowed", sym->decl->pos);
             }
             else
             {
@@ -938,7 +937,8 @@ void gen_entry_point(void)
 
     if (main_found == null)
     {
-        fatal("entry point function 'main' not defined");
+        error_in_resolving("entry point function 'main' not defined", (source_pos){0});
+        return;
     }
     
     if (main_found->mangled_name == str_intern("___main___0l___0s___0v"))

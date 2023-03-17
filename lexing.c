@@ -370,6 +370,7 @@ bool lex_next_token(void)
         {
             // usuwamy i zastępujemy whitespace
             *(stream) = ' ';
+            discard_token = true;
             warning("Semicolons are ignored", tok.pos, 1);
         }
         break;
@@ -590,17 +591,19 @@ bool lex_next_token(void)
         }
         break;
         case '\n':
+        {
+            tok.kind = TOKEN_NEWLINE;
+            tok.pos.line++;
+            current_line_beginning = stream + 1;
+            stream++;
+        }
+        break;
         case '\r':
         case ' ':
         case '\t': 
         case '\v':
         {
-            discard_token = true;            
-            if (*stream == '\n')
-            {
-                tok.pos.line++;
-                current_line_beginning = stream + 1;
-            }
+            discard_token = true;
             stream++;
         }
         break;       
@@ -650,36 +653,42 @@ void next_lexed_token(void)
             tok = *next_token;
             lexed_token_index++;
         }
-    }
-    else
-    {
-        tok.kind = TOKEN_EOF;
+        if (next_token->kind == TOKEN_NEWLINE)
+        {
+            next_lexed_token();
+        }
     }
 }
 
 void ignore_tokens_until_newline(void)
 {
-    while (true)
-    {
-        if (lexed_token_index + 1 < buf_len(all_tokens))
+    while (lexed_token_index + 1 < buf_len(all_tokens))
+    {        
+        if (all_tokens[lexed_token_index]->kind == TOKEN_NEWLINE)
         {
-            token *next_token = all_tokens[lexed_token_index];
-            if (next_token->kind == TOKEN_NEWLINE)
-            {
-                tok = *next_token;
-                lexed_token_index++;
-                break;
-            }
-            else if (next_token->kind == TOKEN_EOF)
-            {
-                break;
-            }
             lexed_token_index++;
+            // przypadek wielu newlines pod rząd
+            while (lexed_token_index + 1 < buf_len(all_tokens))
+            {
+                if (all_tokens[lexed_token_index]->kind == TOKEN_NEWLINE)
+                {
+                    lexed_token_index++;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            tok = *all_tokens[lexed_token_index];
+            break;
         }
-        else
+        else if (all_tokens[lexed_token_index]->kind == TOKEN_EOF)
         {
             break;
         }
+
+        lexed_token_index++;
     }
 }
 

@@ -167,9 +167,9 @@ void resolve_stmt(stmt *st, type *opt_ret_type);
 
 const char *get_function_mangled_name(decl *dec);
 
-void resolve_error(const char *error_text, source_pos pos)
+void error_in_resolving(const char *error_text, source_pos pos)
 {
-    error(error_text, tok.pos, 0);
+    error(error_text, pos, 0);
 }
 
 bool compare_types(type *a, type *b)
@@ -539,7 +539,7 @@ void push_symbol_from_decl(decl *d)
         // nie zezwalamy na podwójne nazwy
         if (map_get(&global_symbols, sym->name))
         {
-            resolve_error("Duplicate identifiers", d->pos);
+            error_in_resolving("Duplicate identifiers", d->pos);
             return;
         }
     }
@@ -553,7 +553,7 @@ void push_symbol_from_decl(decl *d)
             if (overload->kind != SYMBOL_FUNCTION)
             {
                 // być może to można zmienić
-                resolve_error("Structs and functions cannot share names", d->pos);
+                error_in_resolving("Structs and functions cannot share names", d->pos);
                 return;
             }
 
@@ -563,7 +563,7 @@ void push_symbol_from_decl(decl *d)
             {
                 if (are_symbols_the_same_function(sym, overload))
                 {
-                    resolve_error("Duplicate overloaded functions", d->pos);
+                    error_in_resolving("Duplicate overloaded functions", d->pos);
                     return;
                 }
 
@@ -586,7 +586,7 @@ void complete_type(type *t)
 {
     if (t->kind == TYPE_COMPLETING)
     {
-        resolve_error("Detected type completion cycle", (source_pos){0});
+        error_in_resolving("Detected type completion cycle", (source_pos){0});
         return;
     }
     else if (t->kind != TYPE_INCOMPLETE)
@@ -616,7 +616,7 @@ void complete_type(type *t)
 
     if (buf_len(fields) == 0)
     {
-        resolve_error("Struct/union has no fields", d->pos);
+        error_in_resolving("Struct/union has no fields", d->pos);
         return;
     }
 
@@ -633,12 +633,12 @@ void complete_type(type *t)
     buf_push(ordered_global_symbols, t->symbol);
 }
 
-symbol *resolve_name(const char *name)
+symbol *resolve_name(const char *name, source_pos name_pos)
 {    
     symbol *s = get_symbol(name);
     if (s == null)
     {
-        resolve_error(xprintf("Non-existent name: %s", name), (source_pos){0});
+        error_in_resolving(xprintf("Non-existent name: %s", name), name_pos);
         return null;
     }
     resolve_symbol(s);
@@ -654,10 +654,10 @@ type *resolve_typespec(typespec *t)
         {
             case TYPESPEC_NAME:
             {
-                symbol *sym = resolve_name(t->name);
+                symbol *sym = resolve_name(t->name, t->pos);
                 if (sym->kind != SYMBOL_TYPE)
                 {
-                    resolve_error(xprintf("%s must denote a type", t->name), t->pos);
+                    error_in_resolving(xprintf("%s must denote a type", t->name), t->pos);
                     return null;
                 }
                 else
@@ -679,7 +679,7 @@ type *resolve_typespec(typespec *t)
 
                 if (element->kind == TYPE_LIST)
                 {
-                    resolve_error("no dynamic lists of dynamic lists allowed yet", t->pos);
+                    error_in_resolving("no dynamic lists of dynamic lists allowed yet", t->pos);
                     return null;
                 }
 
@@ -764,7 +764,7 @@ resolved_expr *resolve_expr_unary(expr *expr)
             operand = pointer_decay(operand);
             if (type->kind != TYPE_POINTER)
             {
-                resolve_error("Cannot dereference non-pointer type", expr->pos);
+                error_in_resolving("Cannot dereference non-pointer type", expr->pos);
                 return null;
             }
             result = get_resolved_lvalue_expr(type->pointer.base_type);
@@ -774,7 +774,7 @@ resolved_expr *resolve_expr_unary(expr *expr)
         {
             if (false == operand->is_lvalue)
             {
-                resolve_error("Cannot take address of non-lvalue", expr->pos);
+                error_in_resolving("Cannot take address of non-lvalue", expr->pos);
                 return null;
             }
             result = get_resolved_rvalue_expr(get_pointer_type(type));
@@ -784,7 +784,7 @@ resolved_expr *resolve_expr_unary(expr *expr)
         {
             if (type->kind != TYPE_INT)
             {
-                resolve_error(xprintf("Can only use unary %s with ints", get_token_kind_name(expr->unary.operator)), expr->pos);
+                error_in_resolving(xprintf("Can only use unary %s with ints", get_token_kind_name(expr->unary.operator)), expr->pos);
                 return null;
             }
             if (operand->is_const)
@@ -820,7 +820,7 @@ resolved_expr *resolve_expr_binary(expr *expr)
         }
         else
         {
-            resolve_error("operands of +- must be both ints, floats or pointers", expr->pos);
+            error_in_resolving("operands of +- must be both ints, floats or pointers", expr->pos);
             return null;
         }
     }
@@ -846,7 +846,7 @@ resolved_expr *resolve_compound_expr(expr *e, type *expected_type, bool ignore_e
 
     if (e->compound.type == 0 && expected_type == 0)
     {
-        resolve_error("Implicitly typed compound literal in context without expected type", e->pos);
+        error_in_resolving("Implicitly typed compound literal in context without expected type", e->pos);
         return null;
     }
 
@@ -858,7 +858,7 @@ resolved_expr *resolve_compound_expr(expr *e, type *expected_type, bool ignore_e
         {
             if (false == ignore_expected_type_mismatch)
             {
-                resolve_error("Compound literal has different type than expected", e->pos);
+                error_in_resolving("Compound literal has different type than expected", e->pos);
                 return null;
             }
             else
@@ -878,7 +878,7 @@ resolved_expr *resolve_compound_expr(expr *e, type *expected_type, bool ignore_e
         && t->kind != TYPE_UNION 
         && t->kind != TYPE_ARRAY)
     {
-        resolve_error("Compound literals can only be used with struct and array types", e->pos);
+        error_in_resolving("Compound literals can only be used with struct and array types", e->pos);
         return null;
     }
 
@@ -907,7 +907,7 @@ resolved_expr *resolve_compound_expr(expr *e, type *expected_type, bool ignore_e
                 }
                 else
                 {
-                    resolve_error("Compound literal field type mismatch", field->expr->pos);
+                    error_in_resolving("Compound literal field type mismatch", field->expr->pos);
                     return null;
                 }
             }
@@ -924,7 +924,7 @@ resolved_expr *resolve_compound_expr(expr *e, type *expected_type, bool ignore_e
             resolved_expr *init_expr = resolve_expected_expr(field->expr, expected_type, true);
             if (false == compare_types(init_expr->type, expected_type))
             {
-                resolve_error("Compound literal element type mismatch", field->expr->pos);
+                error_in_resolving("Compound literal element type mismatch", field->expr->pos);
                 return null;
             }
         }
@@ -963,7 +963,7 @@ resolved_expr *resolve_special_case_methods(expr *e)
             {
                 if (e->call.args_num != 0)
                 {
-                    resolve_error("Capacity method accepts no arguments", e->pos);
+                    error_in_resolving("Capacity method accepts no arguments", e->pos);
                     return null;
                 }
                 
@@ -974,7 +974,7 @@ resolved_expr *resolve_special_case_methods(expr *e)
             {
                 if (e->call.args_num != 0)
                 {
-                    resolve_error("Length method accepts no arguments", e->pos);
+                    error_in_resolving("Length method accepts no arguments", e->pos);
                     return null;
                 }
 
@@ -985,7 +985,7 @@ resolved_expr *resolve_special_case_methods(expr *e)
             {
                 if (e->call.args_num != 1)
                 {
-                    resolve_error("Add method accepts only one argument", e->pos);
+                    error_in_resolving("Add method accepts only one argument", e->pos);
                     return null;
                 }
 
@@ -995,7 +995,7 @@ resolved_expr *resolve_special_case_methods(expr *e)
 
                 if (false == compare_types(list_element_type, new_element_type))
                 {
-                    resolve_error("Wrong type of argument for a list", e->pos);
+                    error_in_resolving("Wrong type of argument for a list", e->pos);
                     return null;
                 }
                 
@@ -1075,7 +1075,7 @@ resolved_expr *resolve_special_case_constructors(expr *e)
 
         if (matching == null)
         {
-            resolve_error("No overload is matching types of constructor arguments", e->pos);
+            error_in_resolving("No overload is matching types of constructor arguments", e->pos);
             return null;
         }
 
@@ -1105,6 +1105,12 @@ resolved_expr *resolve_call_expr(expr *e)
 
     symbol *matching = null;
     resolved_expr *fn_expr = resolve_expr(e->call.function_expr);
+    if (null == fn_expr)
+    {
+        error_in_resolving("Could not resolve function call", e->pos);
+        return null;
+    }
+
     assert(fn_expr->type->kind == TYPE_FUNCTION);
 
     symbol *candidate = fn_expr->type->symbol;
@@ -1168,7 +1174,7 @@ resolved_expr *resolve_call_expr(expr *e)
 
     if (matching == null)
     {
-        resolve_error("No overload is matching types of arguments", e->pos);
+        error_in_resolving("No overload is matching types of arguments", e->pos);
         return null;
     }
 
@@ -1185,8 +1191,12 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
     {
         case EXPR_NAME:
         {
-            symbol *sym = resolve_name(e->name);
-            if (sym->kind == SYMBOL_VARIABLE)
+            symbol *sym = resolve_name(e->name, e->pos);
+            if (sym == null)
+            {
+                return null;
+            }
+            else if (sym->kind == SYMBOL_VARIABLE)
             {
                 result = get_resolved_lvalue_expr(sym->type);
             }
@@ -1207,7 +1217,7 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
             }
             else
             {
-                resolve_error(xprintf("Not expected symbol kind: %d", sym->kind), e->pos);
+                error_in_resolving(xprintf("Not expected symbol kind: %d", sym->kind), e->pos);
                 return null;
             } 
         }
@@ -1293,7 +1303,7 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
         case EXPR_TERNARY:
         {
             // w sumie czemu nie?
-            resolve_error("Ternary expressions not allowed as constants", e->pos);
+            error_in_resolving("Ternary expressions not allowed as constants", e->pos);
             return null;
         }
         break;
@@ -1332,7 +1342,7 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
             }
             if (!found)
             {                
-                resolve_error(xprintf("No field of name: %s", field_name), e->pos);
+                error_in_resolving(xprintf("No field of name: %s", field_name), e->pos);
             }
 
             result = get_resolved_lvalue_expr(found);
@@ -1344,14 +1354,14 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
             if (operand_expr->type->kind != TYPE_LIST
                 && pointer_decay(operand_expr)->type->kind != TYPE_POINTER)
             {
-                resolve_error("Can only index arrays or pointers", e->pos);
+                error_in_resolving("Can only index arrays or pointers", e->pos);
             }
             
             resolved_expr *index_expr = resolve_expr(e->index.index_expr);
 
             if (index_expr->type->kind != TYPE_INT)
             {
-                resolve_error("Index must be an integer", e->pos);
+                error_in_resolving("Index must be an integer", e->pos);
             }
 
             result = get_resolved_lvalue_expr(operand_expr->type->pointer.base_type);
@@ -1376,7 +1386,7 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
     }
 
     // przyda nam się podczas generowania kodu
-    if (result->type)
+    if (result && result->type)
     {
         assert(e->resolved_type == null || e->resolved_type == result->type);
         e->resolved_type = result->type;
@@ -1454,19 +1464,19 @@ type *resolve_function_decl(decl *d)
         {           
             if (d->function.is_extern == false)
             {
-                resolve_error("Variadic allowed only in extern functions", d->pos);
+                error_in_resolving("Variadic allowed only in extern functions", d->pos);
                 return null;
             }
             else
             {                
                 if (variadic_declared)
                 {
-                    resolve_error("There can only be one variadic argument", d->pos);
+                    error_in_resolving("There can only be one variadic argument", d->pos);
                     return null;
                 }
                 else if (i < args->param_count - 1)
                 {
-                    resolve_error("Variadic must be the last argument", d->pos);
+                    error_in_resolving("Variadic must be the last argument", d->pos);
                     return null;
                 }
                 else
@@ -1578,7 +1588,7 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
                     }
                     else
                     {
-                        resolve_error("Return type mismatch", st->pos);
+                        error_in_resolving("Return type mismatch", st->pos);
                         return;
                     }
                 }
@@ -1587,7 +1597,7 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
             {
                 if (opt_ret_type != type_void)
                 {
-                    resolve_error("Empty return expression for function with non-void return type", st->pos);
+                    error_in_resolving("Empty return expression for function with non-void return type", st->pos);
                     return;
                 }
             }
@@ -1664,7 +1674,7 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
                         }
                         else
                         {
-                            resolve_error("list of different type", st->assign.value_expr->pos);
+                            error_in_resolving("list of different type", st->assign.value_expr->pos);
                             return;
                         }
                     }
@@ -1681,7 +1691,7 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
                     }
                     else
                     {
-                        resolve_error("types do not match in assignment statement", st->assign.assigned_var_expr->pos);
+                        error_in_resolving("types do not match in assignment statement", st->assign.assigned_var_expr->pos);
                         return;
                     }
                 }
@@ -1689,13 +1699,13 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
             
             if (false == left->is_lvalue)
             {
-                resolve_error("Cannot assign to non-lvalue", st->pos);
+                error_in_resolving("Cannot assign to non-lvalue", st->pos);
                 return;
             }
 
             if (st->assign.operation != TOKEN_ASSIGN && left->type != type_int)
             {
-                resolve_error("For now can only use assignment operators with type int", st->pos);
+                error_in_resolving("For now can only use assignment operators with type int", st->pos);
                 return;
             }
         }
@@ -1716,7 +1726,7 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
 
             if (st->switch_stmt.var_expr->kind != EXPR_NAME)
             {
-                resolve_error("only names allowed in switch condition expression", st->pos);
+                error_in_resolving("only names allowed in switch condition expression", st->pos);
                 return;
             }
 
@@ -1867,8 +1877,8 @@ symbol **resolve_test_decls(char **decl_arr, size_t decl_arr_count, bool print)
         }
     }
 
-    print_errors();
-    print_warnings();
+    print_errors_to_console();
+    print_warnings_to_console();
 
     return ordered_global_symbols;
 }
