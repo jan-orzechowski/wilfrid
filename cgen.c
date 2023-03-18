@@ -926,7 +926,7 @@ void gen_entry_point(void)
         {
             if (main_found)
             {
-                error_in_resolving("only one function 'main' allowed", sym->decl->pos);
+                error_in_resolving("Only one function 'main' allowed", sym->decl->pos);
             }
             else
             {
@@ -937,7 +937,7 @@ void gen_entry_point(void)
 
     if (main_found == null)
     {
-        error_in_resolving("entry point function 'main' not defined", (source_pos){0});
+        error_in_resolving("Entry point function 'main' not defined", (source_pos){0});
         return;
     }
     

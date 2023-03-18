@@ -21,7 +21,7 @@
 
 void compile_and_run(void)
 {
-    char *test_file = "test/loops.txt";
+    char *test_file = "test/error_examples.txt";
   
     string_ref file_buf = read_file(test_file);
     if (file_buf.str)

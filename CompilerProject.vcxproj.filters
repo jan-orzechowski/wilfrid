@@ -23,6 +23,7 @@
     <Text Include="test\testcode.txt" />
     <Text Include="test\linked_lists.txt" />
     <Text Include="test\dynamic_lists.txt" />
+    <Text Include="test\error_examples.txt" />
     <Text Include="test\overloading.txt" />
     <Text Include="test\extern.txt" />
     <Text Include="test\loops.txt" />

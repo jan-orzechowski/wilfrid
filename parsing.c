@@ -1121,7 +1121,7 @@ function_param parse_function_param(void)
         else
         {
             parsing_error("Expected typespec");
-        }        
+        }
     }
     return p;
 }
@@ -1446,7 +1446,7 @@ decl *parse_declaration_optional(void)
         }
         else
         {
-            parsing_error(xprintf("unknown keyword: %s", decl_keyword));
+            parsing_error(xprintf("Unknown keyword: %s", decl_keyword));
         }
     }
     return declaration;
@@ -1602,21 +1602,31 @@ decl **parse(char *filename, char *source, bool print_s_expressions)
     }
     
     decl **decl_array = null;
-    decl *d = null;
-    do
+    decl *dec = null;
+    while (true)
     {
-        d = parse_declaration_optional();
-        if (d)
+        // może to powinno zostać przeniesione do jakiegoś init
+        if (is_token_kind(TOKEN_NEWLINE))
         {
-            buf_push(decl_array, d);
+            next_lexed_token();
+        }
+
+        dec = parse_declaration_optional();
+        if (dec)
+        {
+            buf_push(decl_array, dec);
             if (print_s_expressions)
             {
-                print_decl(d);
+                print_decl(dec);
                 printf("\n\n");
             }
         }
+        
+        if (is_token_kind(TOKEN_EOF))
+        {
+            break;
+        }
     }
-    while (d);
 
     return decl_array;
 }

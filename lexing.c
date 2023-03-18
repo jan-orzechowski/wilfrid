@@ -658,6 +658,10 @@ void next_lexed_token(void)
             next_lexed_token();
         }
     }
+    else
+    {
+        tok = *all_tokens[lexed_token_index];
+    }
 }
 
 void ignore_tokens_until_newline(void)
@@ -681,6 +685,7 @@ void ignore_tokens_until_newline(void)
             }
 
             tok = *all_tokens[lexed_token_index];
+            lexed_token_index++;
             break;
         }
         else if (all_tokens[lexed_token_index]->kind == TOKEN_EOF)

@@ -756,6 +756,11 @@ resolved_expr *resolve_expr_unary(expr *expr)
 
     assert(expr->kind == EXPR_UNARY);
     resolved_expr *operand = resolve_expr(expr->unary.operand);
+    if (operand == null)
+    {
+        return null;
+    }
+
     type *type = operand->type;
     switch (expr->unary.operator)
     {
@@ -809,7 +814,11 @@ resolved_expr *resolve_expr_binary(expr *expr)
     assert(expr->kind == EXPR_BINARY);
     resolved_expr *left = resolve_expr(expr->binary.left);
     resolved_expr *right = resolve_expr(expr->binary.right);
-    
+    if (left == null || right == null)
+    {
+        return null;
+    }
+
     if (expr->binary.operator == TOKEN_ADD
         || expr->binary.operator == TOKEN_SUB)
     {
@@ -1194,6 +1203,13 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
             symbol *sym = resolve_name(e->name, e->pos);
             if (sym == null)
             {
+                // błąd jest już rzucony w resolve_name
+                return null;
+            }
+            else if (sym->type == null)
+            {
+                error_in_resolving(
+                    xprintf("Expression `%s` has unknown type", sym->name), e->pos);
                 return null;
             }
             else if (sym->kind == SYMBOL_VARIABLE)
@@ -1661,6 +1677,12 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
         case STMT_ASSIGN:
         {
             resolved_expr *left = resolve_expr(st->assign.assigned_var_expr);
+            if (left == null)
+            {
+                error_in_resolving("Cannot assign to an expression of unknown type", st->assign.assigned_var_expr->pos);
+                return null;
+            }
+
             if (st->assign.value_expr)
             {                
                 resolved_expr *right = resolve_expected_expr(st->assign.value_expr, left->type, false);

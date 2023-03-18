@@ -1,0 +1,16 @@
+﻿fn main ()
+{
+    let sum := null
+    for (let i := 0 i < 10, j++)
+    {
+        sum++
+    }
+
+    let _var := true
+    var++
+    var = var + 1
+    var = -var
+    var 
+
+
+}
