@@ -1632,7 +1632,14 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
         break;
         case STMT_WHILE:
         {
-            resolve_expr(st->while_stmt.cond_expr);
+            if (null == st->while_stmt.cond_expr)
+            {
+                error_in_resolving("While clause must have an expression", st->pos);
+            }
+            else
+            {
+                resolve_expr(st->while_stmt.cond_expr);
+            }
             resolve_stmt_block(st->while_stmt.stmts, opt_ret_type);
         }
         break;
@@ -1667,11 +1674,17 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
         }
         break;
         case STMT_DECL:
-        {            
-            // na razie w blokach możemy deklarować tylko zmienne ('let')
-            assert(st->decl_stmt.decl->kind == DECL_VARIABLE);
-            type *t = resolve_variable_decl(st->decl_stmt.decl);
-            push_local_symbol(st->decl_stmt.decl->name, t);
+        {
+            if (st->decl_stmt.decl->kind == DECL_VARIABLE)
+            {
+                assert(st->decl_stmt.decl->kind == DECL_VARIABLE);
+                type *t = resolve_variable_decl(st->decl_stmt.decl);
+                push_local_symbol(st->decl_stmt.decl->name, t);
+            }
+            else
+            {
+                error_in_resolving("Const declarations not allowed in a function scope", st->pos);
+            }
         }
         break;
         case STMT_ASSIGN:

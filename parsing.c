@@ -1017,10 +1017,21 @@ stmt *parse_statement(void)
             next_lexed_token();
             s->delete.expr = parse_expr();
         }
+        else if (keyword == fn_keyword)
+        {
+            parsing_error("Function declaration is not allowed in another function scope");
+        }
+        else if (keyword == enum_keyword)
+        {
+            parsing_error("Enum declaration is not allowed in a function scope");
+        }
+        else if (keyword == false_keyword || keyword == true_keyword)
+        {
+            parsing_error("False/true can be used only as an expression");
+        }
         else
         {
             parsing_error(xprintf("Keyword %s not allowed in statement", keyword));
-            next_lexed_token();
         }
     }
     else if (is_token_kind(TOKEN_NAME))
@@ -1058,7 +1069,10 @@ stmt *parse_statement(void)
             s->pos = pos;
         }
     }
-
+    else
+    {
+        parsing_error(xprintf("Unexpected token type: %s", get_token_kind_name(tok.kind)));
+    }
     return s;
 }
 
@@ -1069,11 +1083,12 @@ stmt_block parse_statement_block(void)
     stmt_block result = {0};
     stmt **statements = null;
     
-    while (true)
+    for (size_t attempts = 0; attempts < 20; attempts++)
     {
         stmt *st = parse_statement();
         if (st)
         {
+            attempts = 0;
             buf_push(statements, st);
         }
 
@@ -1603,9 +1618,8 @@ decl **parse(char *filename, char *source, bool print_s_expressions)
     
     decl **decl_array = null;
     decl *dec = null;
-    while (true)
+    for (size_t attempts = 0; attempts < 20; attempts++)
     {
-        // może to powinno zostać przeniesione do jakiegoś init
         if (is_token_kind(TOKEN_NEWLINE))
         {
             next_lexed_token();
@@ -1614,6 +1628,7 @@ decl **parse(char *filename, char *source, bool print_s_expressions)
         dec = parse_declaration_optional();
         if (dec)
         {
+            attempts = 0;
             buf_push(decl_array, dec);
             if (print_s_expressions)
             {

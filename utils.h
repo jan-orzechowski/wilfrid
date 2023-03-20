@@ -711,7 +711,7 @@ char* print_warnings(void)
         for (size_t i = 0; i < warnings_count; i++)
         {
             error_message msg = warnings[i];
-            buf_printf(buffer, "%s (file '%s', line %lld, position %lld)\n", msg.text,
+            buf_printf(buffer, "- %s (file '%s', line %lld, position %lld)\n", msg.text,
                 msg.pos.filename, msg.pos.line, msg.pos.character);
         }
     }
@@ -728,7 +728,7 @@ char *print_errors(void)
         for (size_t i = 0; i < errors_count; i++)
         {
             error_message msg = errors[i];
-            buf_printf(buffer, "%s (file '%s', line %lld, position %lld)\n", msg.text,
+            buf_printf(buffer, "- %s (file '%s', line %lld, position %lld)\n", msg.text,
                 msg.pos.filename, msg.pos.line, msg.pos.character);
         }
     }
