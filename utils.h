@@ -816,3 +816,26 @@ bool write_file(const char *path, const char *buf, size_t len)
     fclose(file);
     return (elements_written == 1);
 }
+
+string_ref read_file_for_parsing(char *filename)
+{
+    string_ref file_buf = read_file(filename);
+    if (file_buf.length > 3)
+    {
+        // pomijanie BOM
+        if (file_buf.str[0] == (char)0xef
+            && file_buf.str[1] == (char)0xbb
+            && file_buf.str[2] == (char)0xbf)
+        {
+            file_buf.str[0] = 0x20;
+            file_buf.str[1] = 0x20;
+            file_buf.str[2] = 0x20;
+        }
+    }
+    return file_buf;
+}
+
+float get_random_01(void)
+{
+    return ((float)rand() / (float)RAND_MAX);
+}

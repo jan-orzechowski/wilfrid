@@ -19,26 +19,15 @@
 #include "main.h"
 #include "gc_test.c"
 
+void fuzzy_test(void);
+
 void compile_and_run(void)
 {
     char *test_file = "test/error_examples.txt";
   
-    string_ref file_buf = read_file(test_file);
+    string_ref file_buf = read_file_for_parsing(test_file);
     if (file_buf.str)
-    {
-        if (file_buf.length > 3)
-        {
-            // pomijanie BOM
-            if (   file_buf.str[0] == (char)0xef
-                && file_buf.str[1] == (char)0xbb 
-                && file_buf.str[2] == (char)0xbf)
-            {
-                file_buf.str[0] = 0x20;
-                file_buf.str[1] = 0x20;
-                file_buf.str[2] = 0x20;
-            }
-        }
-       
+    {      
         symbol **resolved = resolve(test_file, file_buf.str, true);
 
         size_t debug_count = buf_len(resolved);
@@ -102,11 +91,13 @@ int main(int argc, char **argv)
     parse_test();
 #elif 0
     resolve_test();
-    mangled_names_test();
+    //mangled_names_test();
 #elif 0
     cgen_test();
 #else
-    compile_and_run();
+    //compile_and_run();
+
+    fuzzy_test();
 #endif
 
     //for (size_t i = 1; i < argc; i++)
@@ -119,6 +110,29 @@ int main(int argc, char **argv)
     //gc_test();
 
     return 1;
+}
+
+void fuzzy_test(void)
+{
+    char *test_file = "test/testcode.txt";
+    string_ref file_buf = read_file_for_parsing(test_file);
+    if (file_buf.str)
+    {
+        // podmieniamy na losowe znaki
+        int substitutions_count = file_buf.length / 30;
+        for (; substitutions_count > 0; substitutions_count--)
+        {
+            size_t char_index = get_random_01() * file_buf.length;
+            // chcemy kody ascii z przedziału 32-126
+            char new_letter = (char)(get_random_01() * (126 - 32)) + 32;
+            file_buf.str[char_index] = new_letter;
+        }
+
+        printf("Original text:\n\n");
+        printf(file_buf.str);
+
+        symbol **resolved = resolve(test_file, file_buf.str, true);
+    }
 }
 
 #include "common_include.c"
