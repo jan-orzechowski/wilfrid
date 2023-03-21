@@ -669,6 +669,27 @@ typedef struct source_pos
     size_t character;
 } source_pos;
 
+bool compare_source_pos(source_pos a, source_pos b)
+{
+    bool pos_matches = (a.character == b.character && a.line == b.line);
+    
+    bool file_matches = false;
+    if (a.filename == null && b.filename == null)
+    {
+        file_matches = true;
+    }
+    else if (a.filename == null || b.filename == null)
+    {
+        file_matches = false;
+    }
+    else
+    {
+        file_matches = strcmp(a.filename, b.filename);
+    }
+
+    return (file_matches && pos_matches);
+}
+
 typedef struct error_message
 {
     const char *text;
@@ -681,6 +702,16 @@ error_message *errors;
 
 void warning(const char* warning_text, source_pos pos, size_t length)
 {
+    if (buf_len(warnings) > 0)
+    {
+        // nie wrzucamy wielu ostrzeżeń w tym samym miejscu
+        error_message last = warnings[buf_len(warnings) - 1];
+        if (compare_source_pos(last.pos, pos))
+        {
+            return;
+        }
+    }
+
     error_message message = 
     {
         .text = warning_text,
@@ -692,6 +723,16 @@ void warning(const char* warning_text, source_pos pos, size_t length)
 
 void error(const char *error_text, source_pos pos, size_t length)
 {
+    if (buf_len(errors) > 0)
+    {
+        // nie wrzucamy wielu błędów w tym samym miejscu
+        error_message last = errors[buf_len(errors) - 1];
+        if (compare_source_pos(last.pos, pos))
+        {
+            return;
+        }
+    }
+
     error_message message =
     {
         .text = error_text,
