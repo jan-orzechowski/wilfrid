@@ -107,12 +107,13 @@ token tok;
 token **all_tokens;
 int lexed_token_index;
 
-int nested_comments_level;
+size_t nested_comments_level;
 char *current_line_beginning;
 
 bool lex_next_token(void)
 {
     bool discard_token = false;
+    bool unexpected_character = false;
 
     tok.start = stream;
     switch (*stream)
@@ -294,15 +295,13 @@ bool lex_next_token(void)
             for (;;)
             {
                 stream++;
-                if (*(stream) == 0)
-                {
-                    break;
-                }
-
-                if (*(stream) == '"')
+                if (*(stream) == 0 || *(stream) == '"')
                 {
                     tok.string_val = str_intern_range(tok.start + 1, stream);
-                    stream++;
+                    if (*(stream) == '"')
+                    {
+                        stream++;
+                    }
                     break;
                 }
             }
@@ -606,16 +605,29 @@ bool lex_next_token(void)
             discard_token = true;
             stream++;
         }
-        break;       
+        break;
+        case '\0':
+        {
+            tok.kind = TOKEN_EOF;
+        }
+        break;
         default:
         {
-            tok.kind = *stream++;
+            discard_token = true;
+            unexpected_character = true;
+            stream++;
         }
         break;
     }
 
     tok.pos.character = tok.start - current_line_beginning + 1LL;
-    tok.end = stream;    
+    tok.end = stream;
+
+    if (unexpected_character)
+    {
+        error(xprintf("Unexpected character: %c", *(stream - 1)), tok.pos, 1);
+        unexpected_character = false;
+    }
 
     if (false == discard_token)
     {
@@ -667,7 +679,7 @@ void next_lexed_token(void)
 void ignore_tokens_until_newline(void)
 {
     while (lexed_token_index + 1 < buf_len(all_tokens))
-    {        
+    {
         if (all_tokens[lexed_token_index]->kind == TOKEN_NEWLINE)
         {
             lexed_token_index++;
