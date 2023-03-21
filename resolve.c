@@ -139,12 +139,13 @@ size_t get_type_align(type *type)
 const size_t POINTER_SIZE = 8;
 const size_t POINTER_ALIGN = 8;
 
-type *type_void =  &(type) { .name = "void",    .kind = TYPE_VOID,    .size = 0, .align = 0 };
-type *type_null =  &(type) { .name = "null",    .kind = TYPE_NULL,    .size = 0, .align = 0 };
-type *type_char =  &(type) { .name = "char",    .kind = TYPE_CHAR,    .size = 1, .align = 1 };
-type *type_int =   &(type) { .name = "int",     .kind = TYPE_INT,     .size = 4, .align = 4 };
-type *type_float = &(type) { .name = "float",   .kind = TYPE_FLOAT,   .size = 4, .align = 4 };
-type *type_bool =  &(type) { .name = "bool",    .kind = TYPE_BOOL,    .size = 4, .align = 4 };
+type *type_void =    &(type) { .name = "void",    .kind = TYPE_VOID,    .size = 0, .align = 0 };
+type *type_null =    &(type) { .name = "null",    .kind = TYPE_NULL,    .size = 0, .align = 0 };
+type *type_char =    &(type) { .name = "char",    .kind = TYPE_CHAR,    .size = 1, .align = 1 };
+type *type_int =     &(type) { .name = "int",     .kind = TYPE_INT,     .size = 4, .align = 4 };
+type *type_float =   &(type) { .name = "float",   .kind = TYPE_FLOAT,   .size = 4, .align = 4 };
+type *type_bool =    &(type) { .name = "bool",    .kind = TYPE_BOOL,    .size = 4, .align = 4 };
+type *type_invalid = &(type) { .name = "invalid", .kind = TYPE_NONE,    .size = 0, .align = 0 };
 
 hashmap global_symbols;
 symbol **global_symbols_list;
@@ -167,13 +168,18 @@ void resolve_stmt(stmt *st, type *opt_ret_type);
 
 const char *get_function_mangled_name(decl *dec);
 
+resolved_expr *resolved_expr_invalid;
+
 void error_in_resolving(const char *error_text, source_pos pos)
 {
     error(error_text, pos, 0);
 }
 
 bool compare_types(type *a, type *b)
-{    
+{
+    assert(a);
+    assert(b);
+
     if (a == b)
     {
         return true;
@@ -209,6 +215,9 @@ bool compare_types(type *a, type *b)
 
 bool are_symbols_the_same_function(symbol *a, symbol *b)
 {
+    assert(a);
+    assert(b);
+
     /*
         do rozważenia: zakładając interning stringów, może po prostu porównanie mangled names byłoby szybsze?
     */
@@ -350,6 +359,13 @@ void get_complete_struct_type(type *type, type_aggregate_field **fields, size_t 
     for (type_aggregate_field **it = fields; it != fields + fields_count; it++)
     {
         type_aggregate_field *field = *it;
+        if (field->type->kind == TYPE_NONE)
+        {
+            error_in_resolving(
+                xprintf("Could not resolve field '%s' in the '%s' struct definition", field->name, type->name),
+                type->symbol->decl->pos);
+            return;
+        }
         type->size = get_type_size(field->type) + align_up(type->size, get_type_align(field->type));
         type->align = max(type->align, get_type_align(field->type));
     }
@@ -409,6 +425,11 @@ type **cached_pointer_types;
 
 type *get_pointer_type(type *base_type)
 {
+    if (base_type == null)
+    {
+        return type_invalid;
+    }
+
     size_t ptr_count = buf_len(cached_pointer_types);
     if (ptr_count > 0)
     {
@@ -534,6 +555,11 @@ void push_symbol_from_decl(decl *d)
 {
     symbol *sym = get_symbol_from_decl(d);
 
+    if (sym->name == NULL)
+    {
+        return null;
+    }
+
     if (sym->kind == SYMBOL_TYPE)
     {
         // nie zezwalamy na podwójne nazwy
@@ -584,6 +610,8 @@ void push_symbol_from_decl(decl *d)
 
 void complete_type(type *t)
 {
+    assert(t);
+
     if (t->kind == TYPE_COMPLETING)
     {
         error_in_resolving("Detected type completion cycle", (source_pos){0});
@@ -655,10 +683,15 @@ type *resolve_typespec(typespec *t)
             case TYPESPEC_NAME:
             {
                 symbol *sym = resolve_name(t->name, t->pos);
-                if (sym->kind != SYMBOL_TYPE)
+                if (sym == null)
+                {
+                    // błąd jest już rzucony w resolve_name
+                    return type_invalid;
+                }
+                else if (sym->kind != SYMBOL_TYPE)
                 {
                     error_in_resolving(xprintf("%s must denote a type", t->name), t->pos);
-                    return null;
+                    return type_invalid;
                 }
                 else
                 {
@@ -669,18 +702,29 @@ type *resolve_typespec(typespec *t)
             case TYPESPEC_ARRAY:
             {                                
                 type *element = resolve_typespec(t->array.base_type);
+                if (element->kind == TYPE_NONE)
+                {
+                    error_in_resolving("Could not resolve type in the array declaration", t->pos);
+                    return type_invalid;
+                };
+
                 resolved_expr *size_expr = resolve_expr(t->array.size_expr);
+                if (size_expr == null)
+                {
+                    error_in_resolving("Could not resolve size expression in the array declaration", t->pos);
+                    return type_invalid;
+                }
+
                 result = get_array_type(element, size_expr->val);
             }
             break;
             case TYPESPEC_LIST:
             {
                 type *element = resolve_typespec(t->list.base_type);
-
                 if (element->kind == TYPE_LIST)
                 {
-                    error_in_resolving("no dynamic lists of dynamic lists allowed yet", t->pos);
-                    return null;
+                    error_in_resolving("Dynamic lists of dynamic lists are not allowed", t->pos);
+                    return type_invalid;
                 }
 
                 result = get_list_type(element);
@@ -756,10 +800,6 @@ resolved_expr *resolve_expr_unary(expr *expr)
 
     assert(expr->kind == EXPR_UNARY);
     resolved_expr *operand = resolve_expr(expr->unary.operand);
-    if (operand == null)
-    {
-        return null;
-    }
 
     type *type = operand->type;
     switch (expr->unary.operator)
@@ -770,7 +810,7 @@ resolved_expr *resolve_expr_unary(expr *expr)
             if (type->kind != TYPE_POINTER)
             {
                 error_in_resolving("Cannot dereference non-pointer type", expr->pos);
-                return null;
+                return resolved_expr_invalid;
             }
             result = get_resolved_lvalue_expr(type->pointer.base_type);
         }
@@ -780,7 +820,7 @@ resolved_expr *resolve_expr_unary(expr *expr)
             if (false == operand->is_lvalue)
             {
                 error_in_resolving("Cannot take address of non-lvalue", expr->pos);
-                return null;
+                return resolved_expr_invalid;
             }
             result = get_resolved_rvalue_expr(get_pointer_type(type));
         }
@@ -790,7 +830,7 @@ resolved_expr *resolve_expr_unary(expr *expr)
             if (type->kind != TYPE_INT)
             {
                 error_in_resolving(xprintf("Can only use unary %s with ints", get_token_kind_name(expr->unary.operator)), expr->pos);
-                return null;
+                return resolved_expr_invalid;
             }
             if (operand->is_const)
             {
@@ -814,10 +854,6 @@ resolved_expr *resolve_expr_binary(expr *expr)
     assert(expr->kind == EXPR_BINARY);
     resolved_expr *left = resolve_expr(expr->binary.left);
     resolved_expr *right = resolve_expr(expr->binary.right);
-    if (left == null || right == null)
-    {
-        return null;
-    }
 
     if (expr->binary.operator == TOKEN_ADD
         || expr->binary.operator == TOKEN_SUB)
@@ -830,7 +866,7 @@ resolved_expr *resolve_expr_binary(expr *expr)
         else
         {
             error_in_resolving("operands of +- must be both ints, floats or pointers", expr->pos);
-            return null;
+            return resolved_expr_invalid;
         }
     }
 
@@ -856,7 +892,7 @@ resolved_expr *resolve_compound_expr(expr *e, type *expected_type, bool ignore_e
     if (e->compound.type == 0 && expected_type == 0)
     {
         error_in_resolving("Implicitly typed compound literal in context without expected type", e->pos);
-        return null;
+        return resolved_expr_invalid;
     }
 
     type *t = null;
@@ -868,7 +904,7 @@ resolved_expr *resolve_compound_expr(expr *e, type *expected_type, bool ignore_e
             if (false == ignore_expected_type_mismatch)
             {
                 error_in_resolving("Compound literal has different type than expected", e->pos);
-                return null;
+                return resolved_expr_invalid;
             }
             else
             {
@@ -888,7 +924,7 @@ resolved_expr *resolve_compound_expr(expr *e, type *expected_type, bool ignore_e
         && t->kind != TYPE_ARRAY)
     {
         error_in_resolving("Compound literals can only be used with struct and array types", e->pos);
-        return null;
+        return resolved_expr_invalid;
     }
 
     for (size_t i = 0; i < e->compound.fields_count; i++)
@@ -917,7 +953,7 @@ resolved_expr *resolve_compound_expr(expr *e, type *expected_type, bool ignore_e
                 else
                 {
                     error_in_resolving("Compound literal field type mismatch", field->expr->pos);
-                    return null;
+                    return resolved_expr_invalid;
                 }
             }
         }
@@ -934,7 +970,7 @@ resolved_expr *resolve_compound_expr(expr *e, type *expected_type, bool ignore_e
             if (false == compare_types(init_expr->type, expected_type))
             {
                 error_in_resolving("Compound literal element type mismatch", field->expr->pos);
-                return null;
+                return resolved_expr_invalid;
             }
         }
     }
@@ -952,7 +988,7 @@ void plug_stub_expr(expr *original_expr, stub_expr_kind kind)
     
     expr temp = *original_expr;
     (*original_expr) = *new_expr;
-   * new_expr = temp;
+    *new_expr = temp;
 
     // tutaj nazwy są odwrócone; efekt jest taki, że stub ma teraz odniesienie do starego wyrażenia
     original_expr->stub.original_expr = new_expr;
@@ -964,7 +1000,11 @@ resolved_expr *resolve_special_case_methods(expr *e)
     if (e->kind == EXPR_CALL && e->call.method_receiver)
     {
         resolve_expr(e->call.method_receiver);
-        assert(e->call.method_receiver->resolved_type);
+        if (null == e->call.method_receiver->resolved_type)
+        {
+            return null;
+        }
+        
         if (e->call.method_receiver->resolved_type->kind == TYPE_LIST)
         {
             stub_expr_kind stub_kind = STUB_EXPR_NONE;
@@ -1098,7 +1138,7 @@ resolved_expr *resolve_special_case_constructors(expr *e)
 resolved_expr *resolve_call_expr(expr *e)
 {
     assert(e->kind == EXPR_CALL);
-    resolved_expr *result = null;
+    resolved_expr *result = resolved_expr_invalid;
 
     result = resolve_special_case_constructors(e);
     if (result)
@@ -1114,13 +1154,11 @@ resolved_expr *resolve_call_expr(expr *e)
 
     symbol *matching = null;
     resolved_expr *fn_expr = resolve_expr(e->call.function_expr);
-    if (null == fn_expr)
+    if (fn_expr == null || fn_expr->type->kind != TYPE_FUNCTION)
     {
         error_in_resolving("Could not resolve function call", e->pos);
-        return null;
+        return resolved_expr_invalid;
     }
-
-    assert(fn_expr->type->kind == TYPE_FUNCTION);
 
     symbol *candidate = fn_expr->type->symbol;
     while (candidate)
@@ -1184,7 +1222,7 @@ resolved_expr *resolve_call_expr(expr *e)
     if (matching == null)
     {
         error_in_resolving("No overload is matching types of arguments", e->pos);
-        return null;
+        return resolved_expr_invalid;
     }
 
     e->call.resolved_function = matching;
@@ -1195,7 +1233,12 @@ resolved_expr *resolve_call_expr(expr *e)
 
 resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_expected_type_mismatch)
 {
-    resolved_expr *result = null;
+    if (e == null)
+    {
+        return resolved_expr_invalid;
+    }
+
+    resolved_expr *result = resolved_expr_invalid;
     switch (e->kind)
     {
         case EXPR_NAME:
@@ -1204,13 +1247,13 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
             if (sym == null)
             {
                 // błąd jest już rzucony w resolve_name
-                return null;
+                return resolved_expr_invalid;
             }
             else if (sym->type == null)
             {
                 error_in_resolving(
                     xprintf("Expression `%s` has unknown type", sym->name), e->pos);
-                return null;
+                return resolved_expr_invalid;
             }
             else if (sym->kind == SYMBOL_VARIABLE)
             {
@@ -1234,7 +1277,7 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
             else
             {
                 error_in_resolving(xprintf("Not expected symbol kind: %d", sym->kind), e->pos);
-                return null;
+                return resolved_expr_invalid;
             } 
         }
         break;
@@ -1320,12 +1363,13 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
         {
             // w sumie czemu nie?
             error_in_resolving("Ternary expressions not allowed as constants", e->pos);
-            return null;
+            return resolved_expr_invalid;
         }
         break;
         case EXPR_SIZEOF:
         {
             resolved_expr *expr = resolve_expr(e->size_of.expr);
+
             type *expr_type = expr->type;
             complete_type(expr_type);
             int64_t size = get_type_size(expr_type);
@@ -1356,9 +1400,11 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
                     break;
                 }                
             }
-            if (!found)
+
+            if (found == null)
             {                
                 error_in_resolving(xprintf("No field of name: %s", field_name), e->pos);
+                return resolved_expr_invalid;
             }
 
             result = get_resolved_lvalue_expr(found);
@@ -1419,7 +1465,7 @@ resolved_expr *resolve_expr(expr *e)
 
 type *resolve_variable_decl(decl *d)
 {
-    type *result = null;
+    type *result = type_invalid;
     
     // musi być albo typ, albo wyrażenie
     // mogą być oba, ale wtedy muszą się zgadzać
@@ -1481,19 +1527,19 @@ type *resolve_function_decl(decl *d)
             if (d->function.is_extern == false)
             {
                 error_in_resolving("Variadic allowed only in extern functions", d->pos);
-                return null;
+                return type_invalid;
             }
             else
             {                
                 if (variadic_declared)
                 {
                     error_in_resolving("There can only be one variadic argument", d->pos);
-                    return null;
+                    return type_invalid;
                 }
                 else if (i < args->param_count - 1)
                 {
                     error_in_resolving("Variadic must be the last argument", d->pos);
-                    return null;
+                    return type_invalid;
                 }
                 else
                 {
@@ -1595,7 +1641,7 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
             if (st->expr)
             {
                 resolved_expr *result = resolve_expected_expr(st->expr, opt_ret_type, true);
-                if (false == compare_types(result->type, opt_ret_type))
+                if (result && false == compare_types(result->type, opt_ret_type))
                 {
                     if (result->type == type_int
                         && opt_ret_type->kind == TYPE_POINTER)
@@ -1693,7 +1739,7 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
             if (left == null)
             {
                 error_in_resolving("Cannot assign to an expression of unknown type", st->assign.assigned_var_expr->pos);
-                return null;
+                return;
             }
 
             if (st->assign.value_expr)
@@ -1858,6 +1904,8 @@ void init_before_resolve()
     push_installed_symbol("int", type_int);
     push_installed_symbol("float", type_float);
     push_installed_symbol("bool", type_bool);
+
+    resolved_expr_invalid = get_resolved_lvalue_expr(type_invalid);
 }
 
 symbol **resolve_test_decls(char **decl_arr, size_t decl_arr_count, bool print)

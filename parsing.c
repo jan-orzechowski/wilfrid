@@ -497,8 +497,18 @@ void parse_function_call_arguments(expr *e)
     assert(e->kind == EXPR_CALL);
     while (false == is_token_kind(TOKEN_RIGHT_PAREN))
     {
+        // tutaj może się nie udawać sparsować argumentu w nieskończoność
+
         expr *arg = parse_expr();
-        buf_push(e->call.args, arg);
+        if (arg)
+        {
+            buf_push(e->call.args, arg);
+        }
+        else
+        {
+            parsing_error("Expected expression in a function call");
+            break;
+        }
 
         if (false == is_token_kind(TOKEN_RIGHT_PAREN))
         {
@@ -1463,6 +1473,12 @@ decl *parse_declaration_optional(void)
         {
             parsing_error(xprintf("Unknown keyword: %s", decl_keyword));
         }
+    }  
+    else
+    {
+        // do rozważenia - włączenie któregokolwiek z tych powoduje dużo false negatives
+        //parsing_error(xprintf("Expected a keyword, got '%s' instead", tok.name));
+        //ignore_tokens_until_newline();
     }
     return declaration;
 }
@@ -1641,6 +1657,11 @@ decl **parse(char *filename, char *source, bool print_s_expressions)
         {
             break;
         }
+    }
+
+    if (buf_len(decl_array) == 0)
+    {
+        parsing_error("Could not parse any declaration");
     }
 
     return decl_array;

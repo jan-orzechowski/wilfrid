@@ -112,26 +112,43 @@ int main(int argc, char **argv)
     return 1;
 }
 
+#include <time.h>
+
 void fuzzy_test(void)
 {
     char *test_file = "test/testcode.txt";
     string_ref file_buf = read_file_for_parsing(test_file);
     if (file_buf.str)
     {
+        size_t seed = (size_t)time(null);
+        srand(seed);
+
         // podmieniamy na losowe znaki
         int substitutions_count = file_buf.length / 30;
         for (; substitutions_count > 0; substitutions_count--)
         {
-            size_t char_index = get_random_01() * file_buf.length;
+            size_t char_index = get_random_01() * (file_buf.length - 1);
             // chcemy kody ascii z przedziału 32-126
             char new_letter = (char)(get_random_01() * (126 - 32)) + 32;
+            if (new_letter == '%')
+            {
+                new_letter = '_'; // żeby nie wchodziło w konflikty z printf
+            }
             file_buf.str[char_index] = new_letter;
         }
 
+        printf("Random seed: %lld\n\n", seed);
         printf("Original text:\n\n");
         printf(file_buf.str);
+        printf("\n\n");
 
-        symbol **resolved = resolve(test_file, file_buf.str, true);
+        symbol **resolved = resolve("fuzzy test", file_buf.str, true);
+
+        if (buf_len(errors) > 0 || buf_len(warnings) > 0)
+        {
+            print_warnings_to_console();
+            print_errors_to_console();
+        }
     }
 }
 

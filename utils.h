@@ -351,7 +351,7 @@ void map_grow(hashmap *map, size_t new_capacity)
     }
     free(map->keys);
     free(map->values);
-   * map = new_map;
+    *map = new_map;
 }
 
 void map_put(hashmap *map, void *key, void *val)
