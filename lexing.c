@@ -709,6 +709,22 @@ void ignore_tokens_until_newline(void)
     }
 }
 
+void ignore_tokens_until_next_block(void)
+{
+    while (lexed_token_index + 1 < buf_len(all_tokens))
+    {
+        if (all_tokens[lexed_token_index]->kind == TOKEN_RIGHT_BRACE)
+        {
+            next_lexed_token();
+            break;
+        }
+        else
+        {
+            next_lexed_token();
+        }
+    }
+}
+
 void lex(char *source, char *filename)
 {
     init_stream(filename, source);

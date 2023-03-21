@@ -1133,6 +1133,12 @@ const char *get_function_mangled_name(decl *dec)
     for (size_t i = 0; i < dec->function.params.param_count; i++)
     {
         typespec *t = dec->function.params.params[i].type;
+        if (t == null)
+        {
+            // w tym wypadku mamy błąd w resolve - kod nie zostanie wygenerowany
+            // więc możemy nie generować mangled name
+            return null;
+        }
         const char *mangled_arg = get_typespec_mangled_name(t);
         buf_printf(mangled, mangled_arg);
     }

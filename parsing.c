@@ -430,7 +430,7 @@ expr *parse_base_expr(void)
     }
     else if (is_token_kind(TOKEN_LEFT_BRACE))
     {
-        result = parse_compound_literal();        
+        result = parse_compound_literal();
     }
     else if (match_token_kind(TOKEN_LEFT_PAREN))
     {
@@ -1034,6 +1034,7 @@ stmt *parse_statement(void)
         else if (keyword == enum_keyword)
         {
             parsing_error("Enum declaration is not allowed in a function scope");
+            ignore_tokens_until_next_block();
         }
         else if (keyword == false_keyword || keyword == true_keyword)
         {
@@ -1093,7 +1094,7 @@ stmt_block parse_statement_block(void)
     stmt_block result = {0};
     stmt **statements = null;
     
-    for (size_t attempts = 0; attempts < 20; attempts++)
+    for (size_t attempts = 0; attempts < 3; attempts++)
     {
         stmt *st = parse_statement();
         if (st)
@@ -1473,12 +1474,10 @@ decl *parse_declaration_optional(void)
         {
             parsing_error(xprintf("Unknown keyword: %s", decl_keyword));
         }
-    }  
+    }
     else
-    {
-        // do rozważenia - włączenie któregokolwiek z tych powoduje dużo false negatives
-        //parsing_error(xprintf("Expected a keyword, got '%s' instead", tok.name));
-        //ignore_tokens_until_newline();
+    {    
+        ignore_tokens_until_newline();
     }
     return declaration;
 }
@@ -1634,7 +1633,7 @@ decl **parse(char *filename, char *source, bool print_s_expressions)
     
     decl **decl_array = null;
     decl *dec = null;
-    for (size_t attempts = 0; attempts < 20; attempts++)
+    for (size_t attempts = 0; attempts < 4; attempts++)
     {
         if (is_token_kind(TOKEN_NEWLINE))
         {
@@ -1653,8 +1652,21 @@ decl **parse(char *filename, char *source, bool print_s_expressions)
             }
         }
         
+        if (attempts == 2)
+        {
+            ignore_tokens_until_next_block();
+        }
+
         if (is_token_kind(TOKEN_EOF))
         {
+            break;
+        }
+
+        // szczególny przypadek - string bez zamykającego cudzysłowu
+        if (is_token_kind(TOKEN_STRING) 
+            && lexed_token_index - 1 == buf_len(all_tokens))
+        {
+            parsing_error("String without matching ending quotation marks");
             break;
         }
     }

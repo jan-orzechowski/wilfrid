@@ -120,14 +120,14 @@ void fuzzy_test(void)
     string_ref file_buf = read_file_for_parsing(test_file);
     if (file_buf.str)
     {
-        size_t seed = (size_t)time(null);
+        unsigned int seed = (unsigned int)time(null);
         srand(seed);
 
         // podmieniamy na losowe znaki
-        int substitutions_count = file_buf.length / 30;
+        size_t substitutions_count = file_buf.length / 30;
         for (; substitutions_count > 0; substitutions_count--)
         {
-            size_t char_index = get_random_01() * (file_buf.length - 1);
+            size_t char_index = (size_t)(get_random_01() * (file_buf.length - 1));
             // chcemy kody ascii z przedziału 32-126
             char new_letter = (char)(get_random_01() * (126 - 32)) + 32;
             if (new_letter == '%')
@@ -137,7 +137,7 @@ void fuzzy_test(void)
             file_buf.str[char_index] = new_letter;
         }
 
-        printf("Random seed: %lld\n\n", seed);
+        printf("Random seed: %d\n\n", seed);
         printf("Original text:\n\n");
         printf(file_buf.str);
         printf("\n\n");

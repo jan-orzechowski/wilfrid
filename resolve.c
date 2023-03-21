@@ -546,7 +546,7 @@ symbol *push_installed_symbol(const char *name, type *type)
     symbol *sym = get_new_symbol(SYMBOL_TYPE, interned, null);
     sym->state = SYMBOL_RESOLVED;
     sym->type = type;
-    map_put(&global_symbols, interned, sym);
+    map_put(&global_symbols, (void*)interned, sym);
     buf_push(global_symbols_list, sym);
     return sym;
 }
@@ -557,7 +557,7 @@ void push_symbol_from_decl(decl *d)
 
     if (sym->name == NULL)
     {
-        return null;
+        return;
     }
 
     if (sym->kind == SYMBOL_TYPE)
@@ -865,7 +865,7 @@ resolved_expr *resolve_expr_binary(expr *expr)
         }
         else
         {
-            error_in_resolving("operands of +- must be both ints, floats or pointers", expr->pos);
+            error_in_resolving("Operands of +- must be both ints, floats or pointers", expr->pos);
             return resolved_expr_invalid;
         }
     }
