@@ -877,6 +877,12 @@ resolved_expr *resolve_expr_binary(expr *expr)
         int64_t const_value = eval_int_binary_op(expr->binary.operator, left->val, right->val);
         result = get_resolved_const_expr(const_value);
     }
+    else 
+    if (expr->binary.operator >= TOKEN_FIRST_CMP_OPERATOR
+        && expr->binary.operator <= TOKEN_LAST_CMP_OPERATOR)
+    {
+        result = get_resolved_rvalue_expr(type_bool);
+    }
     else
     {
         result = get_resolved_rvalue_expr(left->type);
