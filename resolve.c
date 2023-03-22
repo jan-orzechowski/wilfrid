@@ -19,7 +19,6 @@ typedef enum type_kind
     TYPE_NULL,
     TYPE_STRUCT,
     TYPE_UNION,
-    TYPE_NAME,
     TYPE_ARRAY,
     TYPE_LIST,
     TYPE_POINTER,
@@ -72,7 +71,6 @@ struct type
     size_t align;
     union
     {
-        const char *name;
         type_array array;
         type_list list;
         type_pointer pointer;
@@ -139,13 +137,13 @@ size_t get_type_align(type *type)
 const size_t POINTER_SIZE = 8;
 const size_t POINTER_ALIGN = 8;
 
-type *type_void =    &(type) { .name = "void",    .kind = TYPE_VOID,    .size = 0, .align = 0 };
-type *type_null =    &(type) { .name = "null",    .kind = TYPE_NULL,    .size = 0, .align = 0 };
-type *type_char =    &(type) { .name = "char",    .kind = TYPE_CHAR,    .size = 1, .align = 1 };
-type *type_int =     &(type) { .name = "int",     .kind = TYPE_INT,     .size = 4, .align = 4 };
-type *type_float =   &(type) { .name = "float",   .kind = TYPE_FLOAT,   .size = 4, .align = 4 };
-type *type_bool =    &(type) { .name = "bool",    .kind = TYPE_BOOL,    .size = 4, .align = 4 };
-type *type_invalid = &(type) { .name = "invalid", .kind = TYPE_NONE,    .size = 0, .align = 0 };
+type *type_void =    &(type) { .kind = TYPE_VOID,    .size = 0, .align = 0 };
+type *type_null =    &(type) { .kind = TYPE_NULL,    .size = 0, .align = 0 };
+type *type_char =    &(type) { .kind = TYPE_CHAR,    .size = 1, .align = 1 };
+type *type_int =     &(type) { .kind = TYPE_INT,     .size = 4, .align = 4 };
+type *type_float =   &(type) { .kind = TYPE_FLOAT,   .size = 4, .align = 4 };
+type *type_bool =    &(type) { .kind = TYPE_BOOL,    .size = 4, .align = 4 };
+type *type_invalid = &(type) { .kind = TYPE_NONE,    .size = 0, .align = 0 };
 
 hashmap global_symbols;
 symbol **global_symbols_list;
@@ -361,10 +359,11 @@ void get_complete_struct_type(type *type, type_aggregate_field **fields, size_t 
     for (type_aggregate_field **it = fields; it != fields + fields_count; it++)
     {
         type_aggregate_field *field = *it;
-        if (field->type->kind == TYPE_NONE)
+        if (field->type == null || field->type->kind == TYPE_NONE)
         {
+            assert(type->symbol);
             error_in_resolving(
-                xprintf("Could not resolve field '%s' in the '%s' struct definition", field->name, type->name),
+                xprintf("Could not resolve field '%s' in the '%s' struct definition", field->name, type->symbol->name),
                 type->symbol->decl->pos);
             return;
         }
@@ -440,7 +439,7 @@ type *get_pointer_type(type *base_type)
             type *ptr_type = cached_pointer_types[i];
             assert(ptr_type->kind == TYPE_POINTER);
 
-            if (ptr_type->pointer.base_type->name == base_type->name)
+            if (compare_types(ptr_type->pointer.base_type, base_type))
             {
                 return ptr_type;
             }

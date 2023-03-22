@@ -684,8 +684,9 @@ void gen_expr(expr *e)
             if (e->new.type->kind == TYPESPEC_LIST)
             {
                 assert(e->resolved_type);
+                assert(e->resolved_type->list.base_type);
                 gen_printf("___list_initialize___(8, sizeof(%s), 0)",
-                    e->resolved_type->list.base_type->name);
+                    e->resolved_type->list.base_type->symbol->name);
             }
             else
             {
@@ -699,8 +700,9 @@ void gen_expr(expr *e)
             if (e->new.type->kind == TYPESPEC_LIST)
             {
                 assert(e->resolved_type);
+                assert(e->resolved_type->list.base_type);
                 gen_printf("___list_initialize___(8, sizeof(%s), 1)",
-                    e->resolved_type->list.base_type->name);
+                    e->resolved_type->list.base_type->symbol->name);
             }
             else
             {
@@ -717,7 +719,7 @@ void gen_aggregate_decl(symbol *sym)
 {
     assert(sym->kind == SYMBOL_TYPE);
     assert(sym->decl->kind == DECL_STRUCT);
-    printf("typedef struct %s {", sym->type->name);
+    printf("typedef struct %s {", sym->name);
     for (size_t i = 0; i < sym->type->aggregate.fields_count; i++)
     {
         type_aggregate_field *f = sym->type->aggregate.fields[i];

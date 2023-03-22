@@ -9,6 +9,10 @@
 #define null 0
 #define offsetof(s,m) ((size_t)&(((s*)0)->m))
 
+#if !defined(assert)
+#define assert(condition) { if (!(condition)) { int x = 0; int y = 1 / x; } }
+#endif 
+
 #if !defined(max)
 #define max(a,b) ((a) > (b) ? (a) : (b))
 #endif 
