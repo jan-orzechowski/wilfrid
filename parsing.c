@@ -1066,7 +1066,6 @@ stmt *parse_statement(void)
     }
     else if (is_token_kind(TOKEN_MUL)) // pointer dereference
     {
-        next_lexed_token();
         s = parse_simple_statement();
         s->pos = pos;
     }
