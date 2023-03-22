@@ -427,10 +427,6 @@ expr *parse_base_expr(void)
             result = push_bool_expr(pos, false);
             next_lexed_token();
         }
-        else
-        {
-            parsing_error("Unexpected keyword");
-        }
     }
     else if (is_token_kind(TOKEN_LEFT_BRACE))
     {
@@ -488,11 +484,6 @@ expr *parse_base_expr(void)
             }
         }
     }
-    else
-    {
-        // błąd
-    }
-    
     return result;
 }
 
@@ -1485,10 +1476,6 @@ decl *parse_declaration_optional(void)
             parsing_error(xprintf("Unknown keyword: %s", decl_keyword));
         }
     }
-    else
-    {    
-        ignore_tokens_until_newline();
-    }
     return declaration;
 }
 
@@ -1617,6 +1604,7 @@ void parse_test(void)
         "let x = new X(new y(), new z())",
         "let x = new memory(1000)",
         "let x = auto memory(100)",
+        "fn push_node(n: node *) { *last_node = *n } } ",
     };
 
     int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);
@@ -1643,7 +1631,7 @@ decl **parse(char *filename, char *source, bool print_s_expressions)
     
     decl **decl_array = null;
     decl *dec = null;
-    for (size_t attempts = 0; attempts < 4; attempts++)
+    for (size_t attempts = 0; attempts < 5; attempts++)
     {
         if (is_token_kind(TOKEN_NEWLINE))
         {
@@ -1662,7 +1650,7 @@ decl **parse(char *filename, char *source, bool print_s_expressions)
             }
         }
         
-        if (attempts == 2)
+        if (attempts == 3)
         {
             ignore_tokens_until_next_block();
         }

@@ -23,8 +23,8 @@ void fuzzy_test(void);
 
 void compile_and_run(void)
 {
-    char *test_file = "test/error_examples.txt";
-  
+    char *test_file = "test/testcode.txt";
+    
     string_ref file_buf = read_file_for_parsing(test_file);
     if (file_buf.str)
     {      
@@ -32,27 +32,27 @@ void compile_and_run(void)
 
         size_t debug_count = buf_len(resolved);
 
-        gen_common_includes();
-
-        gen_printf_newline("\n// FORWARD DECLARATIONS\n");
-
-        gen_forward_decls(resolved);
-
-        gen_printf_newline("\n// ENTRY POINT \n");
-
-        gen_entry_point();
-        
-        gen_printf_newline("\n// DECLARATIONS\n");
-
         if (buf_len(errors) == 0)
         {
+            gen_common_includes();
+
+            gen_printf_newline("\n// FORWARD DECLARATIONS\n");
+
+            gen_forward_decls(resolved);
+
+            gen_printf_newline("\n// ENTRY POINT \n");
+
+            gen_entry_point();
+
+            gen_printf_newline("\n// DECLARATIONS\n");
+
             for (size_t i = 0; i < buf_len(resolved); i++)
             {
                 gen_symbol_decl(resolved[i]);
             }
-        }
 
-        debug_breakpoint;
+            debug_breakpoint;
+        }
 
         //printf("/// C OUTPUT:\n\n%s\n", gen_buf);
 
@@ -95,9 +95,9 @@ int main(int argc, char **argv)
 #elif 0
     cgen_test();
 #else
-    //compile_and_run();
+    compile_and_run();
 
-    fuzzy_test();
+    //fuzzy_test();
 #endif
 
     //for (size_t i = 1; i < argc; i++)
