@@ -1208,3 +1208,91 @@ void mangled_names_test()
     }
     debug_breakpoint;
 }
+
+const char *pretty_print_type_name(type *ty, bool plural)
+{
+    const char *result = null;
+    assert(ty);
+    switch (ty->kind)
+    {
+        case TYPE_VOID:
+        {
+            result = "void";
+        }
+        break;
+        case TYPE_INT:
+        {
+            result = plural ? "integers" : "integer";
+        }
+        break;
+        case TYPE_CHAR:
+        {
+            result = plural ? "characters" : "character";
+        }
+        break;
+        case TYPE_FLOAT:
+        {
+            result = plural ? "floating point numbers" : "floating point number";
+        }
+        break;
+        case TYPE_BOOL:
+        {
+            result = plural ? "booleans" : "boolean";
+        }
+        break;;
+        case TYPE_NULL:
+        {
+            result = plural ? "null values" : "null value";
+        }
+        break;
+        case TYPE_STRUCT:
+        {
+            assert(ty->symbol);
+            result = plural
+                ? xprintf("'%s' structs", ty->symbol->name)
+                : xprintf("'%s' struct", ty->symbol->name);
+        }
+        break;
+        case TYPE_UNION:
+        {
+            assert(ty->symbol);
+            result = plural
+                ? xprintf("'%s' unions", ty->symbol->name)
+                : xprintf("'%s' union", ty->symbol->name);
+        }
+        break;
+        case TYPE_ARRAY:
+        {
+            assert(ty->array.base_type);
+            result = plural
+                ? xprintf("arrays of %s", pretty_print_type_name(ty->array.base_type, true))
+                : xprintf("array of %s", pretty_print_type_name(ty->array.base_type, true));
+        }
+        break;
+        case TYPE_LIST:
+        {
+            assert(ty->list.base_type);
+            result = plural
+                ? xprintf("lists of %s", pretty_print_type_name(ty->list.base_type, true))
+                : xprintf("list of %s", pretty_print_type_name(ty->list.base_type, true));
+        }
+        break;
+        case TYPE_POINTER:
+        {
+            assert(ty->pointer.base_type);
+            result = plural
+                ? xprintf("pointers to %s", pretty_print_type_name(ty->pointer.base_type, false))
+                : xprintf("pointer to %s", pretty_print_type_name(ty->pointer.base_type, false));
+        }
+        break;
+        case TYPE_FUNCTION:
+        case TYPE_NONE:
+        case TYPE_INCOMPLETE:
+        default:
+        {
+            fatal("unimplemented");
+        }
+        break;       
+    }
+    return result;
+}

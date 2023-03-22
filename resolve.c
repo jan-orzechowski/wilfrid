@@ -175,6 +175,8 @@ void error_in_resolving(const char *error_text, source_pos pos)
     error(error_text, pos, 0);
 }
 
+const char *pretty_print_type_name(type *ty, bool plural);
+
 bool compare_types(type *a, type *b)
 {
     assert(a);
@@ -1772,7 +1774,11 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
                     }
                     else
                     {
-                        error_in_resolving("types do not match in assignment statement", st->assign.assigned_var_expr->pos);
+                        error_in_resolving(
+                            xprintf("Types do not match in assignment. Trying to assign %s to %s",
+                                pretty_print_type_name(right->type, false), 
+                                pretty_print_type_name(left->type, false)),
+                            st->assign.assigned_var_expr->pos);
                         return;
                     }
                 }
