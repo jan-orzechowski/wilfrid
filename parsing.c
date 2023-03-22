@@ -229,6 +229,7 @@ typespec *parse_basic_typespec(void)
     {
         t = push_struct(arena, typespec);
         t->kind = TYPESPEC_FUNCTION;
+        t->pos = tok.pos;
         next_lexed_token();
 
         expect_token_kind(TOKEN_LEFT_PAREN);
@@ -287,12 +288,14 @@ typespec *parse_typespec(void)
             t = push_struct(arena, typespec);
             t->kind = TYPESPEC_POINTER;
             t->pointer.base_type = base_t;
+            t->pos = tok.pos;
             next_lexed_token();
         }
         else
         {           
             typespec *base_t = t;
             t = push_struct(arena, typespec);
+            t->pos = tok.pos;
             next_lexed_token();
 
             if (match_token_kind(TOKEN_RIGHT_BRACKET))
@@ -319,6 +322,7 @@ expr *parse_compound_literal(void)
     {
         e = push_struct(arena, expr);
         e->kind = EXPR_COMPOUND_LITERAL;
+        e->pos = tok.pos;
 
         compound_literal_field **fields = null;
         compound_literal_field *field = null;
@@ -520,7 +524,8 @@ void parse_function_call_arguments(expr *e)
 
 // przydałaby się lepsza nazwa na to
 expr *parse_complex_expr(void)
-{    
+{
+    source_pos pos = tok.pos;
     expr *result = parse_base_expr();
     while (is_token_kind(TOKEN_LEFT_PAREN) 
         || is_token_kind(TOKEN_LEFT_BRACKET) 
@@ -534,6 +539,7 @@ expr *parse_complex_expr(void)
             result = push_struct(arena, expr);
             result->kind = EXPR_CALL;
             result->call.function_expr = left_side;
+            result->pos = pos;
 
             parse_function_call_arguments(result);
 
@@ -554,6 +560,7 @@ expr *parse_complex_expr(void)
             result = push_struct(arena, expr);
             result->kind = EXPR_INDEX;
             result->index.array_expr = left_side;
+            result->pos = tok.pos; // inaczej niż przy . i (
             
             expr *index_expr = parse_expr();
             result->index.index_expr = index_expr;
@@ -564,7 +571,7 @@ expr *parse_complex_expr(void)
         {
             next_lexed_token();           
             const char *identifier = tok.name;
-            source_pos pos = tok.pos;
+            
             next_lexed_token();                       
             if (match_token_kind(TOKEN_LEFT_PAREN))
             {
@@ -573,6 +580,7 @@ expr *parse_complex_expr(void)
                 result->kind = EXPR_CALL;
                 result->call.function_expr = push_name_expr(pos, identifier);
                 result->call.method_receiver = left_side;
+                result->pos = pos;
 
                 parse_function_call_arguments(result);
 
@@ -585,6 +593,7 @@ expr *parse_complex_expr(void)
                 result->kind = EXPR_FIELD;
                 result->field.expr = left_side;
                 result->field.field_name = identifier;
+                result->pos = tok.pos;
             }            
         }
     }
@@ -709,9 +718,9 @@ expr *parse_or_expr(void)
 
 expr *parse_ternary_expr(void)
 {
+    source_pos pos = tok.pos;
     expr *e = parse_or_expr();
-
-    if (e != 0)
+    if (e != null)
     {
         if (is_token_kind(TOKEN_QUESTION))
         {
@@ -727,9 +736,9 @@ expr *parse_ternary_expr(void)
             e->ternary.condition = cond;
             e->ternary.if_false = if_false_expr;
             e->ternary.if_true = if_true_expr;
+            e->pos = pos;
         }
     }
-
     return e;
 }
 
@@ -881,6 +890,7 @@ stmt *parse_if_statement(void)
     {
         s = push_struct(arena, stmt);
         s->kind = STMT_IF_ELSE;
+        s->pos = tok.pos;
         next_lexed_token();
 
         expect_token_kind(TOKEN_LEFT_PAREN);
