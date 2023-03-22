@@ -237,17 +237,13 @@ bool lex_next_token(void)
 
                     if (*(stream) == '\n')
                     {
-                        stream += 1;
+                        stream++;
+                        tok.pos.line++;
+                        current_line_beginning = stream + 1;
                         break;
                     }
                 }
-            }
-            else if (*(stream + 1) == '=')
-            {
-                stream += 2;
-                tok.kind = TOKEN_DIV_ASSIGN;
-                tok.name = str_intern_range(tok.start, stream);
-            }
+            }         
             else if (*(stream + 1) == '*')
             {
                 discard_token = true;
@@ -260,6 +256,13 @@ bool lex_next_token(void)
                     if (*(stream) == 0)
                     {
                         break;
+                    }
+
+                    if (*(stream) == '\n')
+                    {
+                        tok.pos.line++;
+                        current_line_beginning = stream + 1;                        
+                        stream++;
                     }
 
                     if (*(stream) == '/' && *(stream + 1) == '*')
@@ -279,6 +282,12 @@ bool lex_next_token(void)
                         break;
                     }
                 }
+            }
+            else if (*(stream + 1) == '=')
+            {
+                stream += 2;
+                tok.kind = TOKEN_DIV_ASSIGN;
+                tok.name = str_intern_range(tok.start, stream);
             }
             else
             {
