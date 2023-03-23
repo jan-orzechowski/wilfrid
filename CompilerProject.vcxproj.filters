@@ -28,5 +28,6 @@
     <Text Include="test\extern.txt" />
     <Text Include="test\loops.txt" />
     <Text Include="test\constructors.txt" />
+    <Text Include="test\parsing_tests.txt" />
   </ItemGroup>
 </Project>

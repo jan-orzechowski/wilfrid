@@ -152,6 +152,7 @@
     <Text Include="test\linked_lists.txt" />
     <Text Include="test\loops.txt" />
     <Text Include="test\overloading.txt" />
+    <Text Include="test\parsing_tests.txt" />
     <Text Include="test\testcode.txt" />
     <Text Include="test\error_examples.txt" />
   </ItemGroup>
