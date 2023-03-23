@@ -710,29 +710,7 @@ typedef struct error_message
     size_t length;
 } error_message;
 
-error_message *warnings;
 error_message *errors;
-
-void warning(const char* warning_text, source_pos pos, size_t length)
-{
-    if (buf_len(warnings) > 0)
-    {
-        // nie wrzucamy wielu ostrzeżeń w tym samym miejscu
-        error_message last = warnings[buf_len(warnings) - 1];
-        if (compare_source_pos(last.pos, pos))
-        {
-            return;
-        }
-    }
-
-    error_message message = 
-    {
-        .text = warning_text,
-        .pos = pos,
-        .length = length
-    };
-    buf_push(warnings, message);
-}
 
 void error(const char *error_text, source_pos pos, size_t length)
 {
@@ -755,23 +733,6 @@ void error(const char *error_text, source_pos pos, size_t length)
     buf_push(errors, message);
 }
 
-char* print_warnings(void)
-{
-    char *buffer = null;
-    size_t warnings_count = buf_len(warnings);
-    if (warnings_count > 0)
-    {
-        buf_printf(buffer, "\n%lld warnings:\n", warnings_count);
-        for (size_t i = 0; i < warnings_count; i++)
-        {
-            error_message msg = warnings[i];
-            buf_printf(buffer, "- %s (file '%s', line %lld, position %lld)\n", msg.text,
-                msg.pos.filename, msg.pos.line, msg.pos.character);
-        }
-    }
-    return buffer;
-}
-
 char *print_errors(void)
 {
     char *buffer = null;
@@ -787,15 +748,6 @@ char *print_errors(void)
         }
     }
     return buffer;
-}
-
-void print_warnings_to_console(void)
-{
-    char *list = print_warnings();
-    if (list)
-    {
-        printf("%s", list);
-    }
 }
 
 void print_errors_to_console(void)

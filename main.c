@@ -59,7 +59,6 @@ void compile_and_run(void)
 
         if (buf_len(errors) > 0)
         {
-            print_warnings_to_console();
             print_errors_to_console();
             char *errors = print_errors();
             write_file("test/errors.log", errors, buf_len(errors));
@@ -145,9 +144,8 @@ void fuzzy_test(void)
 
         symbol **resolved = resolve("fuzzy test", file_buf.str, true);
 
-        if (buf_len(errors) > 0 || buf_len(warnings) > 0)
+        if (buf_len(errors) > 0)
         {
-            print_warnings_to_console();
             print_errors_to_console();
         }
     }

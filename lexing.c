@@ -359,15 +359,7 @@ bool lex_next_token(void)
                 stream++;
                 tok.name = str_intern_range(tok.start, stream);
             }
-        }
-        break;
-        case ';':
-        {
-            // usuwamy i zastępujemy whitespace
-            *(stream) = ' ';
-            discard_token = true;
-            warning("Semicolons are ignored", tok.pos, 1);
-        }
+        }      
         break;
         case '[':
         {
@@ -607,6 +599,7 @@ bool lex_next_token(void)
             tok.kind = TOKEN_EOF;
         }
         break;
+        case ';':
         default:
         {
             discard_token = true;

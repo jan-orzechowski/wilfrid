@@ -161,7 +161,6 @@ symbol **resolve_test_decls(char **decl_arr, size_t decl_arr_count, bool print)
     arena = allocate_memory_arena(megabytes(50));
     init_before_resolve();
 
-    buf_free(warnings);
     buf_free(errors);
 
     if (print)
@@ -209,7 +208,6 @@ symbol **resolve_test_decls(char **decl_arr, size_t decl_arr_count, bool print)
     }
 
     print_errors_to_console();
-    print_warnings_to_console();
 
     return ordered_global_symbols;
 }
