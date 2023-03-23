@@ -1,7 +1,5 @@
-﻿fn main (arguments_count: int, arguments_array: char**) 
-{ 
-   tree_test()
-}
+﻿extern fn printf(str: char*, variadic) : int
+extern fn assert(condition: bool)
 
 struct tree
 {
@@ -28,7 +26,7 @@ fn push_node(n: node*)
     if (node_count < MAX_STACK)
     {
         node_count++
-        *last_node = n
+        last_node = n
     }
 }
 
@@ -285,7 +283,7 @@ fn print_tree(t: tree*)
     print_node(t.root)
 }
 
-fn tree_test()
+fn main()
 {
     let a : node = { 1 }
     let b : node = { 2 }
@@ -333,7 +331,7 @@ fn tree_test()
     breadth_first_search(&t)
     depth_first_traversal(&t)
 
-    assert(search_for_value(t.root, 7))
+    assert(0 != search_for_value(t.root, 7))
     assert(0 == search_for_value(t.root, 9))
     assert(0 == search_for_value(t.root, 0))
     
@@ -347,13 +345,4 @@ fn tree_test()
     invert_binary_tree(&t)
     printf("\ninverted tree:", 0)
     print_tree(&t)
-}
-
-fn assert(b: int)
-{
-    if (b == 0)
-    {
-        let y := 0
-        let x := 10 / y
-    }
 }
