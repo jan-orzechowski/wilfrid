@@ -8,7 +8,7 @@
 #include <stdbool.h>
 
 #include "lexing.c"
-#include "print.c"
+#include "ast_print.c"
 #include "parsing.c"
 #include "resolve.c"
 #include "cgen.c"
