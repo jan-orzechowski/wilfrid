@@ -408,9 +408,11 @@ expr *parse_base_expr(void)
         }      
         else if (keyword == sizeof_keyword)
         {
-            next_lexed_token();            
-            expr *e = parse_expr();
+            next_lexed_token();
+            expect_token_kind(TOKEN_LEFT_PAREN);
+            expr *e = parse_expr();            
             result = push_sizeof_expr(pos, e);
+            expect_token_kind(TOKEN_RIGHT_PAREN);
         }
         else if (keyword == null_keyword)
         {
@@ -451,6 +453,7 @@ expr *parse_base_expr(void)
                 if (result->kind != EXPR_NAME)
                 {
                     parsing_error("Only names are supported in casts");
+                    return null;
                 }
 
                 expr *e = parse_expr();
@@ -463,6 +466,7 @@ expr *parse_base_expr(void)
                 if (result->kind != EXPR_NAME)
                 {
                     parsing_error("Only names are supported as explicit compound literal types");
+                    return null;
                 }
 
                 result = parse_compound_literal();
@@ -475,9 +479,16 @@ expr *parse_base_expr(void)
                 if (result->kind != EXPR_NAME)
                 {
                     parsing_error("Only names are supported in casts");
+                    return null;
                 }
 
                 expr *e = parse_base_expr();
+                if (e == null)
+                {
+                    parsing_error("There is no expression to cast");
+                    return null;
+                }
+
                 result = push_cast_expr(pos, type_name, e);
 
                 debug_breakpoint;
@@ -621,7 +632,7 @@ expr *parse_unary_expr(void)
         {
             // tutaj musimy mieć "greedy parsing" w prawo
             // np. &a[10] to adres 10. elementu, a nie 10 element w tabeli adresów
-            e = push_unary_expr(pos, TOKEN_BITWISE_AND, parse_expr());
+            e = push_unary_expr(pos, TOKEN_BITWISE_AND, parse_unary_expr());
         }
     }
     return e;
@@ -883,9 +894,14 @@ stmt *parse_if_statement(void)
         s->pos = tok.pos;
         next_lexed_token();
 
-        expect_token_kind(TOKEN_LEFT_PAREN);
+        expect_token_kind_or_return(TOKEN_LEFT_PAREN);
         s->if_else.cond_expr = parse_expr();
-        expect_token_kind(TOKEN_RIGHT_PAREN);
+        if (s->if_else.cond_expr == null)
+        {
+            parsing_error("Expected expression in the if statement condition");
+            return null;
+        }
+        expect_token_kind_or_return(TOKEN_RIGHT_PAREN);
 
         s->if_else.then_block = parse_statement_block();
 
@@ -964,7 +980,6 @@ stmt *parse_statement(void)
         else if (keyword == if_keyword)
         {
             s = parse_if_statement();
-            s->pos = pos;
         }
         else if (keyword == do_keyword)
         {
@@ -1089,6 +1104,13 @@ stmt *parse_statement(void)
 stmt_block parse_statement_block(void)
 {
     expect_token_kind(TOKEN_LEFT_BRACE);
+
+    if (is_token_kind(TOKEN_RIGHT_BRACE))
+    {
+        // specjalny przypadek - pusty blok
+        next_lexed_token();
+        return (stmt_block){0};
+    }
 
     stmt_block result = {0};
     stmt **statements = null;
