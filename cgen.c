@@ -989,52 +989,6 @@ void gen_common_includes(void)
 #endif
 }
 
-void cgen_test(void)
-{
-    generate_line_hints = false;
-
-    char *test_strs[] = {
-#if 0
-        "const x = 10",        
-        "let y := (vec3){1, 2, 3}",
-        "fn power_2(n:int):int{return n*n}",        
-        "fn _main(){\
-            let i : int = 5\
-            let j = power_2(i)\
-        }",
-        "struct vec3 { x: int, y: int, z: int }",
-        "const y = (float)12",
-        "let u := (bool)(y > 11) && (y < 30)",
-        "let i := (int)12 + 1",
-#endif
-        "fn f(){\
-            let list := new int[]\
-            list[10] = 12\
-            delete list\
-        }",
-        
-    };
-    
-    symbol **resolved = resolve_test_decls(test_strs, sizeof(test_strs) / sizeof(test_strs[0]), false);
-
-    gen_printf_newline("// FORWARD DECLARATIONS\n");
-
-    gen_forward_decls(resolved);
-
-    gen_printf_newline("\n// DECLARATIONS\n");
-
-    for (size_t i = 0; i < buf_len(resolved); i++)
-    {
-        gen_symbol_decl(resolved[i]);
-    }
-
-    debug_breakpoint;
-
-    printf("%s\n", gen_buf);
-
-    debug_breakpoint;
-}
-
 const char *get_typespec_mangled_name(typespec *typ)
 {
     assert(typ);
@@ -1158,57 +1112,6 @@ const char *get_function_mangled_name(decl *dec)
     const char *result = str_intern(mangled);
     buf_free(mangled);
     return result;
-}
-
-void mangled_names_test()
-{
-    // uwaga: reordering podczas resolve może zepsuć test
-    char *test_strs[] = {
-        "struct tee { i: int }",
-        "union zet { s: tee, t: zet* }",
-        "fn funkcja (x: int, y: int) { return } ",     
-        "fn funkcja ( t: tee, z: zet, i: int[16]*) { return }",
-        "fn funkcja ( t: tee, z: zet*, i: int[16]*) { return }",
-        "fn funkcja ( t: tee*, z: zet, i: int[16]*) { return }",
-        "fn funkcja ( t: tee*, z: zet, i: int[16]*) : int { return 1 }",
-        "fn funkcja ( t: zet, z: zet, i: int[17]*) { return }",
-        "fn funkcja ( t: zet*, z: int[17]*, i: zet*) { return }",
-        "fn funkcja ( t: tee*, z: zet, i: int[]) { return }",
-        "fn (i: int) funkcja (o: int) { return }",
-        "fn (s: int) funkcja () : int { return s }",
-        "fn (x: int) funkcja () : { }",
-    };
-
-    char *cmp_strs[] = {
-        "not tested",
-        "not tested",
-        "___funkcja___0i___0i___0v",       
-        "___funkcja___tee___zet___0p___0a_16___0i___0v",
-        "___funkcja___tee___0p___zet___0p___0a_16___0i___0v",
-        "___funkcja___0p___tee___zet___0p___0a_16___0i___0v",
-        "___funkcja___0p___tee___zet___0p___0a_16___0i___0i",
-        "___funkcja___zet___zet___0p___0a_17___0i___0v",
-        "___funkcja___0p___zet___0p___0a_17___0i___0p___zet___0v",
-        "___funkcja___0p___tee___zet___0l___0i___0v",
-        "___0i___funkcja___0i___0v",
-        "___0i___funkcja___0i",
-        "___0i___funkcja___0v",
-    };
-
-    assert((sizeof(test_strs) / sizeof(test_strs[0])) == sizeof(cmp_strs) / sizeof(cmp_strs[0]))
-
-    symbol **resolved = resolve_test_decls(test_strs, sizeof(test_strs) / sizeof(test_strs[0]), false);
-    for (size_t i = 2 /* dwa pierwsze pomijamy!*/; i < buf_len(resolved); i++)
-    {
-        symbol *sym = resolved[i]; 
-        const char *mangled_name = get_function_mangled_name(sym->decl);
-        if (0 != strcmp(mangled_name, cmp_strs[i]))
-        {
-            // błąd!
-            debug_breakpoint;
-        }
-    }
-    debug_breakpoint;
 }
 
 const char *pretty_print_type_name(type *ty, bool plural)
