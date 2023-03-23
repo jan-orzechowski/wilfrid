@@ -740,7 +740,6 @@ expr *parse_expr(void)
 }
 
 decl *parse_declaration(void);
-decl *parse_declaration_optional(void);
 stmt_block parse_statement_block(void);
 
 stmt *parse_simple_statement(void)
@@ -1048,7 +1047,7 @@ stmt *parse_statement(void)
     }
     else if (is_token_kind(TOKEN_NAME))
     {        
-        decl *d = parse_declaration_optional();
+        decl *d = parse_declaration();
         if (d)
         {
             s = push_struct(arena, stmt);
@@ -1308,7 +1307,7 @@ void parse_enum(enum_decl *decl)
     }
 }
 
-decl *parse_declaration_optional(void)
+decl *parse_declaration(void)
 {
     decl *declaration = null;
     source_pos pos = tok.pos;
@@ -1478,156 +1477,13 @@ decl *parse_declaration_optional(void)
     return declaration;
 }
 
-decl *parse_declaration(void)
+decl **lex_and_parse(char *filename, char *source)
 {
-    decl *d = parse_declaration_optional();
-    if (d == null)
-    {
-        parsing_error("Expected a declaration");
-    }
-    return d;
-}
-
-decl *parse_decl(char *source)
-{
-    lex(null, source);
-
-    decl *result = parse_declaration();
-    return result;
-}
-
-void parse_text_and_print_s_exprs(char *test)
-{
-    arena = allocate_memory_arena(megabytes(50));
-    
-    buf_free(warnings);
-    buf_free(errors);
-
-    lex(null, test);
-
-    decl *result = null;
-    do
-    {
-        result = parse_declaration_optional();
-        print_decl(result);
-        printf("\n");       
-    }
-    while (result);
-
-    print_errors_to_console();
-    print_warnings_to_console();
-
-    free_memory_arena(arena);
-}
-
-void parse_test(void)
-{
-    char *test_strs[] = {
-#if 1
-        "const x = a + -b << c + -d + e >> f",
-        "let x := a ^ *b + c * -d + e | -f & g",
-        "let x := a >= b || -c * d < e && -f",
-        "let x := (&a - &b) + (*c % d)",
-        "let x : bool = (a == -b)",
-        "let x: int[1 + 2] = {1, 2, 3}",
-        "const x = sizeof(t.subt.x)",
-        "const n = sizeof(&a[0].b.c[10])",
-        "fn f (a: int, b: float, c : int ) : float { return a + b }",
-        "fn f () {\
-            x += 1\
-            y -= 2\
-            z %= 3\
-            return x + y - z }",
-        "struct x { a: int, b: float, c: y }",
-        "union some_union { a: int, b: float }",
-        "enum some_enum { A = 1, B, C, D = 4 }",
-        "fn some_function() : int { let x = 100\
-            for (let i = 0, i < x, i++) { x = x + 1 } return x }",
-        "let x = 2 + f(1, 2) + g(3) + 4",
-        "fn f() { x *= 2 y |= !x z &= 8 w /= z u &&= ~y v ||= z a ^= b } ",
-        "fn f(ind: int) { x.arr[ind] = y[ind] }",
-        "fn f(): int { let y = fun_1()\
-             let z: int = fun_2(y[0], y[y[0] + 1])\
-             return y * z }",
-        "fn f() { if (*x == 1) { return y } else { return z } }",
-        "fn f() {if (function(x)) { return y } else if (y == 2) { return z }}",
-        "fn f() { if (x) { x = y } else if (y) {} else if (z) { z = x } else { y = z } }",
-        "fn f() { if (sizeof(x) == 4) { return x } }"
-        "fn f() { while (x > y) { x = x + 1 } }",
-        "fn f() { do { x[index] = x - 1 } while (x < y) }",
-        "fn f() {\
-            switch (x){\
-            case 1: {let x: int = 1 return x } break\
-            default: { return 2 } break } } ",
-        "fn f() {\
-            switch (x){\
-            case 1: case 2: { y++ } case 3: case 4: case 5: { y-- }\
-            case 6: { return 2 } case 7: {} } }",
-        "fn f(x: int*, y: int[25], z: char*[25], w: int**[20] ) : int** { let x : int[256] = 0 } ",
-        "struct x { a: int[20], b: float**, c: int*[20]* } ",
-        "let x = y == z ? *y : 20",
-        "fn fc(x: stru*) : stu { stru.substru = {1, 2} let y = func(12, a, {2, 3, x, stru.substru}) return y }",
-        "fn f() { x.y = {z = 2, w = 3, p = 44, q = z, 22} }",
-        "let x: int[4] = {1, 2, 3, 4}",
-        "let x = (v3){1, 2, 3}",
-        "let y = f(1, {1, 2}, (v2){1,2})",
-        "fn f(x: int, y: int) : vec2 { return (v2){x + 1, y - 1} }",
-        "let x := (float)12 ",
-        "let x := (string)y ",
-        "let x := (float)(12 + 1 / (float)z)",
-        "let x := (float)1",
-        "let x := (int)other_var",
-        "let x := (uint)12 + 1",
-        "let x := (bool)var1 && (bool)var2 || (bool)((bool)var3 & (bool)var4)",
-        "let x := (bool)var1 && (bool)var2 || ((bool)var3 & (bool)var4)",             
-        "fn f() { delete x }",
-        "let x : node* = null",
-        "fn f(x: node*): bool { if (x == null) { return true } else { return false } }",
-        "let x := new int[]",
-        "let x : string[] = auto string[]",
-        "let x : int[12][] = new int[12][]",
-        "fn (s: some_struct) method (i: int) { s.x += i } ",
-        "fn (this: int[16]*[12]) method () {  } ",
-        "fn (x: some_struct*) method () : some_struct* { return x } ",
-        "let x := some_var.method() ",
-        "let x := (*some_var_ptr).method(1, 2, 3)",
-        "let x := some_array[12].method(*other_var)",
-        "let x := one_object.other_object.method(one_object)",
-        "let x := one_object.other_object.one_other_object.method()",
-        "let chain := some_object.method().other_method().yet_other_method()",
-        "extern fn strlen(str: char*) : int",
-        "extern fn printf(str: char*, variadic) : int",
-        "fn /* comment /* other comment /* other comment */ */ */ x /* comment */(i:int) :int { return i }",
-#endif
-        "let x = new X(1 ,2)",
-        "let x = new X(new y(), new z())",
-        "let x = new memory(1000)",
-        "let x = auto memory(100)",
-        "fn push_node(n: node *) { *last_node = *n } } ",
-    };
-
-    int arr_length = sizeof(test_strs) / sizeof(test_strs[0]);
-    for (int i = 0; i < arr_length; i++)
-    {
-        char *str = test_strs[i];
-        parse_text_and_print_s_exprs(str);
-    }
-
-    debug_breakpoint;
-}
-
-decl **parse(char *filename, char *source, bool print_s_expressions)
-{
-    free_memory_arena(arena);
-    arena = allocate_memory_arena(megabytes(50));
-
     lex(filename, source);
-
-    if (print_s_expressions)
-    {
-        printf("/// PARSING ///\n\n");
-    }
     
+    free_memory_arena(arena);
+    arena = allocate_memory_arena(megabytes(50));
+
     decl **decl_array = null;
     decl *dec = null;
     for (size_t attempts = 0; attempts < 5; attempts++)
@@ -1637,16 +1493,11 @@ decl **parse(char *filename, char *source, bool print_s_expressions)
             next_lexed_token();
         }
 
-        dec = parse_declaration_optional();
+        dec = parse_declaration();
         if (dec)
         {
             attempts = 0;
             buf_push(decl_array, dec);
-            if (print_s_expressions)
-            {
-                printf("%s", get_decl_ast(dec));
-                printf("\n\n");
-            }
         }
         
         if (attempts == 3)

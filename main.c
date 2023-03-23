@@ -12,6 +12,7 @@
 #include "parsing.c"
 #include "resolve.c"
 #include "cgen.c"
+#include "test_runner.c"
 
 #include "vm.h"
 #include "vm.c"
@@ -87,8 +88,8 @@ int main(int argc, char **argv)
 
     common_includes_test();
 
-#if 0
-    parse_test();
+#if 1
+    parsing_test();
 #elif 0
     resolve_test();
     //mangled_names_test();

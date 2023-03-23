@@ -1943,7 +1943,7 @@ symbol **resolve(char *filename, char *source, bool print_s_expressions)
     }
     init_before_resolve();
 
-    decl **declarations = parse(filename, source, print_s_expressions);
+    decl **declarations = lex_and_parse(filename, source);
 
     size_t debug_decl_count = buf_len(declarations);
 

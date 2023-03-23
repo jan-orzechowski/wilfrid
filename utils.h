@@ -472,6 +472,19 @@ void intern_str_test(void)
     assert(pz != px);
 }
 
+char *make_str_range_copy(char *start, char *end)
+{
+    assert(end > start);
+    size_t size = end - start;
+ 
+    char *new_str = xcalloc((size + 1) * sizeof(char));
+
+    memcpy(new_str, start, size);
+    new_str[size] = 0;
+
+    return new_str;
+}
+
 void stretchy_buffers_test(void)
 {
     intern_str *str = null;
@@ -879,4 +892,13 @@ string_ref read_file_for_parsing(char *filename)
 float get_random_01(void)
 {
     return ((float)rand() / (float)RAND_MAX);
+}
+
+char *get_string_end(char *str)
+{
+    while (*str)
+    {
+        str++;
+    }
+    return (str - 1);
 }
