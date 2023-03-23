@@ -1,5 +1,4 @@
 ﻿#include "utils.h"
-#include "lexing.h"
 #include "parsing.h"
 #include "resolve.h"
 

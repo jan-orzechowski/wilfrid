@@ -1,7 +1,5 @@
 ﻿#pragma once
 
-// istotne jest to, że wartości enuma nigdy się nie zmniejszają
-// np. jesti TOKEN_A wynosi 1000, to zdefiniowany niżej TOKEN_B będzie wynosił 1001
 typedef enum token_kind
 {
     TOKEN_EOF,
@@ -73,7 +71,7 @@ typedef enum token_kind
     TOKEN_DIV_ASSIGN,
     TOKEN_MOD_ASSIGN,
     TOKEN_LAST_ASSIGN_OPERATOR = TOKEN_MOD_ASSIGN,
-    
+
     // inne
     TOKEN_COLON_ASSIGN, // :=
     TOKEN_INC, // ++
@@ -81,8 +79,8 @@ typedef enum token_kind
 
 } token_kind;
 
-const char* token_kind_names[] = {
- 
+const char *token_kind_names[] = {
+
     [TOKEN_EOF] = "EOF",
     [TOKEN_NEWLINE] = "NEWLINE",
     [TOKEN_COLON] = ":",
@@ -158,3 +156,15 @@ typedef struct token
         const char *string_val;
     };
 } token;
+
+const char *get_token_kind_name(token_kind kind)
+{
+    if (kind < sizeof(token_kind_names) / sizeof(*token_kind_names))
+    {
+        return token_kind_names[kind];
+    }
+    else
+    {
+        return 0;
+    }
+}

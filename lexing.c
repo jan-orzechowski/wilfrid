@@ -1,97 +1,10 @@
 ﻿#include "utils.h"
-#include "lexing.h"
-
-const char *get_token_kind_name(token_kind kind)
-{
-    if (kind < sizeof(token_kind_names) / sizeof(*token_kind_names))
-    {
-        return token_kind_names[kind];
-    }
-    else
-    {
-        return 0;
-    }
-}
-
-const char *struct_keyword;
-const char *enum_keyword;
-const char *union_keyword;
-const char *let_keyword;
-const char *fn_keyword;
-const char *const_keyword;
-const char *new_keyword;
-const char *auto_keyword;
-const char *delete_keyword;
-const char *sizeof_keyword;
-const char *null_keyword;
-const char *true_keyword;
-const char *false_keyword;
-const char *break_keyword;
-const char *continue_keyword;
-const char *return_keyword;
-const char *if_keyword;
-const char *else_keyword;
-const char *while_keyword;
-const char *do_keyword;
-const char *for_keyword;
-const char *switch_keyword;
-const char *case_keyword;
-const char *default_keyword;
-const char *variadic_keyword;
-const char *extern_keyword;
-
-const char *first_keyword;
-const char *last_keyword;
-const char **keywords_list;
-
-#define KEYWORD(name) name##_keyword = str_intern(#name); buf_push(keywords_list, name##_keyword)
-
-void init_keywords(void)
-{
-    static bool initialized = false;
-    if (false == initialized)
-    {        
-        KEYWORD(struct);
-        KEYWORD(enum);
-        KEYWORD(union);
-        KEYWORD(let);
-        KEYWORD(fn);
-        KEYWORD(sizeof);
-        KEYWORD(const);
-        KEYWORD(new);
-        KEYWORD(auto);
-        KEYWORD(delete);
-        KEYWORD(null);
-        KEYWORD(true);
-        KEYWORD(false);
-        KEYWORD(break);
-        KEYWORD(continue);
-        KEYWORD(return);
-        KEYWORD(if);
-        KEYWORD(else);
-        KEYWORD(while);
-        KEYWORD(do);
-        KEYWORD(for);
-        KEYWORD(switch);
-        KEYWORD(case);
-        KEYWORD(default);
-        KEYWORD(variadic);
-        KEYWORD(extern);
-    }
-    first_keyword = struct_keyword;
-    last_keyword = extern_keyword;
-    initialized = true;
-}
-
-bool is_name_keyword(const char *name)
-{
-    bool result = (name >= first_keyword && name <= last_keyword);
-    return result;
-}
+#include "tokens.h"
+#include "keywords.h"
 
 char *stream;
 token tok;
-token **all_tokens;
+token *all_tokens;
 int lexed_token_index;
 
 size_t nested_comments_level;
@@ -115,7 +28,6 @@ bool lex_next_token(void)
                 val *= 10; // dotychczasową wartość traktujemy jako 10 razy większą - bo znaleźliśmy kolejne miejsce dziesiętne
                 val += *stream++ - '0'; // przerabiamy char na integer
             }
-            //stream--; // w ostatnim przejściu pętli posunęliśmy się o 1 za daleko
             tok.kind = TOKEN_INT;
             tok.val = val;
         }
@@ -202,8 +114,8 @@ bool lex_next_token(void)
             }
             else
             {
-                tok.kind = TOKEN_MUL;
                 stream++;
+                tok.kind = TOKEN_MUL;
                 tok.name = str_intern_range(tok.start, stream);
             }
         }
@@ -212,8 +124,8 @@ bool lex_next_token(void)
         {
             if (*(stream + 1) == '/')
             {
-                discard_token = true;
                 stream += 1;
+                discard_token = true;
                 for (;;)
                 {
                     stream++;
@@ -225,17 +137,17 @@ bool lex_next_token(void)
                     if (*(stream) == '\n')
                     {
                         stream++;
+                        current_line_beginning = stream;
                         tok.pos.line++;
-                        current_line_beginning = stream + 1;
                         break;
                     }
                 }
             }         
             else if (*(stream + 1) == '*')
             {
+                stream += 2;
                 discard_token = true;
                 nested_comments_level++;
-                stream += 2;
 
                 for (;;)
                 {
@@ -247,21 +159,21 @@ bool lex_next_token(void)
 
                     if (*(stream) == '\n')
                     {
-                        tok.pos.line++;
-                        current_line_beginning = stream + 1;                        
                         stream++;
+                        current_line_beginning = stream;                        
+                        tok.pos.line++;
                     }
 
                     if (*(stream) == '/' && *(stream + 1) == '*')
                     {
-                        nested_comments_level++;
                         stream += 2;
+                        nested_comments_level++;
                     }
 
                     if (*(stream) == '*' && *(stream + 1) == '/')
                     {
-                        nested_comments_level--;
                         stream += 2;
+                        nested_comments_level--;
                     }
 
                     if (nested_comments_level == 0)
@@ -278,16 +190,16 @@ bool lex_next_token(void)
             }
             else
             {
-                tok.kind = TOKEN_DIV;
                 stream++;
+                tok.kind = TOKEN_DIV;
                 tok.name = str_intern_range(tok.start, stream);
             }
         }
         break;
         case '"':
         {
-            tok.kind = TOKEN_STRING;
             stream++;
+            tok.kind = TOKEN_STRING;
             for (;;)
             {
                 stream++;
@@ -305,43 +217,43 @@ bool lex_next_token(void)
         break;
         case '(':
         {
-            tok.kind = TOKEN_LEFT_PAREN;
             stream++;
+            tok.kind = TOKEN_LEFT_PAREN;
             tok.name = str_intern_range(tok.start, stream);
         }
         break;
         case ')':
         {
-            tok.kind = TOKEN_RIGHT_PAREN;
             stream++;
+            tok.kind = TOKEN_RIGHT_PAREN;
             tok.name = str_intern_range(tok.start, stream);
         }
         break;
         case '{':
         {
-            tok.kind = TOKEN_LEFT_BRACE;
             stream++;
+            tok.kind = TOKEN_LEFT_BRACE;
             tok.name = str_intern_range(tok.start, stream);
         }
         break;
         case '}':
         {
-            tok.kind = TOKEN_RIGHT_BRACE;
             stream++;
+            tok.kind = TOKEN_RIGHT_BRACE;
             tok.name = str_intern_range(tok.start, stream);
         }
         break;
         case ',':
         {
-            tok.kind = TOKEN_COMMA;
             stream++;
+            tok.kind = TOKEN_COMMA;
             tok.name = str_intern_range(tok.start, stream);
         }
         break;
         case '.':
         {
-            tok.kind = TOKEN_DOT;
             stream++;
+            tok.kind = TOKEN_DOT;
             tok.name = str_intern_range(tok.start, stream);
         }
         break;
@@ -355,23 +267,23 @@ bool lex_next_token(void)
             }
             else
             {
-                tok.kind = TOKEN_MOD;
                 stream++;
+                tok.kind = TOKEN_MOD;
                 tok.name = str_intern_range(tok.start, stream);
             }
         }      
         break;
         case '[':
         {
-            tok.kind = TOKEN_LEFT_BRACKET;
             stream++;
+            tok.kind = TOKEN_LEFT_BRACKET;
             tok.name = str_intern_range(tok.start, stream);
         }
         break;
         case ']':
         {
-            tok.kind = TOKEN_RIGHT_BRACKET;
             stream++;
+            tok.kind = TOKEN_RIGHT_BRACKET;
             tok.name = str_intern_range(tok.start, stream);
         }
         break;
@@ -579,10 +491,10 @@ bool lex_next_token(void)
         break;
         case '\n':
         {
-            tok.kind = TOKEN_NEWLINE;
-            tok.pos.line++;
-            current_line_beginning = stream + 1;
             stream++;
+            current_line_beginning = stream;
+            tok.pos.line++;
+            tok.kind = TOKEN_NEWLINE;
         }
         break;
         case '\r':
@@ -590,8 +502,8 @@ bool lex_next_token(void)
         case '\t': 
         case '\v':
         {
-            discard_token = true;
             stream++;
+            discard_token = true;
         }
         break;
         case '\0':
@@ -602,9 +514,9 @@ bool lex_next_token(void)
         case ';':
         default:
         {
+            stream++;
             discard_token = true;
             unexpected_character = true;
-            stream++;
         }
         break;
     }
@@ -620,9 +532,7 @@ bool lex_next_token(void)
 
     if (false == discard_token)
     {
-        token *new_tok = xmalloc(sizeof(token));
-        memcpy(new_tok, &tok, sizeof(token));
-        buf_push(all_tokens, new_tok);
+        buf_push(all_tokens, tok);
     }
 
     assert((tok.kind != TOKEN_NAME && tok.kind != TOKEN_KEYWORD) 
@@ -648,7 +558,7 @@ void next_lexed_token(void)
 {
     if (lexed_token_index + 1 < buf_len(all_tokens))
     {
-        token *next_token = all_tokens[lexed_token_index];
+        token *next_token = &all_tokens[lexed_token_index];
         if (next_token)
         {
             tok = *next_token;
@@ -661,7 +571,7 @@ void next_lexed_token(void)
     }
     else
     {
-        tok = *all_tokens[lexed_token_index];
+        tok = all_tokens[lexed_token_index];
     }
 }
 
@@ -669,13 +579,13 @@ void ignore_tokens_until_newline(void)
 {
     while (lexed_token_index + 1 < buf_len(all_tokens))
     {
-        if (all_tokens[lexed_token_index]->kind == TOKEN_NEWLINE)
+        if (all_tokens[lexed_token_index].kind == TOKEN_NEWLINE)
         {
             lexed_token_index++;
             // przypadek wielu newlines pod rząd
             while (lexed_token_index + 1 < buf_len(all_tokens))
             {
-                if (all_tokens[lexed_token_index]->kind == TOKEN_NEWLINE)
+                if (all_tokens[lexed_token_index].kind == TOKEN_NEWLINE)
                 {
                     lexed_token_index++;
                 }
@@ -685,11 +595,11 @@ void ignore_tokens_until_newline(void)
                 }
             }
 
-            tok = *all_tokens[lexed_token_index];
+            tok = all_tokens[lexed_token_index];
             lexed_token_index++;
             break;
         }
-        else if (all_tokens[lexed_token_index]->kind == TOKEN_EOF)
+        else if (all_tokens[lexed_token_index].kind == TOKEN_EOF)
         {
             break;
         }
@@ -702,7 +612,7 @@ void ignore_tokens_until_next_block(void)
 {
     while (lexed_token_index + 1 < buf_len(all_tokens))
     {
-        if (all_tokens[lexed_token_index]->kind == TOKEN_RIGHT_BRACE)
+        if (all_tokens[lexed_token_index].kind == TOKEN_RIGHT_BRACE)
         {
             next_lexed_token();
             break;
@@ -720,6 +630,6 @@ void lex(char *source, char *filename)
 
     while (lex_next_token());
 
-    tok = *all_tokens[0];
+    tok = all_tokens[0];
     lexed_token_index = 1;
 }

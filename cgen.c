@@ -1,5 +1,4 @@
-﻿#include "lexing.h"
-#include "parsing.h"
+﻿#include "parsing.h"
 #include "utils.h"
 
 bool generate_line_hints = true;

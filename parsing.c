@@ -1,5 +1,4 @@
 ﻿#include "parsing.h"
-#include "lexing.h"
 
 expr *parse_expr(void);
 typespec *parse_typespec(void);

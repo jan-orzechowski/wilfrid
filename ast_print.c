@@ -1,4 +1,4 @@
-#include "lexing.h"
+
 #include "parsing.h"
 
 char *ast_buf;
