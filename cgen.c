@@ -726,7 +726,7 @@ void gen_aggregate_decl(symbol *sym)
         type_to_cdecl(f->type, f->name);
     }
     printf("} %s;", sym->decl->name);
-    print_newline();
+    gen_printf_newline("");
 }
 
 void gen_var_decl(decl *decl, symbol *sym)

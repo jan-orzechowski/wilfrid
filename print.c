@@ -1,18 +1,37 @@
 #include "lexing.h"
 #include "parsing.h"
 
-int indent;
+char *ast_buf;
+int ast_indent;
 
-void print_newline(void)
+#define ast_printf(...) buf_printf(ast_buf, __VA_ARGS__)
+
+void ast_print_newline(void)
 {
-    printf("\n%.*s", 2 * indent, "                                                                               ");
+    buf_printf(ast_buf, 
+        "\n%.*s", 
+        2 * ast_indent, 
+        "                                                                               ");
 }
 
-void print_decl(decl *d);
-void print_stmt_block(stmt_block block);
-void print_typespec(typespec *t);
+void ast_print_decl(decl *d);
+void ast_print_stmt_block(stmt_block block);
+void ast_print_typespec(typespec *t);
 
-void print_expr(expr *e)
+void ast_print_token_kind(token_kind kind)
+{
+    const char *name = get_token_kind_name(kind);
+    if (name)
+    {
+        ast_printf("%s", name);
+    }
+    else
+    {
+        ast_printf("TOKEN UNKNOWN: %s", kind);
+    }
+}
+
+void ast_print_expr(expr *e)
 {
     if (e == null)
     {
@@ -23,118 +42,122 @@ void print_expr(expr *e)
     {
         case EXPR_INT:
         {
-            printf("%d", e->number_value);
+            ast_printf("%d", e->number_value);
         }
         break;
         case EXPR_NAME:
         {
-            printf("%s", e->name);
+            ast_printf("%s", e->name);
         }
         break;
         case EXPR_STRING:
         {
-            printf("\"%s\"", e->string_value);
+            ast_printf("\"%s\"", e->string_value);
         }
         break;
         case EXPR_SIZEOF:
         {
-            printf("(sizeof ");
-            print_expr(e->size_of.expr);
-            printf(")");
+            ast_printf("(sizeof ");
+            ast_print_expr(e->size_of.expr);
+            ast_printf(")");
         }
         break;
         case EXPR_UNARY:
         {
-            printf("(");
+            ast_printf("(");
+
             if (e->unary.operator == TOKEN_MUL)
             {
-                printf("pointer-dereference");
+                ast_printf("pointer-dereference");
             }
             else
             {
-                print_token_kind(e->unary.operator);
+                ast_print_token_kind(e->unary.operator);
             }
-            printf(" ");
-            print_expr(e->unary.operand);
-            printf(")");
+
+            ast_printf(" ");
+            ast_print_expr(e->unary.operand);
+            ast_printf(")");
         }
         break;
         case EXPR_BINARY:
         {
-            printf("(");
-            print_token_kind(e->binary.operator);
-            printf(" ");
-            print_expr(e->binary.left);
-            printf(" ");
-            print_expr(e->binary.right);
-            printf(")");
+            ast_printf("(");
+            ast_print_token_kind(e->binary.operator);
+            ast_printf(" ");
+            ast_print_expr(e->binary.left);
+            ast_printf(" ");
+            ast_print_expr(e->binary.right);
+            ast_printf(")");
         }
         break;
         case EXPR_INDEX:
         {
-            printf("(access-index ");
-            print_expr(e->index.index_expr);
-            printf(" ");
-            print_expr(e->index.array_expr);
-            printf(")");
+            ast_printf("(access-index ");
+            ast_print_expr(e->index.index_expr);
+            ast_printf(" ");
+            ast_print_expr(e->index.array_expr);
+            ast_printf(")");
         }
         break;
         case EXPR_CALL:
         {
-            printf("(");
-            print_expr(e->call.function_expr);
+            ast_printf("(");
+            ast_print_expr(e->call.function_expr);
 
             if (e->call.method_receiver)
             {
-                printf(" (receiver ");
-                print_expr(e->call.method_receiver);
-                printf(")");
+                ast_printf(" (receiver ");
+                ast_print_expr(e->call.method_receiver);
+                ast_printf(")");
             }
 
-            printf(" ");
+            ast_printf(" ");
+
             for (size_t i = 0; i < e->call.args_num; i++)
             {
-                print_expr(e->call.args[i]);
+                ast_print_expr(e->call.args[i]);
                 if (i != e->call.args_num - 1)
                 {
-                    printf(" ");
+                    ast_printf(" ");
                 }
             }
-            printf(")");
+
+            ast_printf(")");
         }
         break;
         case EXPR_FIELD:
         {
-            printf("(access-field ");
-            printf("%s", e->field.field_name);
-            printf(" ");
-            print_expr(e->field.expr);
-            printf(")");
+            ast_printf("(access-field ");
+            ast_printf("%s", e->field.field_name);
+            ast_printf(" ");
+            ast_print_expr(e->field.expr);
+            ast_printf(")");
         }
         break;
         case EXPR_TERNARY:
         {
-            printf("(? ");
-            print_expr(e->ternary.condition);
+            ast_printf("(? ");
+            ast_print_expr(e->ternary.condition);
             
-            indent++;
-            print_newline();
-            print_expr(e->ternary.if_true);
-            print_newline();
-            print_expr(e->ternary.if_false);
+            ast_indent++;
+            ast_print_newline();
+            ast_print_expr(e->ternary.if_true);
+            ast_print_newline();
+            ast_print_expr(e->ternary.if_false);
             
-            indent--;
-            print_newline();
-            printf(")");
+            ast_indent--;
+            ast_print_newline();
+            ast_printf(")");
         }
         break;
         case EXPR_COMPOUND_LITERAL:
         {
-            printf("(compound ");
+            ast_printf("(compound ");
             if (e->compound.type)
             {
-                print_typespec(e->compound.type);
-                printf(" ");
+                ast_print_typespec(e->compound.type);
+                ast_printf(" ");
             }
 
             for (size_t i = 0; i < e->compound.fields_count; i++)
@@ -142,70 +165,70 @@ void print_expr(expr *e)
                 compound_literal_field *f = e->compound.fields[i];
                 if (f->field_name)
                 {
-                    printf("(%s ", f->field_name);
-                    print_expr(f->expr);
-                    printf(")");
+                    ast_printf("(%s ", f->field_name);
+                    ast_print_expr(f->expr);
+                    ast_printf(")");
                 }
                 else
                 {
-                    print_expr(f->expr);
+                    ast_print_expr(f->expr);
                 }           
 
                 if (i != e->compound.fields_count - 1)
                 {
-                    printf(" ");
+                    ast_printf(" ");
                 }
             }
-            printf(")");
+            ast_printf(")");
         }
         break;
         case EXPR_CAST:
         {
-            printf("(cast %s ", e->cast.type->name);
-            print_expr(e->cast.expr);
-            printf(")");
+            ast_printf("(cast %s ", e->cast.type->name);
+            ast_print_expr(e->cast.expr);
+            ast_printf(")");
         }
         break;
         case EXPR_NEW:
         {
-            printf("(new ");
-            print_typespec(e->new.type);
-            printf(")");
+            ast_printf("(new ");
+            ast_print_typespec(e->new.type);
+            ast_printf(")");
         }
         break;
         case EXPR_AUTO:
         {
-            printf("(auto ");
-            print_typespec(e->auto_new.type);
-            printf(")");
+            ast_printf("(auto ");
+            ast_print_typespec(e->auto_new.type);
+            ast_printf(")");
         }
         break;
         case EXPR_BOOL:
         {
             if (e->bool_value)
             {
-                printf("true");
+                ast_printf("true");
             }
             else
             {
-                printf("false");
+                ast_printf("false");
             }
         }
         break;
         case EXPR_NULL:
         {
-            printf("null");
+            ast_printf("null");
         }
         break;
         default:
         {
-            fatal("expr kind not handled in print_expr: %d", e->kind);
+            fatal("Expr kind not handled in ast_print_expr: %d", e->kind);
         }
         break;
     }
 }
 
-void print_statement(stmt *s)
+void ast_print_statement(stmt *s)
 {
     if (s == null)
     {
@@ -216,187 +239,187 @@ void print_statement(stmt *s)
     {
         case STMT_RETURN:
         {
-            printf("(return ");
-            print_expr(s->return_stmt.ret_expr);
-            printf(")");
+            ast_printf("(return ");
+            ast_print_expr(s->return_stmt.ret_expr);
+            ast_printf(")");
         }
         break;
         case STMT_BREAK:
         {
-            printf("(break)");
+            ast_printf("(break)");
         }
         break;
         case STMT_CONTINUE:
         {
-            printf("(continue)");
+            ast_printf("(continue)");
         }
         break;
         case STMT_IF_ELSE:
         {
-            printf("(if ");
-            print_expr(s->if_else.cond_expr);
+            ast_printf("(if ");
+            ast_print_expr(s->if_else.cond_expr);
             
-            print_stmt_block(s->if_else.then_block);
+            ast_print_stmt_block(s->if_else.then_block);
            
             if (s->if_else.else_stmt)
             {
-                indent++;
-                print_newline();
-                printf("else");
+                ast_indent++;
+                ast_print_newline();
+                ast_printf("else");
 
                 if (s->if_else.else_stmt->kind == STMT_BLOCK)
                 {
-                    print_statement(s->if_else.else_stmt);
+                    ast_print_statement(s->if_else.else_stmt);
                 }
                 else
                 {
-                    indent++;
-                    print_newline();
-                    print_statement(s->if_else.else_stmt);
-                    indent--;
+                    ast_indent++;
+                    ast_print_newline();
+                    ast_print_statement(s->if_else.else_stmt);
+                    ast_indent--;
                 }                
               
-                indent--;
+                ast_indent--;
             }
 
-            print_newline();
-            printf(")");
+            ast_print_newline();
+            ast_printf(")");
         }
         break;
         case STMT_WHILE:
         {
-            printf("(while ");
-            print_expr(s->while_stmt.cond_expr);
+            ast_printf("(while ");
+            ast_print_expr(s->while_stmt.cond_expr);
 
-            print_stmt_block(s->while_stmt.stmts);
+            ast_print_stmt_block(s->while_stmt.stmts);
 
-            print_newline();
-            printf(")");
+            ast_print_newline();
+            ast_printf(")");
         }
         break;
         case STMT_DO_WHILE:
         {
-            printf("(do-while ");
-            print_expr(s->do_while_stmt.cond_expr);;
+            ast_printf("(do-while ");
+            ast_print_expr(s->do_while_stmt.cond_expr);;
 
-            print_stmt_block(s->do_while_stmt.stmts);
+            ast_print_stmt_block(s->do_while_stmt.stmts);
 
-            print_newline();
-            printf(")");
+            ast_print_newline();
+            ast_printf(")");
         }
         break;
         case STMT_BLOCK:
         {
-            printf("(");
-            print_stmt_block(s->block);
-            print_newline();
-            printf(")");
+            ast_printf("(");
+            ast_print_stmt_block(s->block);
+            ast_print_newline();
+            ast_printf(")");
         }
         break;
         case STMT_ASSIGN:
         {
-            printf("(");
-            print_token_kind(s->assign.operation);
-            printf(" ");
-            print_expr(s->assign.assigned_var_expr);
+            ast_printf("(");
+            ast_print_token_kind(s->assign.operation);
+            ast_printf(" ");
+            ast_print_expr(s->assign.assigned_var_expr);
             if (s->assign.value_expr)
             {
-                printf(" ");
-                print_expr(s->assign.value_expr);
+                ast_printf(" ");
+                ast_print_expr(s->assign.value_expr);
             }
-            printf(")");
+            ast_printf(")");
         }
         break;
         case STMT_FOR:
         {
-            printf("(for ");
-            print_statement(s->for_stmt.init_stmt);
-            printf(" ");
-            print_expr(s->for_stmt.cond_expr);
-            printf(" ");
-            print_statement(s->for_stmt.next_stmt);
+            ast_printf("(for ");
+            ast_print_statement(s->for_stmt.init_stmt);
+            ast_printf(" ");
+            ast_print_expr(s->for_stmt.cond_expr);
+            ast_printf(" ");
+            ast_print_statement(s->for_stmt.next_stmt);
            
-            print_stmt_block(s->for_stmt.stmts);
+            ast_print_stmt_block(s->for_stmt.stmts);
             
-            print_newline();
-            printf(")");
+            ast_print_newline();
+            ast_printf(")");
         }
         break;
         case STMT_SWITCH:
         {
-            printf("(switch ");
-            print_expr(s->switch_stmt.var_expr);
+            ast_printf("(switch ");
+            ast_print_expr(s->switch_stmt.var_expr);
 
-            indent++;
+            ast_indent++;
 
             for (size_t i = 0; i < s->switch_stmt.cases_num; i++)
             {
-                print_newline();
-                printf("(case ");
+                ast_print_newline();
+                ast_printf("(case ");
                 switch_case *c = s->switch_stmt.cases[i];
                 for (size_t j = 0; j < c->cond_exprs_num; j++)
                 {
                     expr *e = c->cond_exprs[j];
-                    print_expr(e);
+                    ast_print_expr(e);
                     if (j != c->cond_exprs_num - 1)
                     {
-                        printf(" ");
+                        ast_printf(" ");
                     }
                 }
                 if (c->is_default)
                 {
-                    printf(" default");
+                    ast_printf(" default");
                 }
                 if (c->fallthrough)
                 {
-                    printf(" fallthrough");
+                    ast_printf(" fallthrough");
                 }
 
                 
-                print_stmt_block(c->stmts);
+                ast_print_stmt_block(c->stmts);
                 
-                print_newline();
-                printf(")");
+                ast_print_newline();
+                ast_printf(")");
             }
 
-            indent--;
-            print_newline();
-            printf(")");
+            ast_indent--;
+            ast_print_newline();
+            ast_printf(")");
         }
         break;
         case STMT_DECL:
         {
-            print_decl(s->decl_stmt.decl);
+            ast_print_decl(s->decl_stmt.decl);
         }
         break;
         case STMT_EXPR:
         {
-            print_expr(s->return_stmt.ret_expr);
+            ast_print_expr(s->return_stmt.ret_expr);
         }
         break;
         case STMT_DELETE:
         {
-            printf("(delete ");
-            print_expr(s->delete.expr);
-            printf(")");
+            ast_printf("(delete ");
+            ast_print_expr(s->delete.expr);
+            ast_printf(")");
         }
         break;
         invalid_default_case;
     }
 }
 
-void print_stmt_block(stmt_block block)
+void ast_print_stmt_block(stmt_block block)
 {
-    indent++;
+    ast_indent++;
     for (int index = 0; index < block.stmts_count; index++)
     {
-        print_newline();
-        print_statement(block.stmts[index]);        
+        ast_print_newline();
+        ast_print_statement(block.stmts[index]);        
     }
-    indent--;
+    ast_indent--;
 }
 
-void print_typespec(typespec *t)
+void ast_print_typespec(typespec *t)
 {
     if (t != 0)
     {
@@ -404,51 +427,51 @@ void print_typespec(typespec *t)
         {
             case TYPESPEC_NAME:
             {
-                printf("(type %s)", t->name);
+                ast_printf("(type %s)", t->name);
             };
             break;
             case TYPESPEC_ARRAY:
             {
-                printf("(array ");
-                print_typespec(t->array.base_type);
-                printf(" ");
-                print_expr(t->array.size_expr);
-                printf(")");
+                ast_printf("(array ");
+                ast_print_typespec(t->array.base_type);
+                ast_printf(" ");
+                ast_print_expr(t->array.size_expr);
+                ast_printf(")");
             };
             break;
             case TYPESPEC_LIST:
             {
-                printf("(list ");
-                print_typespec(t->list.base_type);
-                printf(")");
+                ast_printf("(list ");
+                ast_print_typespec(t->list.base_type);
+                ast_printf(")");
             };
             break;
             case TYPESPEC_POINTER:
             {
-                printf("(pointer ");
-                print_typespec(t->pointer.base_type);
-                printf(")");
+                ast_printf("(pointer ");
+                ast_print_typespec(t->pointer.base_type);
+                ast_printf(")");
             };
             break;
             case TYPESPEC_FUNCTION:
             {
-                printf("(function (");                
+                ast_printf("(function (");                
                 for (size_t i = 0; i < t->function.param_count; i++)
                 {
                     typespec *p = t->function.param_types[i];
-                    print_typespec(p);
+                    ast_print_typespec(p);
                     if (i != t->function.param_count - 1)
                     {
-                        printf(" ");
+                        ast_printf(" ");
                     }
                 }
-                printf(")");
+                ast_printf(")");
                 if (t->function.ret_type)
                 {
-                    printf(" ");
-                    print_typespec(t->function.ret_type);
+                    ast_printf(" ");
+                    ast_print_typespec(t->function.ret_type);
                 }
-                printf(")");
+                ast_printf(")");
             };
             break;
             invalid_default_case;
@@ -456,7 +479,7 @@ void print_typespec(typespec *t)
     }
 }
 
-void print_decl(decl *d)
+void ast_print_decl(decl *d)
 {
     if (d == null)
     {
@@ -467,94 +490,94 @@ void print_decl(decl *d)
     {
         case DECL_FUNCTION:
         {
-            printf("(fn-decl ");
+            ast_printf("(fn-decl ");
 
             if (d->function.is_extern)
             {
-                printf("extern ");
+                ast_printf("extern ");
             }
 
             if (d->name)
             {
-                printf("%s", d->name);
+                ast_printf("%s", d->name);
             }
 
             if (d->function.method_receiver)
             {
-                printf(" (receiver (%s ", d->function.method_receiver->name);
-                print_typespec(d->function.method_receiver->type);
-                printf("))");
+                ast_printf(" (receiver (%s ", d->function.method_receiver->name);
+                ast_print_typespec(d->function.method_receiver->type);
+                ast_printf("))");
             }
 
             if (d->function.params.param_count > 0)
             {
-                printf(" ");
+                ast_printf(" ");
                 for (int index = 0; index < d->function.params.param_count; index++)
                 {
                     function_param *p = &d->function.params.params[index];
-                    printf("(%s ", p->name);
-                    print_typespec(p->type);
-                    printf(")");
+                    ast_printf("(%s ", p->name);
+                    ast_print_typespec(p->type);
+                    ast_printf(")");
 
                     if (index < d->function.params.param_count - 1)
                     {
-                        printf(" ");
+                        ast_printf(" ");
                     }
                 }
             }
 
             if (d->function.return_type)
             {
-                printf(" ");
-                print_typespec(d->function.return_type);
+                ast_printf(" ");
+                ast_print_typespec(d->function.return_type);
             }
             
             if (false == d->function.is_extern)
             {
-                print_stmt_block(d->function.stmts);
-                print_newline();
+                ast_print_stmt_block(d->function.stmts);
+                ast_print_newline();
             }
 
-            printf(")");
+            ast_printf(")");
         }
         break;
         case DECL_VARIABLE:
         {
-            printf("(var-decl ");
+            ast_printf("(var-decl ");
 
             if (d->name)
             {
-                printf("%s", d->name);
+                ast_printf("%s", d->name);
             }
 
             if (d->variable.type)
             {
-                printf(" ");
-                print_typespec(d->variable.type);
+                ast_printf(" ");
+                ast_print_typespec(d->variable.type);
             }
 
             if (d->variable.expr)
             {
-                printf(" ");
-                print_expr(d->variable.expr);
+                ast_printf(" ");
+                ast_print_expr(d->variable.expr);
             }
 
-            printf(")");
+            ast_printf(")");
         }
         break;
         case DECL_CONST:
         {
-            printf("(const-decl ");
+            ast_printf("(const-decl ");
             if (d->name)
             {
-                printf("%s", d->name);
+                ast_printf("%s", d->name);
             }          
             if (d->const_decl.expr)
             {
-                printf(" ");
-                print_expr(d->const_decl.expr);
+                ast_printf(" ");
+                ast_print_expr(d->const_decl.expr);
             }
-            printf(")");
+            ast_printf(")");
         }
         break;
         case DECL_STRUCT:
@@ -562,61 +585,68 @@ void print_decl(decl *d)
         {
             if (d->kind == DECL_UNION)
             {
-                printf("(union-decl");
+                ast_printf("(union-decl");
             }
             else
             {
-                printf("(struct-decl");
+                ast_printf("(struct-decl");
             }
 
             if (d->name)
             {
-                printf(" %s", d->name);
+                ast_printf(" %s", d->name);
             }
 
-            indent++;
+            ast_indent++;
 
             for (size_t index = 0;
                 index < d->aggregate.fields_count;
                 index++)
             {
-                print_newline();
-                printf("(%s", d->aggregate.fields[index].name);
-                printf(" ");
-                print_typespec(d->aggregate.fields[index].type);
-                printf(")");
+                ast_print_newline();
+                ast_printf("(%s", d->aggregate.fields[index].name);
+                ast_printf(" ");
+                ast_print_typespec(d->aggregate.fields[index].type);
+                ast_printf(")");
             }
 
-            indent--;
-            print_newline();
-            printf(")");
+            ast_indent--;
+            ast_print_newline();
+            ast_printf(")");
         }
         break;
         case DECL_ENUM:
         {
-            printf("(enum-decl");
+            ast_printf("(enum-decl");
 
-            indent++;
+            ast_indent++;
 
             for (size_t index = 0;
                 index < d->enum_decl.values_count;
                 index++)
             {
-                print_newline();
+                ast_print_newline();
                 enum_value *value = &d->enum_decl.values[index];
-                printf("(%s", value->name);
+                ast_printf("(%s", value->name);
                 if (value->value_set)
                 {
-                    printf(" %lld", value->value);
+                    ast_printf(" %lld", value->value);
                 }
-                printf(")");
+                ast_printf(")");
             }
 
-            indent--;
-            print_newline();
-            printf(")");
+            ast_indent--;
+            ast_print_newline();
+            ast_printf(")");
         }
         break;
         invalid_default_case;
     }
+}
+
+char *get_decl_ast(decl *d)
+{
+    buf_free(ast_buf);
+    ast_print_decl(d);
+    return ast_buf;
 }

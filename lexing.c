@@ -13,19 +13,6 @@ const char *get_token_kind_name(token_kind kind)
     }
 }
 
-void print_token_kind(token_kind kind)
-{
-    const char *name = get_token_kind_name(kind);
-    if (name)
-    {
-         printf("%s", name);
-    }
-    else
-    {
-        printf("TOKEN UNKNOWN: %.1s", &(char)kind);
-    }
-}
-
 const char *struct_keyword;
 const char *enum_keyword;
 const char *union_keyword;

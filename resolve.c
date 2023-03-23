@@ -1938,7 +1938,7 @@ symbol **resolve_test_decls(char **decl_arr, size_t decl_arr_count, bool print)
         decl *d = parse_decl(str);
         if (print)
         {
-            print_decl(d);
+            printf("%s", get_decl_ast(d));
             printf("\n");
         }
 
@@ -1961,7 +1961,7 @@ symbol **resolve_test_decls(char **decl_arr, size_t decl_arr_count, bool print)
             symbol *sym = *it;
             if (sym->decl)
             {
-                print_decl(sym->decl);
+                printf("%s", get_decl_ast(sym->decl));
             }
             else
             {

@@ -1644,7 +1644,7 @@ decl **parse(char *filename, char *source, bool print_s_expressions)
             buf_push(decl_array, dec);
             if (print_s_expressions)
             {
-                print_decl(dec);
+                printf("%s", get_decl_ast(dec));
                 printf("\n\n");
             }
         }
