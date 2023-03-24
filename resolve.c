@@ -1272,11 +1272,9 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
         break;
         case EXPR_SIZEOF:
         {
-            resolved_expr *expr = resolve_expr(e->size_of.expr);
-
-            type *expr_type = expr->type;
-            complete_type(expr_type);
-            int64_t size = get_type_size(expr_type);
+            type *t = resolve_typespec(e->size_of.type);
+            complete_type(t);
+            int64_t size = get_type_size(t);
             result = get_resolved_const_expr(size);
         }
         break;

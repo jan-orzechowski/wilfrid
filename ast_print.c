@@ -58,7 +58,7 @@ void ast_print_expr(expr *e)
         case EXPR_SIZEOF:
         {
             ast_printf("(sizeof ");
-            ast_print_expr(e->size_of.expr);
+            ast_print_typespec(e->size_of.type);
             ast_printf(")");
         }
         break;

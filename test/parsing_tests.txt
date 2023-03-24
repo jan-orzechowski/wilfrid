@@ -16,12 +16,6 @@ TEST:(var-decl x (type bool) (== a (- b))):END
 CASE:let x: int[1 + 2] = {1, 2, 3}:END
 TEST:(var-decl x (array (type int) (+ 1 2)) (compound 1 2 3)):END
 
-CASE:const x = sizeof(t.subt.x):END
-TEST:(const-decl x (sizeof (access-field x (access-field subt t)))):END
-
-CASE:const n = sizeof(&a[0].b.c[10]):END
-TEST:(const-decl n (sizeof (& (access-index 10 (access-field c (access-field b (access-index 0 a))))))):END
-
 CASE:fn f (a: int, b: float, c : int ) : float { return a + b }:END
 TEST:(fn-decl f (a (type int)) (b (type float)) (c (type int)) (type float)
   (return (+ a b))
@@ -166,12 +160,13 @@ TEST:(fn-decl f (val (type int))
   )
 ):END
 
-CASE:fn f() { if (sizeof(x) == 4) { return x } }:END
+CASE:fn f() { return sizeof(int) } }:END
 TEST:(fn-decl f
-  (if (== (sizeof x) 4)
-    (return x)
-  )
+  (return (sizeof (type int)))
 ):END
+
+CASE:let x := sizeof(int[16]*[12]) + sizeof(int***):END
+TEST:(var-decl x (+ (sizeof (array (pointer (array (type int) 16)) 12)) (sizeof (pointer (pointer (pointer (type int))))))):END
 
 CASE:fn f() { while (x > y) { x = x + 1 } }:END
 TEST:(fn-decl f

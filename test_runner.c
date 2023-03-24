@@ -124,13 +124,13 @@ void test_file_parsing_test(string_ref source, bool print_results)
     }
     else
     {
-        printf("\nAll parsing tests passed!\n", error_counter);
+        printf("\nAll parsing tests passed!\n");
     }
 }
 
 void single_case_parsing_test(void)
 {
-    char *test = "let x := (1 / z as float) as float";
+    char *test = "let x := xcalloc(new_capacity * sizeof(void*))";
 
     printf("\nParsing test:\n%s\n", test);
     

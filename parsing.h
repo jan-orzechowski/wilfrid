@@ -154,7 +154,7 @@ typedef struct auto_expr
 
 typedef struct sizeof_expr
 {
-    expr *expr;
+    typespec *type;
 } sizeof_expr;
 
 typedef struct cast_expr

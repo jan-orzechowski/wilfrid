@@ -121,11 +121,11 @@ expr *push_auto_expr(source_pos pos, typespec *t)
     return result;
 }
 
-expr *push_sizeof_expr(source_pos pos, expr *e)
+expr *push_sizeof_expr(source_pos pos, typespec *t)
 {
     expr *result = push_struct(arena, expr);
     result->kind = EXPR_SIZEOF;
-    result->size_of.expr = e;
+    result->size_of.type = t;
     result->pos = pos;
     return result;
 }
@@ -424,8 +424,17 @@ expr *parse_base_expr(void)
         {
             next_lexed_token();
             expect_token_kind(TOKEN_LEFT_PAREN);
-            expr *e = parse_expr();            
-            result = push_sizeof_expr(pos, e);
+            
+            typespec *t = parse_typespec();
+            if (t)
+            {
+                result = push_sizeof_expr(pos, t);
+            }
+            else
+            {
+                parsing_error("Expected a type in the sizeof expression");
+            }
+           
             expect_token_kind(TOKEN_RIGHT_PAREN);
         }
         else if (keyword == null_keyword)
@@ -450,7 +459,6 @@ expr *parse_base_expr(void)
     }
     else if (match_token_kind(TOKEN_LEFT_PAREN))
     {
-        source_pos pos = tok.pos;
         result = parse_expr();
         if (result == null)
         {

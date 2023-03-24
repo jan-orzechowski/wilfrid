@@ -661,9 +661,7 @@ void gen_expr(expr *e)
         break;
         case EXPR_SIZEOF:
         {
-            gen_printf("sizeof(");
-            gen_expr(e->size_of.expr);
-            gen_printf(")");
+            gen_printf("sizeof(%s)", typespec_to_cdecl(e->cast.type, null));            
         }
         break;        
         case EXPR_COMPOUND_LITERAL:
