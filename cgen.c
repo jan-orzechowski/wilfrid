@@ -1119,6 +1119,10 @@ const char *pretty_print_type_name(type *ty, bool plural)
     assert(ty);
     switch (ty->kind)
     {
+        case TYPE_NONE:
+        {
+            result = "unresolved";
+        }
         case TYPE_VOID:
         {
             result = "void";
@@ -1190,7 +1194,6 @@ const char *pretty_print_type_name(type *ty, bool plural)
         }
         break;
         case TYPE_FUNCTION:
-        case TYPE_NONE:
         case TYPE_INCOMPLETE:
         default:
         {

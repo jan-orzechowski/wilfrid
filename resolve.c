@@ -57,6 +57,9 @@ void error_in_resolving(const char *error_text, source_pos pos)
 
 const char *pretty_print_type_name(type *ty, bool plural);
 
+#define on_invalid_type_return(t) if (!(t) || (t->kind == TYPE_NONE)) { return null; }
+#define on_invalid_expr_return(e) if (!(e) || !((e)->type) || ((e)->type->kind == TYPE_NONE)) { return null; }
+
 bool compare_types(type *a, type *b)
 {
     assert(a);
@@ -247,6 +250,8 @@ void get_complete_struct_type(type *type, type_aggregate_field **fields, size_t 
             error_in_resolving(
                 xprintf("Could not resolve field '%s' in the '%s' struct definition", field->name, type->symbol->name),
                 type->symbol->decl->pos);
+            // bez tego będziemy mieli błędy później - typ będzie completed, ale pola nie będą uzupełnione
+            type->kind = TYPE_NONE; 
             return;
         }
         type->size = get_type_size(field->type) + align_up(type->size, get_type_align(field->type));
@@ -753,6 +758,11 @@ resolved_expr *resolve_expr_binary(expr *expr)
         }
     }
 
+    if (left == null || right == null)
+    {
+        return resolved_expr_invalid;
+    }
+
     if (left->is_const && right->is_const)
     {   
         int64_t const_value = eval_int_binary_op(expr->binary.operator, left->val, right->val);
@@ -1138,10 +1148,10 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
                 // błąd jest już rzucony w resolve_name
                 return resolved_expr_invalid;
             }
-            else if (sym->type == null)
+            else if (sym->type == null || sym->type->kind == TYPE_NONE)
             {
                 error_in_resolving(
-                    xprintf("Expression `%s` has unknown type", sym->name), e->pos);
+                    xprintf("Expression '%s' has unknown type", sym->name), e->pos);
                 return resolved_expr_invalid;
             }
             else if (sym->kind == SYMBOL_VARIABLE)
@@ -1313,6 +1323,13 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
             if (index_expr->type->kind != TYPE_INT)
             {
                 error_in_resolving("Index must be an integer", e->pos);
+            }
+
+            on_invalid_expr_return(operand_expr);
+
+            if (operand_expr->type->kind == TYPE_NONE)
+            {
+                return null;
             }
 
             result = get_resolved_lvalue_expr(operand_expr->type->pointer.base_type);
@@ -1530,6 +1547,11 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
             if (st->expr)
             {
                 resolved_expr *result = resolve_expected_expr(st->expr, opt_ret_type, true);
+                if (result == null || result->type == null || result->type->kind == TYPE_NONE)
+                {
+                    error_in_resolving("Could not resolve return statement", st->pos);
+                    return;
+                }
                 if (result && false == compare_types(result->type, opt_ret_type))
                 {
                     if (result->type == type_int
@@ -1539,7 +1561,11 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
                     }
                     else
                     {
-                        error_in_resolving("Return type mismatch", st->pos);
+                        error_in_resolving(
+                            xprintf("Return type mismatch. Got %s, expected %s",
+                                pretty_print_type_name(result->type, false),
+                                pretty_print_type_name(opt_ret_type, false)),
+                            st->pos);
                         return;
                     }
                 }
@@ -1625,15 +1651,21 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
         case STMT_ASSIGN:
         {
             resolved_expr *left = resolve_expr(st->assign.assigned_var_expr);
-            if (left == null)
+            if (left == null || left->type == TYPE_NONE)
             {
-                error_in_resolving("Cannot assign to an expression of unknown type", st->assign.assigned_var_expr->pos);
+                error_in_resolving("Cannot assign to an expression of an unknown type", st->assign.assigned_var_expr->pos);
                 return;
             }
 
             if (st->assign.value_expr)
             {                
                 resolved_expr *right = resolve_expected_expr(st->assign.value_expr, left->type, false);
+                if (right == null || right->type == TYPE_NONE)
+                {
+                    error_in_resolving("Cannot assign expression of an unknown type", st->assign.value_expr->pos);
+                    return;
+                }
+
                 if (false == compare_types(left->type, right->type))
                 {
                     if (left->type->kind == TYPE_LIST)
@@ -1721,6 +1753,11 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
         {
             // TODO: powinniśmy sprawdzić czy zmienna nie jest const albo zaalokowana globalnie
             resolved_expr *expr = resolve_expr(st->delete.expr);
+            if (expr->type == null || expr->type->kind == TYPE_NONE)
+            {
+                error_in_resolving("Could not resolve delete statement", st->pos);
+                return;
+            }
         }
         break;
 
