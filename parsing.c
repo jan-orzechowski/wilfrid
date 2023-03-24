@@ -648,6 +648,12 @@ expr *parse_multiplicative_expr(void)
         next_lexed_token();
         expr *right_expr = parse_unary_expr();
 
+        if (right_expr == null)
+        {
+            parsing_error(xprintf("Missing the second operand of %s operation", get_token_kind_name(op)));
+            return null;
+        }
+
         e = push_binary_expr(pos, op, left_expr, right_expr);
     }
     return e;
@@ -663,6 +669,12 @@ expr *parse_additive_expr(void)
         token_kind op = tok.kind;
         next_lexed_token();
         expr *right_expr = parse_multiplicative_expr();
+
+        if (right_expr == null)
+        {
+            parsing_error(xprintf("Missing the second operand of %s operation", get_token_kind_name(op)));
+            return null;
+        }
 
         e = push_binary_expr(pos, op, left_expr, right_expr);
     }
@@ -680,6 +692,12 @@ expr *parse_comparison_expr(void)
         next_lexed_token();
         expr *right_expr = parse_additive_expr();
 
+        if (right_expr == null)
+        {
+            parsing_error(xprintf("Missing the second operand of %s comparison", get_token_kind_name(op)));
+            return null;
+        }
+
         e = push_binary_expr(pos, op, left_expr, right_expr);
     }
     return e;
@@ -696,6 +714,12 @@ expr *parse_and_expr(void)
         next_lexed_token();
         expr *right_expr = parse_comparison_expr();
 
+        if (right_expr == null)
+        {
+            parsing_error(xprintf("Missing the second operand of %s operation", get_token_kind_name(op)));
+            return null;
+        }
+
         e = push_binary_expr(pos, op, left_expr, right_expr);
     }
     return e;
@@ -711,6 +735,12 @@ expr *parse_or_expr(void)
         token_kind op = tok.kind;
         next_lexed_token();
         expr *right_expr = parse_and_expr();
+
+        if (right_expr == null)
+        {
+            parsing_error(xprintf("Missing the second operand of %s operation", get_token_kind_name(op)));
+            return null;
+        }
 
         e = push_binary_expr(pos, op, left_expr, right_expr);
     }
