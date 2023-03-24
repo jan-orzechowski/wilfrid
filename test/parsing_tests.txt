@@ -262,40 +262,30 @@ TEST:(fn-decl f
 CASE:let x: int[4] = {1, 2, 3, 4}:END
 TEST:(var-decl x (array (type int) 4) (compound 1 2 3 4)):END
 
-CASE:let x = (v3){1, 2, 3}:END
+CASE:let x = {1, 2, 3} as v3:END
 TEST:(var-decl x (compound (type v3) 1 2 3)):END
 
-CASE:let y = f(1, {1, 2}, (v2){1,2}):END
+CASE:let y = f(1, {1, 2}, {1,2} as v2):END
 TEST:(var-decl y (f 1 (compound 1 2) (compound (type v2) 1 2))):END
 
-CASE:fn f(x: int, y: int) : vec2 { return (v2){x + 1, y - 1} }:END
+CASE:fn f(x: int, y: int) : vec2 { return {x + 1, y - 1} as vec2 }:END
 TEST:(fn-decl f (x (type int)) (y (type int)) (type vec2)
-  (return (compound (type v2) (+ x 1) (- y 1)))
+  (return (compound (type vec2) (+ x 1) (- y 1)))
 ):END
 
-CASE:let x := (float)12 :END
-TEST:(var-decl x (cast float 12)):END
+CASE:let x := 12 as string:END
+TEST:(var-decl x (cast (type string) 12)):END
 
-CASE:let x := (string)y :END
-TEST:(var-decl x (cast string y)):END
+CASE:let x := (12 + 1 / z as float) as float:END
+TEST:(var-decl x (cast (type float) (+ 12 (/ 1 (cast (type float) z))))):END
 
-CASE:let x := (float)(12 + 1 / (float)z):END
-TEST:(var-decl x (cast float (+ 12 (/ 1 (cast float z))))):END
+CASE:let x := var1 as bool && var2 as bool || (var3 as uint & var4 as uint) as bool:END
+TEST:(var-decl x (|| (&& (cast (type bool) var1) (cast (type bool) var2)) (cast (type bool) (& (cast (type uint) var3) (cast (type uint) var4))))):END
 
-CASE:let x := (float)1:END
-TEST:(var-decl x (cast float 1)):END
-
-CASE:let x := (int)other_var:END
-TEST:(var-decl x (cast int other_var)):END
-
-CASE:let x := (uint)12 + 1:END
-TEST:(var-decl x (+ (cast uint 12) 1)):END
-
-CASE:let x := (bool)var1 && (bool)var2 || (bool)((bool)var3 & (bool)var4):END
-TEST:(var-decl x (|| (&& (cast bool var1) (cast bool var2)) (cast bool (& (cast bool var3) (cast bool var4))))):END
-
-CASE:let x := (bool)var1 && (bool)var2 || ((bool)var3 & (bool)var4):END             
-TEST:(var-decl x (|| (&& (cast bool var1) (cast bool var2)) (& (cast bool var3) (cast bool var4)))):END
+CASE:fn f1 (x : int[16]*) { f2(&map as int, i as void*, (i + 1) as void*, x as int[8]*) }:END
+TEST:(fn-decl f1 (x (pointer (array (type int) 16)))
+  (f2 (cast (type int) (& map)) (cast (pointer (type void)) i) (cast (pointer (type void)) (+ i 1)) (cast (pointer (array (type int) 8)) x))
+):END
 
 CASE:fn f() { delete x }:END
 TEST:(fn-decl f

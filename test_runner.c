@@ -130,7 +130,7 @@ void test_file_parsing_test(string_ref source, bool print_results)
 
 void single_case_parsing_test(void)
 {
-    char *test = "fn f() { if (sizeof(x) == 4) { return x } }";
+    char *test = "let x := (1 / z as float) as float";
 
     printf("\nParsing test:\n%s\n", test);
     

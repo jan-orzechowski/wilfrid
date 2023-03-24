@@ -130,11 +130,11 @@ expr *push_sizeof_expr(source_pos pos, expr *e)
     return result;
 }
 
-expr *push_cast_expr(source_pos pos, const char *type_name, expr *e)
+expr *push_cast_expr(source_pos pos, typespec *t, expr *e)
 {
     expr *result = push_struct(arena, expr);
     result->kind = EXPR_CAST;
-    result->cast.type = push_typespec_name(pos, type_name);
+    result->cast.type = t;
     result->cast.expr = e;
     result->pos = pos;
     return result;
@@ -218,7 +218,6 @@ const char *parse_identifier(void)
 typespec *parse_basic_typespec(void)
 {
     typespec *t = null;
-
     if (is_token_kind(TOKEN_NAME))
     {
         t = push_typespec_name(tok.pos, tok.name);
@@ -368,6 +367,22 @@ expr *parse_compound_literal(void)
 
         expect_token_kind(TOKEN_RIGHT_BRACE);
     }
+    
+    if (e && is_token_kind(TOKEN_KEYWORD)
+        && tok.name == as_keyword)
+    {
+        next_lexed_token();
+        typespec *t = parse_typespec();
+        if (t)
+        {
+            e->compound.type = t;
+        }
+        else
+        {
+            parsing_error("Cast without a type specified");
+        }
+    }
+
     return e;
 }
 
@@ -437,62 +452,11 @@ expr *parse_base_expr(void)
     {
         source_pos pos = tok.pos;
         result = parse_expr();
-        const char *type_name = result->name;
-        expect_token_kind(TOKEN_RIGHT_PAREN);
-        
-        if (result->kind != EXPR_NAME)
+        if (result == null)
         {
-            // to znaczy, że to nie jest cast, tylko expression
-            debug_breakpoint;
+            parsing_error("Expected an expression");
         }
-        else
-        {
-            if (match_token_kind(TOKEN_LEFT_PAREN))
-            {
-                if (result->kind != EXPR_NAME)
-                {
-                    parsing_error("Only names are supported in casts");
-                    return null;
-                }
-
-                expr *e = parse_expr();
-                result = push_cast_expr(pos, type_name, e);
-
-                expect_token_kind(TOKEN_RIGHT_PAREN);
-            }
-            else if (is_token_kind(TOKEN_LEFT_BRACE))
-            {
-                if (result->kind != EXPR_NAME)
-                {
-                    parsing_error("Only names are supported as explicit compound literal types");
-                    return null;
-                }
-
-                result = parse_compound_literal();
-
-                typespec *t = push_typespec_name(tok.pos, type_name);
-                result->compound.type = t;
-            }
-            else
-            {
-                if (result->kind != EXPR_NAME)
-                {
-                    parsing_error("Only names are supported in casts");
-                    return null;
-                }
-
-                expr *e = parse_base_expr();
-                if (e == null)
-                {
-                    parsing_error("There is no expression to cast");
-                    return null;
-                }
-
-                result = push_cast_expr(pos, type_name, e);
-
-                debug_breakpoint;
-            }
-        }
+        expect_token_kind(TOKEN_RIGHT_PAREN);        
     }
     return result;
 }
@@ -511,7 +475,7 @@ void parse_function_call_arguments(expr *e)
         }
         else
         {
-            parsing_error("Expected expression in a function call");
+            parsing_error("Expected an expression in the function call");
             break;
         }
 
@@ -637,16 +601,37 @@ expr *parse_unary_expr(void)
     return e;
 }
 
-expr *parse_multiplicative_expr(void)
+expr *parse_cast_expr(void)
 {
     expr *e = parse_unary_expr();
+    if (is_token_kind(TOKEN_KEYWORD)
+        && tok.name == as_keyword)
+    {
+        source_pos pos = tok.pos;
+        next_lexed_token();
+        
+        typespec *t = parse_typespec();
+        if (t == null)
+        {
+            parsing_error("Cast without a type specified");
+            return e;
+        }
+
+        e = push_cast_expr(pos, t, e);
+    }
+    return e;
+}
+
+expr *parse_multiplicative_expr(void)
+{
+    expr *e = parse_cast_expr();
     while (is_multiplicative_operation(tok.kind))
     {
         source_pos pos = tok.pos;
         expr *left_expr = e;
         token_kind op = tok.kind;
         next_lexed_token();
-        expr *right_expr = parse_unary_expr();
+        expr *right_expr = parse_cast_expr();
 
         if (right_expr == null)
         {

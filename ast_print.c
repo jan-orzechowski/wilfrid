@@ -184,7 +184,9 @@ void ast_print_expr(expr *e)
         break;
         case EXPR_CAST:
         {
-            ast_printf("(cast %s ", e->cast.type->name);
+            ast_printf("(cast ");
+            ast_print_typespec(e->cast.type);
+            ast_printf(" ");
             ast_print_expr(e->cast.expr);
             ast_printf(")");
         }

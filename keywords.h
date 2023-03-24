@@ -10,6 +10,7 @@ const char *new_keyword;
 const char *auto_keyword;
 const char *delete_keyword;
 const char *sizeof_keyword;
+const char *as_keyword;
 const char *null_keyword;
 const char *true_keyword;
 const char *false_keyword;
@@ -53,6 +54,7 @@ void init_keywords(void)
         new_keyword = intern_keyword("new");
         auto_keyword = intern_keyword("auto");
         delete_keyword = intern_keyword("delete");
+        as_keyword = intern_keyword("as");
         null_keyword = intern_keyword("null");
         true_keyword = intern_keyword("true");
         false_keyword = intern_keyword("false");
