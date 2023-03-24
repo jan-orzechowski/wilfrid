@@ -1,11 +1,12 @@
 ﻿#include "utils.h"
 
-define_struct(allocation_header)
+typedef struct allocation_header
 {
     size_t size; // najwyższy bit jest tagged
-};
+} allocation_header;
 
-define_struct(something_to_gc)
+typedef struct something_to_gc something_to_gc;
+struct something_to_gc
 {
     int test_number;
     something_to_gc *gc_obj_ptr;
@@ -29,7 +30,8 @@ void gc_init()
     stack_approximate_beginning = (uintptr_t)&value_on_stack;
 }
 
-define_struct(non_gc_object)
+typedef struct non_gc_object non_gc_object;
+struct non_gc_object
 {
     int test_number;
     non_gc_object *non_gc_obj_ptr;

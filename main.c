@@ -1,5 +1,4 @@
-﻿#include "main.h"
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
 #include <ctype.h>
@@ -13,11 +12,11 @@
 #include "resolve.c"
 #include "cgen.c"
 #include "test_runner.c"
+#include "utils_tests.c"
 
 #include "vm.h"
 #include "vm.c"
 
-#include "main.h"
 #include "gc_test.c"
 
 void fuzzy_test(void);
@@ -81,7 +80,7 @@ int main(int argc, char **argv)
     stretchy_buffers_test();
     intern_str_test();
    
-    copy_test();
+    buf_copy_test();
     map_test();
     stack_vm_test(code);
 
