@@ -10,7 +10,13 @@ typedef enum type_kind
     TYPE_COMPLETING,
     TYPE_COMPLETED,
     TYPE_VOID,
+    
+    // integer types
     TYPE_INT,
+    TYPE_LONG,
+    TYPE_UINT,
+    TYPE_ULONG,
+
     TYPE_CHAR,
     TYPE_FLOAT,
     TYPE_BOOL,
@@ -76,6 +82,12 @@ struct type
         type_aggregate aggregate;
     };
 };
+
+bool is_integer_type(type *t)
+{
+    bool result = (t != null && (t->kind >= TYPE_INT && t->kind <= TYPE_ULONG));
+    return result;
+}
 
 typedef enum symbol_kind
 {

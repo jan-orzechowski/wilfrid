@@ -23,6 +23,9 @@ type *type_void =    &(type) { .kind = TYPE_VOID,    .size = 0, .align = 0 };
 type *type_null =    &(type) { .kind = TYPE_NULL,    .size = 0, .align = 0 };
 type *type_char =    &(type) { .kind = TYPE_CHAR,    .size = 1, .align = 1 };
 type *type_int =     &(type) { .kind = TYPE_INT,     .size = 4, .align = 4 };
+type *type_uint =    &(type) { .kind = TYPE_UINT,    .size = 4, .align = 4 };
+type *type_long =    &(type) { .kind = TYPE_LONG,    .size = 8, .align = 8 };
+type *type_ulong =   &(type) { .kind = TYPE_ULONG,   .size = 8, .align = 8 };
 type *type_float =   &(type) { .kind = TYPE_FLOAT,   .size = 4, .align = 4 };
 type *type_bool =    &(type) { .kind = TYPE_BOOL,    .size = 4, .align = 4 };
 type *type_invalid = &(type) { .kind = TYPE_NONE,    .size = 0, .align = 0 };
@@ -715,9 +718,9 @@ resolved_expr *resolve_expr_unary(expr *expr)
         break;       
         default:
         {
-            if (type->kind != TYPE_INT)
+            if (false == is_integer_type(type))
             {
-                error_in_resolving(xprintf("Can only use unary %s with ints", get_token_kind_name(expr->unary.operator)), expr->pos);
+                error_in_resolving(xprintf("Can only use unary %s with integers", get_token_kind_name(expr->unary.operator)), expr->pos);
                 return resolved_expr_invalid;
             }
             if (operand->is_const)
@@ -746,8 +749,10 @@ resolved_expr *resolve_expr_binary(expr *expr)
     if (expr->binary.operator == TOKEN_ADD
         || expr->binary.operator == TOKEN_SUB)
     {
-        if ((left->type == type_int || left->type->kind == TYPE_POINTER || left->type->kind == TYPE_FLOAT)
-            && (right->type == type_int || right->type->kind == TYPE_POINTER || right->type->kind == TYPE_FLOAT))
+        if ((is_integer_type(left->type) 
+                || left->type->kind == TYPE_POINTER || left->type->kind == TYPE_FLOAT)
+            && (is_integer_type(right->type) 
+                || right->type->kind == TYPE_POINTER || right->type->kind == TYPE_FLOAT))
         {
             // ok
         }
@@ -1554,7 +1559,7 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
                 }
                 if (result && false == compare_types(result->type, opt_ret_type))
                 {
-                    if (result->type == type_int
+                    if (is_integer_type(result->type)
                         && opt_ret_type->kind == TYPE_POINTER)
                     {
                         // pozwalamy na to, przynajmniej na razie
@@ -1685,8 +1690,8 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
                         // ok
                         debug_breakpoint;
                     }
-                    else if ((left->type->kind == TYPE_POINTER && right->type->kind == TYPE_INT)
-                        || (left->type->kind == TYPE_INT && right->type->kind == TYPE_POINTER))
+                    else if ((left->type->kind == TYPE_POINTER && is_integer_type(right->type))
+                        || (is_integer_type(left->type) && right->type->kind == TYPE_POINTER))
                     {
                         // na to pozwalamy
                         debug_breakpoint;
@@ -1709,9 +1714,9 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
                 return;
             }
 
-            if (st->assign.operation != TOKEN_ASSIGN && left->type != type_int)
+            if (st->assign.operation != TOKEN_ASSIGN && is_integer_type(left->type))
             {
-                error_in_resolving("For now can only use assignment operators with type int", st->pos);
+                error_in_resolving("For now can only use assignment operators with integers", st->pos);
                 return;
             }
         }
@@ -1832,6 +1837,9 @@ void init_before_resolve()
     push_installed_symbol("void", type_void);
     push_installed_symbol("char", type_char);
     push_installed_symbol("int", type_int);
+    push_installed_symbol("uint", type_uint);
+    push_installed_symbol("long", type_long);
+    push_installed_symbol("ulong", type_ulong);
     push_installed_symbol("float", type_float);
     push_installed_symbol("bool", type_bool);
 

@@ -61,20 +61,43 @@ const char *cdecl_name(type *t)
     switch (t->kind)
     {
         case TYPE_VOID:
+        {
             return "void";
+        }
         case TYPE_CHAR:
+        {
             return "char";
+        }
         case TYPE_INT:
+        {
             return "int";
+        }
+        case TYPE_UINT:
+        {
+            return "unsigned int";
+        }
+        case TYPE_LONG:
+        {
+            return "long";
+        }
+        case TYPE_ULONG:
+        {
+            return "unsigned long";
+        }
         case TYPE_FLOAT:
+        {
             return "float";
+        }
         case TYPE_BOOL:
+        {
             return "bool";
+        }
         case TYPE_STRUCT:
         case TYPE_UNION:
+        {
             return t->symbol->name;
-        invalid_default_case;
-            
+        }
+        invalid_default_case;           
     }
     return null;
 }
@@ -86,6 +109,9 @@ char *type_to_cdecl(type *type, const char *name)
         case TYPE_VOID:
         case TYPE_CHAR:
         case TYPE_INT:
+        case TYPE_UINT:
+        case TYPE_LONG:
+        case TYPE_ULONG:
         case TYPE_FLOAT:
         case TYPE_BOOL:
         case TYPE_STRUCT:
@@ -1131,6 +1157,21 @@ const char *pretty_print_type_name(type *ty, bool plural)
         case TYPE_INT:
         {
             result = plural ? "integers" : "integer";
+        }
+        break;
+        case TYPE_UINT:
+        {
+            result = plural ? "unsigned integers" : "unsigned integer";
+        }
+        break;
+        case TYPE_LONG:
+        {
+            result = plural ? "long integers" : "long integer";
+        }
+        break;
+        case TYPE_ULONG:
+        {
+            result = plural ? "unsigned long integers" : "unsigned long integer";
         }
         break;
         case TYPE_CHAR:
