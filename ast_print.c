@@ -55,6 +55,11 @@ void ast_print_expr(expr *e)
             ast_printf("\"%s\"", e->string_value);
         }
         break;
+        case EXPR_CHAR:
+        {
+            ast_printf("\'%s\'", e->string_value);
+        }
+        break;
         case EXPR_SIZEOF:
         {
             ast_printf("(sizeof ");

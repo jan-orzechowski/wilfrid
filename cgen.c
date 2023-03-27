@@ -554,6 +554,11 @@ void gen_expr(expr *e)
             gen_printf("\"%s\"", e->string_value);
         }
         break;
+        case EXPR_CHAR:
+        {
+            gen_printf("\'%s\'", e->string_value);
+        }
+        break;
         case EXPR_NULL:
         {
             gen_printf("0");

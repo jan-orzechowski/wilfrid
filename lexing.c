@@ -260,6 +260,26 @@ bool lex_next_token(void)
             }
         }
         break;
+        case '\'':
+        {
+            stream++;
+            tok.kind = TOKEN_CHAR;
+
+            char *begin = stream;            
+            while (*stream && *stream != '\'' && *stream != '\n')
+            {
+                stream++;
+            }            
+            char *end = stream;
+
+            if (end - begin > 2 && *begin != '\0')
+            {
+                error("Character literals can only be one character long", tok.pos, 1);
+            }
+
+            tok.string_val = str_intern_range(begin, end);
+        }
+        break;
         case '(':
         {
             stream++;

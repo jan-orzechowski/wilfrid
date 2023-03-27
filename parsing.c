@@ -149,6 +149,15 @@ expr *push_string_expr(source_pos pos, const char *str_value)
     return result;
 }
 
+expr *push_char_expr(source_pos pos, const char *char_value)
+{
+    expr *result = push_struct(arena, expr);
+    result->kind = EXPR_CHAR;
+    result->string_value = char_value;
+    result->pos = pos;
+    return result;
+}
+
 expr *push_null_expr(source_pos pos)
 {
     expr *result = push_struct(arena, expr);
@@ -402,6 +411,11 @@ expr *parse_base_expr(void)
     else if (is_token_kind(TOKEN_STRING))
     {
         result = push_string_expr(tok.pos, tok.string_val);
+        next_lexed_token();
+    }
+    else if (is_token_kind(TOKEN_CHAR))
+    {
+        result = push_char_expr(tok.pos, tok.string_val);
         next_lexed_token();
     }
     else if (is_token_kind(TOKEN_KEYWORD))

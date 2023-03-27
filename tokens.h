@@ -22,6 +22,7 @@ typedef enum token_kind
     TOKEN_INT,
     TOKEN_FLOAT,
     TOKEN_STRING,
+    TOKEN_CHAR,
     TOKEN_NAME,
 
     // multiplicative precedence
@@ -101,6 +102,7 @@ const char *token_kind_names[] = {
     [TOKEN_FLOAT] = "float",
     [TOKEN_STRING] = "string",
     [TOKEN_NAME] = "name",
+    [TOKEN_CHAR] = "char",
 
     [TOKEN_MUL] = "*",
     [TOKEN_DIV] = "/",
