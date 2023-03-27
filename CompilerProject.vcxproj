@@ -146,6 +146,7 @@
     <ClCompile Include="main.c" />
   </ItemGroup>
   <ItemGroup>
+    <Text Include="interpreter\hashmap.txt" />
     <Text Include="test\constructors.txt" />
     <Text Include="test\dynamic_lists.txt" />
     <Text Include="test\extern.txt" />

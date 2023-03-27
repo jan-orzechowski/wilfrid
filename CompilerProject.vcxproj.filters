@@ -29,5 +29,6 @@
     <Text Include="test\loops.txt" />
     <Text Include="test\constructors.txt" />
     <Text Include="test\parsing_tests.txt" />
+    <Text Include="interpreter\hashmap.txt" />
   </ItemGroup>
 </Project>

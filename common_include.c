@@ -187,10 +187,18 @@ void ___list_free_internal__(___list_hdr___* hdr)
 
 #define ___get_list_length___(hdr) ((hdr) ? (hdr->length) : 0)
 
-#undef bool
-#undef false
-#undef true
+void *allocate(size_t num_bytes)
+{    
+    return ___alloc___(num_bytes);
+}
+
+void *reallocate(void *ptr, size_t num_bytes)
+{
+    return ___realloc___(ptr, num_bytes);
+}
+
+#define ulong unsigned long
+#define uint unsigned int
+
 #undef offsetof
-#undef max
-#undef min
 #undef NULL

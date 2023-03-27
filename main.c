@@ -23,7 +23,7 @@ void fuzzy_test(void);
 
 void compile_and_run(void)
 {
-    char *test_file = "test/testcode.txt";
+    char *test_file = "interpreter/hashmap.txt";
     
     string_ref file_buf = read_file_for_parsing(test_file);
     if (file_buf.str)
