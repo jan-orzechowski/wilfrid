@@ -371,3 +371,6 @@ CASE:fn push_node(n: node *) { *last_node = *n } } :END
 TEST:(fn-decl push_node (n (pointer (type node)))
   (= (pointer-dereference last_node) (pointer-dereference n))
 ):END
+
+CASE:let x := 0xff51afd:END
+TEST:(var-decl x 267721469):END 

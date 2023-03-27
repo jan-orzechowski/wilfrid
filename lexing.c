@@ -2,6 +2,26 @@
 #include "tokens.h"
 #include "keywords.h"
 
+uint8_t char_to_digit[256] = 
+{
+    ['0'] = 0,
+    ['1'] = 1,
+    ['2'] = 2,
+    ['3'] = 3,
+    ['4'] = 4,
+    ['5'] = 5,
+    ['6'] = 6,
+    ['7'] = 7,
+    ['8'] = 8,
+    ['9'] = 9,
+    ['a'] = 10, ['A'] = 10,
+    ['b'] = 11, ['B'] = 11,
+    ['c'] = 12, ['C'] = 12,
+    ['d'] = 13, ['D'] = 13,
+    ['e'] = 14, ['E'] = 14,
+    ['f'] = 15, ['F'] = 15,
+};
+
 char *stream;
 token tok;
 token *all_tokens;
@@ -18,15 +38,40 @@ bool lex_next_token(void)
     tok.start = stream;
     switch (*stream)
     {
-        case '0': case '1': case '2': case '3': case '4': case '5':
+        case '0': 
+        {            
+            // hexadecimal number
+            if (*(stream + 1) == 'x' || *(stream + 1) == 'X')
+            {                
+                stream += 2;
+                long val = 0;
+                while (true)
+                {
+                    int digit = char_to_digit[(unsigned char)*stream];
+                    if (digit == 0 && *stream != '0')
+                    {
+                        break;
+                    }
+                    val *= 16;
+                    val += digit;
+                    stream++;
+                }
+                tok.kind = TOKEN_INT;
+                tok.val = val;
+                break;
+            }           
+        } 
+        // intentional fallthrough
+        case '1': case '2': case '3': case '4': case '5':
         case '6': case '7': case '8': case '9':
         {
-            // idziemy po następnych
-            int val = 0;
+            long val = 0;
             while (isdigit(*stream))
             {
-                val *= 10; // dotychczasową wartość traktujemy jako 10 razy większą - bo znaleźliśmy kolejne miejsce dziesiętne
-                val += *stream++ - '0'; // przerabiamy char na integer
+                int digit = char_to_digit[(unsigned char)*stream];
+                val *= 10;
+                val += digit;
+                stream++;
             }
             tok.kind = TOKEN_INT;
             tok.val = val;
