@@ -56,7 +56,7 @@ const char *gen_expr_str(expr *e)
     return result;
 }
 
-const char *cdecl_name(type *t)
+const char *get_c_type_name(type *t)
 {
     switch (t->kind)
     {
@@ -117,7 +117,7 @@ char *type_to_cdecl(type *type, const char *name)
         case TYPE_STRUCT:
         case TYPE_UNION:
         {
-            return xprintf("%s%s%s", cdecl_name(type), name ? " " : "", name ? name : "");
+            return xprintf("%s%s%s", get_c_type_name(type), name ? " " : "", name ? name : "");
         }
         break;
         case TYPE_POINTER:
@@ -182,8 +182,17 @@ char *typespec_to_cdecl(typespec *t, const char *name)
         case TYPESPEC_POINTER:
         {
             // false podane zamiast name tymczasowo
-            const char *wrapped_name = parenthesize(xprintf("*%s", name), false); 
-            result = typespec_to_cdecl(t->pointer.base_type, wrapped_name);
+            if (name)
+            {
+                const char *wrapped_name = parenthesize(xprintf("*%s", name), false);
+                result = typespec_to_cdecl(t->pointer.base_type, wrapped_name);
+            }
+            else
+            {
+                result = parenthesize(xprintf("%s*", 
+                    typespec_to_cdecl(t->pointer.base_type, null)
+                ), false);
+            }            
         }
         break;
         case TYPESPEC_ARRAY:
@@ -682,11 +691,13 @@ void gen_expr(expr *e)
                 gen_printf("(%s){", decl);
             }
 
+            gen_indent++;
             for (size_t i = 0; i < e->compound.fields_count; i++)
             {
                 if (i != 0)
                 {
                     gen_printf(", ");
+                    gen_printf_newline("");
                 }
 
                 compound_literal_field *field = e->compound.fields[i];
@@ -695,10 +706,11 @@ void gen_expr(expr *e)
                     gen_printf(".%s = ", field->field_name);                
                 }
 
-                gen_expr(field->expr);
+                gen_expr(field->expr);                
             }
+            gen_indent--;
 
-            gen_printf("}");
+            gen_printf_newline("}");
         }
         break;
         case EXPR_STUB:
@@ -713,13 +725,14 @@ void gen_expr(expr *e)
             {
                 assert(e->resolved_type);
                 assert(e->resolved_type->list.base_type);
-                gen_printf("___list_initialize___(8, sizeof(%s), 0)",
-                    e->resolved_type->list.base_type->symbol->name);
+
+                char *type_str = type_to_cdecl(e->resolved_type->list.base_type, null);
+                gen_printf("___list_initialize___(8, sizeof(%s), 0)", type_str);
             }
             else
             {
-                char *c = typespec_to_cdecl(e->new.type, null);
-                gen_printf("(%s*)___alloc___(sizeof(%s))", c, c);
+                char *type_str = typespec_to_cdecl(e->new.type, null);
+                gen_printf("(%s*)___alloc___(sizeof(%s))", type_str, type_str);
             }
         }
         break;
@@ -729,13 +742,14 @@ void gen_expr(expr *e)
             {
                 assert(e->resolved_type);
                 assert(e->resolved_type->list.base_type);
-                gen_printf("___list_initialize___(8, sizeof(%s), 1)",
-                    e->resolved_type->list.base_type->symbol->name);
+
+                char *type_str = type_to_cdecl(e->resolved_type->list.base_type, null);
+                gen_printf("___list_initialize___(8, sizeof(%s), 1)", type_str);
             }
             else
             {
-                char *c = typespec_to_cdecl(e->new.type, null);
-                gen_printf("(%s*)___managed_alloc___(sizeof(%s))", c, c);
+                char *type_str = typespec_to_cdecl(e->new.type, null);
+                gen_printf("(%s*)___managed_alloc___(sizeof(%s))", type_str, type_str);
             }
         } 
         break;
@@ -1030,6 +1044,18 @@ const char *get_typespec_mangled_name(typespec *typ)
             {
                 buf_printf(result, "0i");
             }
+            else if (0 == strcmp(typ->name, "uint"))
+            {
+                buf_printf(result, "0ui");
+            }
+            else if (0 == strcmp(typ->name, "long"))
+            {
+                buf_printf(result, "0lo");
+            }
+            else if (0 == strcmp(typ->name, "ulong"))
+            {
+                buf_printf(result, "0ul");
+            }
             else if (0 == strcmp(typ->name, "char"))
             {
                 buf_printf(result, "0c");
@@ -1152,6 +1178,7 @@ const char *pretty_print_type_name(type *ty, bool plural)
         {
             result = "unresolved";
         }
+        break;
         case TYPE_VOID:
         {
             result = "void";

@@ -153,7 +153,7 @@ typedef struct token
     const char *end;
     union
     {
-        int val;
+        long val;
         const char *name;
         const char *string_val;
     };
