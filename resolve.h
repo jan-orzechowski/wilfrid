@@ -16,6 +16,8 @@ typedef enum type_kind
     TYPE_LONG,
     TYPE_UINT,
     TYPE_ULONG,
+    FIRST_INTEGER_TYPE = TYPE_INT,
+    LAST_FIRST_INTEGER_TYPE = TYPE_ULONG,
 
     TYPE_CHAR,
     TYPE_FLOAT,
@@ -85,7 +87,7 @@ struct type
 
 bool is_integer_type(type *t)
 {
-    bool result = (t != null && (t->kind >= TYPE_INT && t->kind <= TYPE_ULONG));
+    bool result = (t != null && (t->kind >= FIRST_INTEGER_TYPE && t->kind <= LAST_FIRST_INTEGER_TYPE));
     return result;
 }
 

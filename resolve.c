@@ -101,6 +101,42 @@ bool compare_types(type *a, type *b)
     return false;
 }
 
+bool can_perform_cast(type *from_type, type *to_type)
+{
+    if (is_integer_type(from_type) && is_integer_type(to_type))
+    {
+        return true;
+    }
+
+    if (compare_types(from_type, to_type))
+    {
+        return true;
+    }
+
+    if (from_type == type_null && to_type->kind == TYPE_POINTER)
+    {
+        return true;
+    }
+
+    if (is_integer_type(from_type))
+    {
+        if (to_type->kind == TYPE_POINTER)
+        {
+            return true;
+        }
+    }
+
+    if (is_integer_type(to_type))
+    {
+        if (from_type->kind == TYPE_POINTER)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool are_symbols_the_same_function(symbol *a, symbol *b)
 {
     assert(a);
@@ -837,50 +873,41 @@ resolved_expr *resolve_compound_expr(expr *e, type *expected_type, bool ignore_e
         resolved_expr *field_expr = resolve_expr(field->expr);
     }
 
-    if (t->kind == TYPE_STRUCT 
-        || t->kind == TYPE_UNION)
+    if (t->kind == TYPE_STRUCT || t->kind == TYPE_UNION || t->kind == TYPE_ARRAY)
     {
-        size_t index = 0;
-        for (size_t i = 0; i < e->compound.fields_count; i++)
-        {
-            compound_literal_field *field = e->compound.fields[i];
-            type *expected_type = t->aggregate.fields[index]->type;
-            resolved_expr *init_expr = resolve_expected_expr(field->expr, expected_type, false);
+        bool is_array = (t->kind == TYPE_ARRAY);
 
-            if (false == compare_types(init_expr->type, expected_type))
-            {
-                if (init_expr->type == type_int
-                    && expected_type->kind == TYPE_POINTER)
-                {
-                    // wyjątek
-                }
-                else
-                {
-                    error_in_resolving("Compound literal field type mismatch", field->expr->pos);
-                    return resolved_expr_invalid;
-                }
-            }
-        }
-    }
-    else
-    {
-        assert(t->kind == TYPE_ARRAY);
         size_t index = 0;
         for (size_t i = 0; i < e->compound.fields_count; i++)
         {
             compound_literal_field *field = e->compound.fields[i];
-            type *expected_type = t->array.base_type;
-            resolved_expr *init_expr = resolve_expected_expr(field->expr, expected_type, true);
-            if (false == compare_types(init_expr->type, expected_type))
+            type *expected_type = is_array ? t->array.base_type : t->aggregate.fields[index]->type;
+            resolved_expr *init_expr = resolve_expected_expr(field->expr, expected_type, is_array);
+            if (init_expr->type == null || init_expr->type->kind == TYPE_NONE)
             {
-                error_in_resolving("Compound literal element type mismatch", field->expr->pos);
-                return resolved_expr_invalid;
+                error_in_resolving(
+                    xprintf("Could not resolve type in compound literal at position %d", 
+                        (i + 1)), 
+                    field->expr->pos);
+                return null;
+            }
+
+            if (false == can_perform_cast(init_expr->type, expected_type))
+            {                
+                error_in_resolving(
+                    xprintf(
+                        "Compound literal field type mismatch. Expected type %s at position %d, got %s", 
+                        pretty_print_type_name(expected_type, false), 
+                        (i + 1), 
+                        pretty_print_type_name(init_expr->type, false)),
+                    field->expr->pos);
+                return resolved_expr_invalid;                
             }
         }
     }
     
-   result = get_resolved_rvalue_expr(t);
-   return result;
+    result = get_resolved_rvalue_expr(t);
+    return result;
 }
 
 void plug_stub_expr(expr *original_expr, stub_expr_kind kind)
@@ -946,9 +973,13 @@ resolved_expr *resolve_special_case_methods(expr *e)
                 type *list_element_type = list_type->list.base_type;
                 type *new_element_type = resolve_expr(e->call.args[0])->type;
 
-                if (false == compare_types(list_element_type, new_element_type))
+                if (false == can_perform_cast(list_element_type, new_element_type))
                 {
-                    error_in_resolving("Wrong type of argument for a list", e->pos);
+                    error_in_resolving(
+                        xprintf("Cannot add %d element to a list of %d",
+                            pretty_print_type_name(new_element_type, false),
+                            pretty_print_type_name(list_element_type, true)),
+                        e->pos);
                     return null;
                 }
                 
@@ -1125,7 +1156,7 @@ resolved_expr *resolve_call_expr(expr *e)
 
     if (matching == null)
     {
-        error_in_resolving("No overload is matching types of arguments", e->pos);
+        error_in_resolving("No overload is matching types of arguments in the function call", e->pos);
         return resolved_expr_invalid;
     }
 
@@ -1323,7 +1354,7 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
             
             resolved_expr *index_expr = resolve_expr(e->index.index_expr);
 
-            if (index_expr->type->kind != TYPE_INT)
+            if (false == is_integer_type(index_expr->type))
             {
                 error_in_resolving("Index must be an integer", e->pos);
             }
@@ -1376,29 +1407,37 @@ type *resolve_variable_decl(decl *d)
 {
     type *result = type_invalid;
     
-    // musi być albo typ, albo wyrażenie
-    // mogą być oba, ale wtedy muszą się zgadzać
-
+    type *declared_type = type_invalid;
     if (d->variable.type)
     {
-        result = resolve_typespec(d->variable.type);
+        declared_type = resolve_typespec(d->variable.type);
+        result = declared_type;
     }
 
     if (d->variable.expr)
     {
         resolved_expr *expr = resolve_expected_expr(d->variable.expr, result, false);
-        if (expr)
+        if (expr == null || expr->type->kind == TYPE_NONE || (result == null && expr->type == type_null))
         {
-            if (expr->type == type_null)
+            error_in_resolving("Cannot resolve type in the variable declaration", d->pos);
+            return null;
+        }
+            
+        // musimy sprawdzić, czy się zgadzają
+        if (declared_type->kind != TYPE_NONE)
+        {
+            if (false == can_perform_cast(expr->type, declared_type))
             {
-                // nie możemy ustalić typu
-                debug_breakpoint;
-            }
-            else
-            {
-                result = expr->type;
+                error_in_resolving(
+                    xprintf(
+                        "Literal and specified type do not match in the variable declaration. Literal is %s, the specified type is %s",
+                        pretty_print_type_name(expr->type, false),
+                        pretty_print_type_name(declared_type, false)),
+                    d->pos);
             }
         }
+       
+        result = expr->type;                   
     }
 
     return result;
@@ -1555,22 +1594,14 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
                     error_in_resolving("Could not resolve return statement", st->pos);
                     return;
                 }
-                if (result && false == compare_types(result->type, opt_ret_type))
-                {
-                    if (is_integer_type(result->type)
-                        && opt_ret_type->kind == TYPE_POINTER)
-                    {
-                        // pozwalamy na to, przynajmniej na razie
-                    }
-                    else
-                    {
-                        error_in_resolving(
-                            xprintf("Return type mismatch. Got %s, expected %s",
-                                pretty_print_type_name(result->type, false),
-                                pretty_print_type_name(opt_ret_type, false)),
-                            st->pos);
-                        return;
-                    }
+                if (result && false == can_perform_cast(result->type, opt_ret_type))
+                {                    
+                    error_in_resolving(
+                        xprintf("Return type mismatch. Got %s, expected %s",
+                            pretty_print_type_name(result->type, false),
+                            pretty_print_type_name(opt_ret_type, false)),
+                        st->pos);
+                    return;
                 }
             }
             else
@@ -1673,28 +1704,13 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
                 {
                     if (left->type->kind == TYPE_LIST)
                     {
-                        if (right->type->kind == left->type->list.base_type->kind)
-                        {
-                            // ok
-                        }
-                        else
+                        if (right->type->kind != left->type->list.base_type->kind)
                         {
                             error_in_resolving("list of different type", st->assign.value_expr->pos);
                             return;
                         }
                     }
-                    else if (left->type->kind == TYPE_POINTER && right->type->kind == TYPE_NULL)
-                    {
-                        // ok
-                        debug_breakpoint;
-                    }
-                    else if ((left->type->kind == TYPE_POINTER && is_integer_type(right->type))
-                        || (is_integer_type(left->type) && right->type->kind == TYPE_POINTER))
-                    {
-                        // na to pozwalamy
-                        debug_breakpoint;
-                    }
-                    else
+                    else if (false == can_perform_cast(right->type, left->type))
                     {
                         error_in_resolving(
                             xprintf("Types do not match in assignment. Trying to assign %s to %s",
@@ -1712,10 +1728,12 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
                 return;
             }
 
-            if (st->assign.operation != TOKEN_ASSIGN && is_integer_type(left->type))
+            if (st->assign.operation == TOKEN_INC || st->assign.operation == TOKEN_DEC)
             {
-                error_in_resolving("For now can only use assignment operators with integers", st->pos);
-                return;
+                if (left->type->kind != TYPE_POINTER && false == is_integer_type(left->type))
+                {
+                    error_in_resolving("Increment and decrement statements only allowed for pointer and integer types.", st->pos);
+                }
             }
         }
         break; 
