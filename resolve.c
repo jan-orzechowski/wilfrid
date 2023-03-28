@@ -1848,7 +1848,46 @@ void complete_symbol(symbol *sym)
     }
 }
 
-void init_before_resolve()
+symbol *get_entry_point(void)
+{
+    symbol *main_function = null;
+    const char *main_str = str_intern("main");
+
+    for (symbol **it = global_symbols_list;
+        it != buf_end(global_symbols_list);
+        it++)
+    {
+        symbol *sym = *it;
+        if (sym->name == main_str)
+        {
+            if (main_function)
+            {
+                error_in_resolving("Only one function 'main' allowed", sym->decl->pos);
+            }
+            else
+            {
+                main_function = sym;
+            }
+        }
+    }
+
+    if (main_function == null)
+    {
+        error_in_resolving("Entry point function 'main' not defined", (source_pos) { 0 });
+    }
+
+    if (false == (main_function->mangled_name == str_intern("___main___0l___0s___0v")
+        || main_function->mangled_name == str_intern("___main___0v")))
+    {
+        error_in_resolving(
+            "Main function has an incorrect declaration. Allowed declarations are 'fn main()' and 'fn main(args: string[])'", 
+            main_function->decl->pos);
+    }
+
+    return main_function;
+}
+
+void init_installed_types()
 {    
     push_installed_symbol("void", type_void);
     push_installed_symbol("char", type_char);
@@ -1868,7 +1907,7 @@ symbol **resolve(char *filename, char *source, bool print_s_expressions)
     {
         arena = allocate_memory_arena(megabytes(50));
     }
-    init_before_resolve();
+    init_installed_types();
 
     decl **declarations = lex_and_parse(filename, source);
 
@@ -1887,6 +1926,8 @@ symbol **resolve(char *filename, char *source, bool print_s_expressions)
         symbol *sym = *it;
         complete_symbol(sym);
     }
+
+    symbol *main_function = get_entry_point();
 
     return ordered_global_symbols;
 }

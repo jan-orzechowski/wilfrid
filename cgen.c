@@ -958,37 +958,12 @@ void gen_symbol_decl(symbol *sym)
 
 void gen_entry_point(void)
 {
-    symbol *main_found = null;
-    const char *main_str = str_intern("main");
+    symbol *main_function = get_entry_point();
 
-    for (symbol **it = global_symbols_list;
-        it != buf_end(global_symbols_list);
-        it++)
-    {
-        symbol *sym = *it;
-        if (sym->name == main_str)
-        {
-            if (main_found)
-            {
-                error_in_resolving("Only one function 'main' allowed", sym->decl->pos);
-            }
-            else
-            {
-                main_found = sym;
-            }
-        }
-    }
-
-    if (main_found == null)
-    {
-        error_in_resolving("Entry point function 'main' not defined", (source_pos){0});
-        return;
-    }
-    
-    if (main_found->mangled_name == str_intern("___main___0l___0s___0v"))
+    if (main_function->mangled_name == str_intern("___main___0l___0s___0v"))
     {
         gen_printf(
-"int main(int argc, char **argv) {\
+"\nint main(int argc, char **argv) {\
   string *buf = 0;\
   for(int i = 0; i < argc; i++) {\
     string s = get_string(argv[i]);\
@@ -999,16 +974,16 @@ void gen_entry_point(void)
 }");
 
     }
-    else if (main_found->mangled_name == str_intern("___main___0v"))
+    else if (main_function->mangled_name == str_intern("___main___0v"))
     {
         gen_printf(
-"int main(int argc, char **argv) {\
+"\nint main(int argc, char **argv) {\
   ___main___0v();\
 }");
     }
     else
     {
-        fatal("main has incorrect signature: either main(){} or main(string[]){} allowed");
+        fatal("Should be checked at resolve time");
     }
 }
 
