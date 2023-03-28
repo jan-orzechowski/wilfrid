@@ -29,44 +29,7 @@ void compile_and_run(void)
     if (file_buf.str)
     {      
         symbol **resolved = resolve(test_file, file_buf.str, true);
-
-        size_t debug_count = buf_len(resolved);
-
-        if (buf_len(errors) == 0)
-        {
-            gen_common_includes();
-
-            gen_printf_newline("\n// FORWARD DECLARATIONS\n");
-
-            gen_forward_decls(resolved);
-
-            gen_printf_newline("\n// ENTRY POINT \n");
-
-            gen_entry_point();
-
-            gen_printf_newline("\n// DECLARATIONS\n");
-
-            for (size_t i = 0; i < buf_len(resolved); i++)
-            {
-                gen_symbol_decl(resolved[i]);
-            }
-
-            debug_breakpoint;
-        }
-
-        //printf("/// C OUTPUT:\n\n%s\n", gen_buf);
-
-        if (buf_len(errors) > 0)
-        {
-            print_errors_to_console();
-            char *errors = print_errors();
-            write_file("test/errors.log", errors, buf_len(errors));
-        }
-        else
-        {
-            write_file("test/testcode.c", gen_buf, buf_len(gen_buf));
-        }
-        
+        c_gen(resolved, "test/testcode.c", "errors.log", false);        
         free(file_buf.str);
     }
 }

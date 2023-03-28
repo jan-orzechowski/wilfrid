@@ -1006,6 +1006,31 @@ void gen_common_includes(void)
 #endif
 }
 
+void c_gen(symbol **resolved_declarations, char *output_filename, char *output_error_log_filename, bool print_to_console)
+{
+    if (buf_len(errors) > 0)
+    {
+        if (print_to_console)
+        {
+            print_errors_to_console();
+        }
+        char *errors = print_errors();
+        write_file(output_error_log_filename, errors, buf_len(errors));
+        return;
+    }
+
+    gen_common_includes();
+    gen_forward_decls(resolved_declarations);
+    gen_entry_point();
+
+    for (size_t i = 0; i < buf_len(resolved_declarations); i++)
+    {
+        gen_symbol_decl(resolved_declarations[i]);
+    }
+
+    write_file(output_filename, gen_buf, buf_len(gen_buf));
+}
+
 const char *get_typespec_mangled_name(typespec *typ)
 {
     assert(typ);
