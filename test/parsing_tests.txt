@@ -373,4 +373,7 @@ TEST:(fn-decl push_node (n (pointer (type node)))
 ):END
 
 CASE:let x := 0xff51afd:END
-TEST:(var-decl x 267721469):END 
+TEST:(var-decl x 267721469):END
+
+CASE:let x := '\n':END
+TEST:(var-decl x '\n'):END  
