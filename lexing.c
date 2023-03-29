@@ -619,19 +619,19 @@ void init_stream(char *source, char *filename)
     lex_next_token();
 }
 
-void next_lexed_token(void)
+void next_token(void)
 {
     if (lexed_token_index + 1 < buf_len(all_tokens))
     {
-        token *next_token = &all_tokens[lexed_token_index];
-        if (next_token)
+        token *next = &all_tokens[lexed_token_index];
+        if (next)
         {
-            tok = *next_token;
+            tok = *next;
             lexed_token_index++;
         }
-        if (next_token->kind == TOKEN_NEWLINE)
+        if (next->kind == TOKEN_NEWLINE)
         {
-            next_lexed_token();
+            next_token();
         }
     }
     else
@@ -679,12 +679,12 @@ void ignore_tokens_until_next_block(void)
     {
         if (all_tokens[lexed_token_index].kind == TOKEN_RIGHT_BRACE)
         {
-            next_lexed_token();
+            next_token();
             break;
         }
         else
         {
-            next_lexed_token();
+            next_token();
         }
     }
 }

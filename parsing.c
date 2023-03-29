@@ -43,7 +43,7 @@ bool match_token_kind(token_kind kind)
     bool result = (tok.kind == kind);
     if (result)
     {
-        next_lexed_token();
+        next_token();
     }
     return result;
 }
@@ -213,7 +213,7 @@ const char *parse_identifier(void)
         {
             parsing_error("Identifiers with triple underscore ('___') are reserved");
         }
-        next_lexed_token();
+        next_token();
     }
     else
     {
@@ -228,14 +228,14 @@ typespec *parse_basic_typespec(void)
     if (is_token_kind(TOKEN_NAME))
     {
         t = push_typespec_name(tok.pos, tok.name);
-        next_lexed_token();
+        next_token();
     }
     else if (is_token_kind(TOKEN_KEYWORD) && tok.name == fn_keyword)
     {
         t = push_struct(arena, typespec);
         t->kind = TYPESPEC_FUNCTION;
         t->pos = tok.pos;
-        next_lexed_token();
+        next_token();
 
         expect_token_kind(TOKEN_LEFT_PAREN);
         {
@@ -249,7 +249,7 @@ typespec *parse_basic_typespec(void)
                     buf_push(params, param);
                     if (is_token_kind(TOKEN_COMMA))
                     {
-                        next_lexed_token();
+                        next_token();
                     }
                     else
                     {
@@ -294,14 +294,14 @@ typespec *parse_typespec(void)
             t->kind = TYPESPEC_POINTER;
             t->pointer.base_type = base_t;
             t->pos = tok.pos;
-            next_lexed_token();
+            next_token();
         }
         else
         {           
             typespec *base_t = t;
             t = push_struct(arena, typespec);
             t->pos = tok.pos;
-            next_lexed_token();
+            next_token();
 
             if (match_token_kind(TOKEN_RIGHT_BRACKET))
             {
@@ -378,7 +378,7 @@ expr *parse_compound_literal(void)
     if (e && is_token_kind(TOKEN_KEYWORD)
         && tok.name == as_keyword)
     {
-        next_lexed_token();
+        next_token();
         typespec *t = parse_typespec();
         if (t)
         {
@@ -399,22 +399,22 @@ expr *parse_base_expr(void)
     if (is_token_kind(TOKEN_INT))
     {
         result = push_int_expr(tok.pos, tok.val);
-        next_lexed_token();
+        next_token();
     }
     else if (is_token_kind(TOKEN_NAME))
     {
         result = push_name_expr(tok.pos, tok.name);
-        next_lexed_token();
+        next_token();
     }
     else if (is_token_kind(TOKEN_STRING))
     {
         result = push_string_expr(tok.pos, tok.string_val);
-        next_lexed_token();
+        next_token();
     }
     else if (is_token_kind(TOKEN_CHAR))
     {
         result = push_char_expr(tok.pos, tok.string_val);
-        next_lexed_token();
+        next_token();
     }
     else if (is_token_kind(TOKEN_KEYWORD))
     {
@@ -422,19 +422,19 @@ expr *parse_base_expr(void)
         source_pos pos = tok.pos;
         if (keyword == new_keyword)
         {
-            next_lexed_token();
+            next_token();
             typespec *t = parse_typespec();
             result = push_new_expr(pos, t);
         }
         else if (keyword == auto_keyword)
         {
-            next_lexed_token();
+            next_token();
             typespec *t = parse_typespec();
             result = push_auto_expr(pos, t);
         }      
         else if (keyword == sizeof_keyword)
         {
-            next_lexed_token();
+            next_token();
             expect_token_kind(TOKEN_LEFT_PAREN);
             
             typespec *t = parse_typespec();
@@ -452,17 +452,17 @@ expr *parse_base_expr(void)
         else if (keyword == null_keyword)
         {
             result = push_null_expr(pos);
-            next_lexed_token();
+            next_token();
         }
         else if (keyword == true_keyword)
         {
             result = push_bool_expr(pos, true);
-            next_lexed_token();
+            next_token();
         }
         else if (keyword == false_keyword)
         {
             result = push_bool_expr(pos, false);
-            next_lexed_token();
+            next_token();
         }
     }
     else if (is_token_kind(TOKEN_LEFT_BRACE))
@@ -519,7 +519,7 @@ expr *parse_complex_expr(void)
         expr *left_side = result;
         if (is_token_kind(TOKEN_LEFT_PAREN))
         {
-            next_lexed_token();
+            next_token();
 
             result = push_struct(arena, expr);
             result->kind = EXPR_CALL;
@@ -540,7 +540,7 @@ expr *parse_complex_expr(void)
         }
         else if (is_token_kind(TOKEN_LEFT_BRACKET))
         {
-            next_lexed_token();
+            next_token();
 
             result = push_struct(arena, expr);
             result->kind = EXPR_INDEX;
@@ -554,10 +554,10 @@ expr *parse_complex_expr(void)
         } 
         else if (is_token_kind(TOKEN_DOT))
         {
-            next_lexed_token();           
+            next_token();           
             const char *identifier = tok.name;
             
-            next_lexed_token();                       
+            next_token();                       
             if (match_token_kind(TOKEN_LEFT_PAREN))
             {
                 // method call
@@ -628,7 +628,7 @@ expr *parse_cast_expr(void)
         && tok.name == as_keyword)
     {
         source_pos pos = tok.pos;
-        next_lexed_token();
+        next_token();
         
         typespec *t = parse_typespec();
         if (t == null)
@@ -650,7 +650,7 @@ expr *parse_multiplicative_expr(void)
         source_pos pos = tok.pos;
         expr *left_expr = e;
         token_kind op = tok.kind;
-        next_lexed_token();
+        next_token();
         expr *right_expr = parse_cast_expr();
 
         if (right_expr == null)
@@ -672,7 +672,7 @@ expr *parse_additive_expr(void)
         source_pos pos = tok.pos;
         expr *left_expr = e;
         token_kind op = tok.kind;
-        next_lexed_token();
+        next_token();
         expr *right_expr = parse_multiplicative_expr();
 
         if (right_expr == null)
@@ -694,7 +694,7 @@ expr *parse_comparison_expr(void)
         source_pos pos = tok.pos;
         expr *left_expr = e;
         token_kind op = tok.kind;
-        next_lexed_token();
+        next_token();
         expr *right_expr = parse_additive_expr();
 
         if (right_expr == null)
@@ -716,7 +716,7 @@ expr *parse_and_expr(void)
         source_pos pos = tok.pos;
         expr *left_expr = e;
         token_kind op = tok.kind;
-        next_lexed_token();
+        next_token();
         expr *right_expr = parse_comparison_expr();
 
         if (right_expr == null)
@@ -738,7 +738,7 @@ expr *parse_or_expr(void)
         source_pos pos = tok.pos;
         expr *left_expr = e;
         token_kind op = tok.kind;
-        next_lexed_token();
+        next_token();
         expr *right_expr = parse_and_expr();
 
         if (right_expr == null)
@@ -760,7 +760,7 @@ expr *parse_ternary_expr(void)
     {
         if (is_token_kind(TOKEN_QUESTION))
         {
-            next_lexed_token();
+            next_token();
             expr *cond = e;
 
             expr *if_true_expr = parse_expr();
@@ -795,7 +795,7 @@ stmt *parse_simple_statement(void)
     if (is_assign_operation(tok.kind))
     {
         token_kind op = tok.kind;
-        next_lexed_token();
+        next_token();
         
         s = push_struct(arena, stmt);
         expr *e = parse_expr();
@@ -807,7 +807,7 @@ stmt *parse_simple_statement(void)
     else if (is_token_kind(TOKEN_INC) || is_token_kind(TOKEN_DEC))
     {
         token_kind op = tok.kind;
-        next_lexed_token();
+        next_token();
 
         s = push_struct(arena, stmt);
         s->kind = STMT_ASSIGN;
@@ -850,7 +850,7 @@ void parse_switch_cases(switch_stmt *switch_stmt)
                 const char *keyword = tok.name;
                 if (keyword == case_keyword)
                 {               
-                    next_lexed_token();
+                    next_token();
                     e = parse_expr();
                     expect_token_kind(TOKEN_COLON);
                     buf_push(case_exprs, e);
@@ -858,7 +858,7 @@ void parse_switch_cases(switch_stmt *switch_stmt)
                 else if (keyword == default_keyword
                     && false == default_case_defined)
                 {
-                    next_lexed_token();
+                    next_token();
                     case_is_default = true;
                     default_case_defined = true;
                     expect_token_kind(TOKEN_COLON);
@@ -895,7 +895,7 @@ void parse_switch_cases(switch_stmt *switch_stmt)
                 && tok.name == break_keyword)
             {
                 c->fallthrough = false;
-                next_lexed_token();
+                next_token();
             }
             else
             {
@@ -926,7 +926,7 @@ stmt *parse_if_statement(void)
         s = push_struct(arena, stmt);
         s->kind = STMT_IF_ELSE;
         s->pos = tok.pos;
-        next_lexed_token();
+        next_token();
 
         expect_token_kind_or_return(TOKEN_LEFT_PAREN);
         s->if_else.cond_expr = parse_expr();
@@ -942,7 +942,7 @@ stmt *parse_if_statement(void)
         if (is_token_kind(TOKEN_KEYWORD) 
             && tok.name == else_keyword)
         {
-            next_lexed_token();            
+            next_token();            
             s->if_else.else_stmt = parse_statement();           
         }
     }
@@ -961,7 +961,7 @@ stmt *parse_statement(void)
             s = push_struct(arena, stmt);
             s->kind = STMT_RETURN;
             s->pos = pos;
-            next_lexed_token();
+            next_token();
             s->return_stmt.ret_expr = parse_expr();
         }
         else if (keyword == break_keyword)
@@ -969,14 +969,14 @@ stmt *parse_statement(void)
             s = push_struct(arena, stmt);
             s->kind = STMT_BREAK;
             s->pos = pos;
-            next_lexed_token();
+            next_token();
         }
         else if (keyword == continue_keyword)
         {
             s = push_struct(arena, stmt);
             s->kind = STMT_CONTINUE;
             s->pos = pos;
-            next_lexed_token();
+            next_token();
         }
         else if (keyword == let_keyword
             || keyword == const_keyword)
@@ -993,7 +993,7 @@ stmt *parse_statement(void)
             s->kind = STMT_FOR;
             s->pos = pos;
 
-            next_lexed_token();
+            next_token();
 
             expect_token_kind_or_return(TOKEN_LEFT_PAREN);
 
@@ -1021,14 +1021,14 @@ stmt *parse_statement(void)
             s->kind = STMT_DO_WHILE;
             s->pos = pos;
 
-            next_lexed_token();
+            next_token();
 
             s->do_while_stmt.stmts = parse_statement_block();
             
             if (is_token_kind(TOKEN_KEYWORD) 
                 && tok.name == while_keyword)
             {
-                next_lexed_token();
+                next_token();
                 expect_token_kind_or_return(TOKEN_LEFT_PAREN);
                 s->do_while_stmt.cond_expr = parse_expr();
                 expect_token_kind_or_return(TOKEN_RIGHT_PAREN);
@@ -1044,7 +1044,7 @@ stmt *parse_statement(void)
             s->kind = STMT_WHILE;
             s->pos = pos;
 
-            next_lexed_token();
+            next_token();
 
             expect_token_kind_or_return(TOKEN_LEFT_PAREN);
             s->while_stmt.cond_expr = parse_expr();
@@ -1058,7 +1058,7 @@ stmt *parse_statement(void)
             s->kind = STMT_SWITCH;
             s->pos = pos;
 
-            next_lexed_token();
+            next_token();
 
             expect_token_kind_or_return(TOKEN_LEFT_PAREN);
             s->switch_stmt.var_expr = parse_expr();
@@ -1073,7 +1073,7 @@ stmt *parse_statement(void)
             s = push_struct(arena, stmt);
             s->kind = STMT_DELETE;
             s->pos = pos;
-            next_lexed_token();
+            next_token();
             s->delete.expr = parse_complex_expr();
             if (s->delete.expr == null)
             {
@@ -1146,7 +1146,7 @@ stmt_block parse_statement_block(void)
     if (is_token_kind(TOKEN_RIGHT_BRACE))
     {
         // specjalny przypadek - pusty blok
-        next_lexed_token();
+        next_token();
         return (stmt_block){0};
     }
 
@@ -1189,7 +1189,7 @@ function_param parse_function_param(void)
         if (tok.name == variadic_keyword)
         {
             p.name = variadic_keyword;
-            next_lexed_token();
+            next_token();
         }
     }
     else if (is_token_kind(TOKEN_NAME))
@@ -1228,7 +1228,7 @@ function_param_list parse_function_param_list()
 
         if (is_token_kind(TOKEN_COMMA))
         {           
-            next_lexed_token();
+            next_token();
         }
         else
         {
@@ -1281,7 +1281,7 @@ aggregate_field parse_aggregate_field(void)
 
         if (is_token_kind(TOKEN_COMMA))
         {
-            next_lexed_token();
+            next_token();
         }
     }
     return result;
@@ -1331,18 +1331,18 @@ enum_value parse_enum_value(void)
 
         if (is_token_kind(TOKEN_ASSIGN))
         {
-            next_lexed_token();
+            next_token();
             if (is_token_kind(TOKEN_INT))
             {
                 result.value_set = true;
                 result.value = tok.val;
-                next_lexed_token();
+                next_token();
             }
         }
 
         if (is_token_kind(TOKEN_COMMA))
         {
-            next_lexed_token();
+            next_token();
         }
     }
     return result;
@@ -1380,7 +1380,7 @@ decl *parse_declaration(void)
             declaration->kind = DECL_VARIABLE;
             declaration->pos = pos;
 
-            next_lexed_token();
+            next_token();
             declaration->name = parse_identifier();
             
             if (match_token_kind(TOKEN_COLON_ASSIGN))
@@ -1412,7 +1412,7 @@ decl *parse_declaration(void)
             declaration->kind = DECL_CONST;
             declaration->pos = pos;
 
-            next_lexed_token();
+            next_token();
             declaration->name = parse_identifier();
 
             if (expect_token_kind(TOKEN_ASSIGN))
@@ -1428,7 +1428,7 @@ decl *parse_declaration(void)
             declaration->kind = decl_keyword == struct_keyword ? DECL_STRUCT : DECL_UNION;
             declaration->pos = pos;
 
-            next_lexed_token();
+            next_token();
             declaration->name = parse_identifier();
 
             expect_token_kind(TOKEN_LEFT_BRACE);
@@ -1443,7 +1443,7 @@ decl *parse_declaration(void)
             declaration->kind = DECL_FUNCTION;
             declaration->pos = pos;
 
-            next_lexed_token();
+            next_token();
 
             // reveiver method
             if (match_token_kind(TOKEN_LEFT_PAREN))
@@ -1471,7 +1471,7 @@ decl *parse_declaration(void)
 
             if (is_token_kind(TOKEN_COLON))
             {
-                next_lexed_token();
+                next_token();
                 if (is_token_kind(TOKEN_NAME))
                 {
                     declaration->function.return_type = parse_typespec();
@@ -1482,7 +1482,7 @@ decl *parse_declaration(void)
         }
         else if (decl_keyword == extern_keyword)
         {
-            next_lexed_token();
+            next_token();
             if (false == is_token_kind(TOKEN_KEYWORD)
                 || false == (tok.name == fn_keyword))
             {
@@ -1494,7 +1494,7 @@ decl *parse_declaration(void)
             declaration->pos = pos;
             declaration->function.is_extern = true;
 
-            next_lexed_token();
+            next_token();
 
             declaration->name = parse_identifier();
 
@@ -1502,7 +1502,7 @@ decl *parse_declaration(void)
 
             if (is_token_kind(TOKEN_COLON))
             {
-                next_lexed_token();
+                next_token();
                 if (is_token_kind(TOKEN_NAME))
                 {
                     declaration->function.return_type = parse_typespec();
@@ -1520,7 +1520,7 @@ decl *parse_declaration(void)
             declaration->kind = DECL_ENUM;
             declaration->pos = pos;
 
-            next_lexed_token();
+            next_token();
             declaration->name = parse_identifier();
 
             expect_token_kind(TOKEN_LEFT_BRACE);
@@ -1550,7 +1550,7 @@ decl **lex_and_parse(char *filename, char *source)
     {
         if (is_token_kind(TOKEN_NEWLINE))
         {
-            next_lexed_token();
+            next_token();
         }
 
         dec = parse_declaration();
