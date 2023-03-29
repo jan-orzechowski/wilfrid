@@ -1,4 +1,20 @@
-﻿#include "utils.h"
+﻿// do przeniesienia do mojego języka
+
+#if 0
+
+typedef enum instruction
+{
+    HALT = 0,
+    ADD,
+    POP,
+    PUSH,
+    SUB,
+    DIV,
+    MUL,
+    PRINT,
+    BRANCH,
+}
+instruction;
 
 int *stack;
 int stack_size;
@@ -6,6 +22,8 @@ int ip;
 int sp;
 
 int *vm_output;
+
+int *vm_code;
 
 void run_vm(int *code)
 {
@@ -21,12 +39,12 @@ void run_vm(int *code)
             case BRANCH:
             {
                 // argumentem jest miejsce, do którego mamy przeskoczyć
-                ip = code[++ip] - 1;
+                ip = vm_code[++ip] - 1;
             }
             break;
             case PUSH:
             {
-                stack[++sp] = code[++ip];
+                stack[++sp] = vm_code[++ip];
             }
             break;
             case POP:
@@ -70,31 +88,31 @@ void run_vm(int *code)
             break;
         }
 
-        opcode = code[++ip];
+        opcode = vm_code[++ip];
     }
 
     debug_breakpoint;
 }
 
-void stack_vm_test(int *code)
+void stack_vm_test(void)
 {
-    buf_push(code, PUSH);
-    buf_push(code, 1);
-    buf_push(code, PUSH);
-    buf_push(code, 2);
-    buf_push(code, ADD);
-    buf_push(code, BRANCH);
-    buf_push(code, 9);
-    buf_push(code, ADD);
-    buf_push(code, 4);
-    buf_push(code, POP);
+    buf_push(vm_code, PUSH);
+    buf_push(vm_code, 1);
+    buf_push(vm_code, PUSH);
+    buf_push(vm_code, 2);
+    buf_push(vm_code, ADD);
+    buf_push(vm_code, BRANCH);
+    buf_push(vm_code, 9);
+    buf_push(vm_code, ADD);
+    buf_push(vm_code, 4);
+    buf_push(vm_code, POP);
 
     stack_size = 1024;
     stack = xmalloc(sizeof(int)  *stack_size);
 
-    run_vm(code);
+    run_vm(vm_code);
 
-    buf_free(code);
+    buf_free(vm_code);
     free(stack);
 }
 
@@ -103,18 +121,18 @@ void parsing_and_vm_test(char *expr, int value)
     lex(expr, null);
 
     //parse_expr();
-    buf_push(code, POP);
+    buf_push(vm_code, POP);
 
     stack_size = 1024;
     stack = xmalloc(sizeof(int)  *stack_size);
 
     buf_free(vm_output);
 
-    run_vm(code);
+    run_vm(vm_code);
 
     assert(vm_output[0] == value);
 
-    buf_free(code);
+    buf_free(vm_code);
     buf_free(vm_output);
     free(stack);
 }
@@ -127,3 +145,5 @@ void vm_test(void)
     PARSING_TEST((12    + 4) + 28 - 14 + (8 - 4) / 2 + (2 * 2 - 1 * 4));
     PARSING_TEST(2 +-2 / -2);
 }
+
+#endif

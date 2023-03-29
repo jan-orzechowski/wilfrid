@@ -14,9 +14,6 @@
 #include "test_runner.c"
 #include "utils_tests.c"
 
-#include "vm.h"
-#include "vm.c"
-
 #include "gc_test.c"
 
 void fuzzy_test(void);
@@ -45,7 +42,6 @@ int main(int argc, char **argv)
    
     buf_copy_test();
     map_test();
-    stack_vm_test(code);
 
     common_includes_test();
 
