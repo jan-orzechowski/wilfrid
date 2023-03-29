@@ -158,8 +158,8 @@ void parsing_test(void)
 
 symbol **resolve_test_decls(char **decl_arr, size_t decl_arr_count, bool print)
 {
-    arena = allocate_memory_arena(megabytes(50));
-    init_before_resolve();
+    arena = allocate_memory_arena(kilobytes(50));
+    init_installed_types();
 
     buf_free(errors);
 

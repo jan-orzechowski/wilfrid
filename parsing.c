@@ -1542,7 +1542,7 @@ decl **lex_and_parse(char *filename, char *source)
     lex(filename, source);
     
     free_memory_arena(arena);
-    arena = allocate_memory_arena(megabytes(50));
+    arena = allocate_memory_arena(kilobytes(50));
 
     decl **decl_array = null;
     decl *dec = null;

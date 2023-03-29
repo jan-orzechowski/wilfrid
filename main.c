@@ -35,7 +35,7 @@ void common_includes_test(void);
 
 int main(int argc, char **argv)
 {
-    string_arena = allocate_memory_arena(megabytes(10));
+    string_arena = allocate_memory_arena(kilobytes(500));
 
     stretchy_buffers_test();
     intern_str_test();

@@ -1905,7 +1905,7 @@ symbol **resolve(char *filename, char *source, bool print_s_expressions)
 {
     if (arena == 0)
     {
-        arena = allocate_memory_arena(megabytes(50));
+        arena = allocate_memory_arena(kilobytes(50));
     }
     init_installed_types();
 
