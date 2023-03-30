@@ -120,8 +120,7 @@ int main(int arg_count, char **args)
         
     cmd_arguments options = parse_cmd_arguments(arg_count, args);
 
-    // debug
-#if 1
+#if DEBUG_BUILD 
     buf_push(options.sources, "test");
     //options.test_mode = true;
 #endif

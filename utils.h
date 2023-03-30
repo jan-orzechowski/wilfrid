@@ -8,10 +8,17 @@
 
 #define null 0
 
+#ifdef DEBUG_BUILD
 #define assert(condition) { if (!(condition)) { int x = 0; int y = 1 / x; } }
-
 #define debug_breakpoint { int x = 0; }
 #define invalid_default_case default: { assert(0); } break;
+#define fatal(...) __fatal(__VA_ARGS__)
+#else
+#define assert(condition)
+#define debug_breakpoint
+#define invalid_default_case
+#define fatal(...)
+#endif
 
 #define is_power_of_2(x) (((x) != 0) && ((x) & ((x) - 1)) == 0)
 #define align_down(num, align) ((num) & ~((align) - 1))
@@ -19,7 +26,7 @@
 #define align_down_ptr(ptr, align) ((void *)align_down((uintptr_t)(ptr), (align)))
 #define align_up_ptr(ptr, align) ((void *)align_up((uintptr_t)(ptr), (align)))
 
-void fatal(const char *format, ...)
+void __fatal(const char *format, ...)
 {
     va_list args;
     va_start(args, format);
