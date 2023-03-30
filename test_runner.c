@@ -300,52 +300,6 @@ void resolve_test(void)
     buf_free(result);
 }
 
-void cgen_test(void)
-{
-    generate_line_hints = false;
-
-    char *test_strs[] = {
-#if 0
-        "const x = 10",
-        "let y := (vec3){1, 2, 3}",
-        "fn power_2(n:int):int{return n*n}",
-        "fn _main(){\
-            let i : int = 5\
-            let j = power_2(i)\
-        }",
-        "struct vec3 { x: int, y: int, z: int }",
-        "const y = (float)12",
-        "let u := (bool)(y > 11) && (y < 30)",
-        "let i := (int)12 + 1",
-#endif
-        "fn f(){\
-            let list := new int[]\
-            list[10] = 12\
-            delete list\
-        }",
-
-    };
-
-    symbol **resolved = resolve_test_decls(test_strs, sizeof(test_strs) / sizeof(test_strs[0]), false);
-
-    gen_printf_newline("// FORWARD DECLARATIONS\n");
-
-    gen_forward_decls(resolved);
-
-    gen_printf_newline("\n// DECLARATIONS\n");
-
-    for (size_t i = 0; i < buf_len(resolved); i++)
-    {
-        gen_symbol_decl(resolved[i]);
-    }
-
-    debug_breakpoint;
-
-    printf("%s\n", gen_buf);
-
-    debug_breakpoint;
-}
-
 void mangled_names_test()
 {
     // uwaga: reordering podczas resolve może zepsuć test
@@ -413,7 +367,6 @@ void run_all_tests(void)
     parsing_test();
     //mangled_names_test();
     //resolve_test();
-    //cgen_test();
     fuzzy_test();
     common_includes_test();
 
