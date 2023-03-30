@@ -2,8 +2,8 @@
 
 char *parse_case(char **source, char *source_end, char *case_label, char *end_label)
 {
-    int case_label_length = strlen(case_label);
-    int end_label_length = strlen(end_label);
+    int case_label_length = (int)strlen(case_label);
+    int end_label_length = (int)strlen(end_label);
 
     char *case_str = null;
     bool end_found = false;
@@ -67,10 +67,11 @@ void test_file_parsing_test(string_ref source, bool print_results)
             if (test_str)
             {                
                 bool passed = true;
-                decl** decls = lex_and_parse(case_str, null);
+                decl **decls = 0;
+                lex_and_parse(case_str, null, decls);
                 for (size_t i = 0; i < buf_len(decls); i++)
                 {
-                    char* ast = get_decl_ast(decls[i]);                    
+                    char *ast = get_decl_ast(decls[i]);                    
                     if (0 != strcmp(test_str, ast))
                     {
                         passed = false;
@@ -134,7 +135,8 @@ void single_case_parsing_test(void)
 
     printf("\nParsing test:\n%s\n", test);
     
-    decl **decls = lex_and_parse(test, null);
+    decl **decls = 0;
+    lex_and_parse(test, null, decls);
     if (decls != 0)
     {
         char *ast = get_decl_ast(decls[0]);
@@ -161,6 +163,9 @@ symbol **resolve_test_decls(char **decl_arr, size_t decl_arr_count, bool print)
     arena = allocate_memory_arena(kilobytes(50));
     init_installed_types();
 
+    buf_free(global_symbols_list);
+    buf_free(ordered_global_symbols);
+
     buf_free(errors);
 
     if (print)
@@ -171,14 +176,22 @@ symbol **resolve_test_decls(char **decl_arr, size_t decl_arr_count, bool print)
     for (size_t i = 0; i < decl_arr_count; i++)
     {
         char *str = decl_arr[i];
-        decl **d = lex_and_parse(str, null);
-        if (print)
+        decl **decls = 0;
+        lex_and_parse(str, null, decls);
+        if (buf_len(decls) > 0)
         {
-            printf("%s", get_decl_ast(*d));
-            printf("\n");
-        }
+            if (print)
+            {
+                printf("%s", get_decl_ast(decls[0]));
+                printf("\n");
+            }
 
-        push_symbol_from_decl(*d);
+            push_symbol_from_decl(decls[0]);
+        }
+        else
+        {
+            printf("\nResolve test error: couldn't parse test case %d\n", i);
+        }
     }
 
     for (symbol **it = global_symbols_list;
@@ -370,7 +383,7 @@ void mangled_names_test()
 
     assert((sizeof(test_strs) / sizeof(test_strs[0])) == sizeof(cmp_strs) / sizeof(cmp_strs[0]))
 
-        symbol **resolved = resolve_test_decls(test_strs, sizeof(test_strs) / sizeof(test_strs[0]), false);
+    symbol **resolved = resolve_test_decls(test_strs, sizeof(test_strs) / sizeof(test_strs[0]), false);
     for (size_t i = 2 /* dwa pierwsze pomijamy!*/; i < buf_len(resolved); i++)
     {
         symbol *sym = resolved[i];
@@ -382,4 +395,127 @@ void mangled_names_test()
         }
     }
     debug_breakpoint;
+}
+
+#include "utils_tests.c"
+//#include "gc_test.c"
+
+void common_includes_test(void);
+void fuzzy_test(void);
+
+void run_all_tests(void)
+{
+    stretchy_buffers_test();
+    intern_str_test();
+    buf_copy_test();
+    map_test();
+
+    parsing_test();
+    //mangled_names_test();
+    //resolve_test();
+    //cgen_test();
+    fuzzy_test();
+    common_includes_test();
+
+    //gc_init();
+    //gc_test();
+}
+
+#include <time.h>
+
+void fuzzy_test(void)
+{
+    char *test_file = "test/constructors.txt";
+    string_ref file_buf = read_file_for_parsing(test_file);
+    if (file_buf.str)
+    {
+        unsigned int seed = (unsigned int)time(null);
+        srand(seed);
+
+        // podmieniamy na losowe znaki
+        size_t substitutions_count = file_buf.length / 30;
+        for (; substitutions_count > 0; substitutions_count--)
+        {
+            size_t char_index = (size_t)(get_random_01() * (file_buf.length - 1));
+            // chcemy kody ascii z przedziału 32-126
+            char new_letter = (char)(get_random_01() * (126 - 32)) + 32;
+            if (new_letter == '%')
+            {
+                new_letter = '_'; // żeby nie wchodziło w konflikty z printf
+            }
+            file_buf.str[char_index] = new_letter;
+        }
+
+        printf("Random seed: %d\n\n", seed);
+        printf("Original text:\n\n");
+        printf(file_buf.str);
+        printf("\n\n");
+
+        decl **decls = 0;
+        lex_and_parse(file_buf.str, "fuzzy test", decls);
+        symbol **resolved = resolve(decls, true);
+
+        if (buf_len(errors) > 0)
+        {
+            print_errors_to_console();
+        }
+    }
+}
+
+#include "common_include.c"
+
+void common_includes_test(void)
+{
+    ___list_hdr___ *int_list = ___list_initialize___(4, sizeof(int), 0);
+
+    assert(int_list->length == 0);
+    assert(int_list->capacity == 4);
+
+    ___list_add___(int_list, 12, int);
+    ___list_add___(int_list, 16, int);
+    ___list_add___(int_list, 20, int);
+
+    assert(((int *)int_list->buffer)[0] == 12);
+    assert(((int *)int_list->buffer)[1] == 16);
+    assert(((int *)int_list->buffer)[2] == 20);
+
+    assert(___get_list_length___(int_list) == 3);
+    assert(___get_list_capacity___(int_list) == 4);
+
+    ___list_free___(int_list);
+
+    assert(___get_list_length___(int_list) == 0);
+    assert(___get_list_capacity___(int_list) == 0);
+
+    ___list_hdr___ *token_list = ___list_initialize___(16, sizeof(token), 0);
+
+    assert(token_list->length == 0);
+
+    ___list_add___(token_list, ((token){.kind = TOKEN_NAME, .val = 666 }), token);
+
+    assert(token_list->length == 1);
+
+    assert(((token *)(token_list->buffer))[0].kind == TOKEN_NAME);
+    assert(((token *)(token_list->buffer))[0].val == 666);
+
+    ((token *)(token_list->buffer))[0].val = 667;
+
+    assert(((token *)(token_list->buffer))[0].val == 667);
+
+    ((token *)(token_list->buffer))[0] = (token){ .kind = TOKEN_ASSIGN, .val = 668 };
+
+    assert(((token *)(token_list->buffer))[0].kind == TOKEN_ASSIGN);
+    assert(((token *)(token_list->buffer))[0].val == 668);
+
+    ___list_add___(token_list, ((token){.kind = TOKEN_MUL, .val = 669 }), token);
+
+    assert(((token *)(token_list->buffer))[1].kind == TOKEN_MUL);
+    assert(((token *)(token_list->buffer))[1].val == 669);
+
+    ___list_remove_at___(token_list, sizeof(token), 1);
+
+    assert(((token *)(token_list->buffer))[1].kind == 0);
+    assert(((token *)(token_list->buffer))[1].val == 0);
+
+    ___list_free___(token_list);
 }

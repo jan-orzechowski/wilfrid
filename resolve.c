@@ -1902,17 +1902,10 @@ void init_installed_types()
     resolved_expr_invalid = get_resolved_lvalue_expr(type_invalid);
 }
 
-symbol **resolve(char *filename, char *source, bool print_s_expressions)
+symbol **resolve(decl **declarations, bool print_s_expressions)
 {
-    if (arena == 0)
-    {
-        arena = allocate_memory_arena(kilobytes(50));
-    }
+    assert(arena != null);
     init_installed_types();
-
-    decl **declarations = lex_and_parse(filename, source);
-
-    size_t debug_decl_count = buf_len(declarations);
 
     for (size_t i = 0; i < buf_len(declarations); i++)
     {
@@ -1928,9 +1921,8 @@ symbol **resolve(char *filename, char *source, bool print_s_expressions)
         complete_symbol(sym);
     }
 
-    symbol *main_function = get_entry_point();
+    // sprawdzamy, czy istnieje main
+    get_entry_point();
 
     return ordered_global_symbols;
 }
-
-

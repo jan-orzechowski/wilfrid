@@ -1537,14 +1537,11 @@ decl *parse_declaration(void)
     return declaration;
 }
 
-decl **lex_and_parse(char *source, char *filename)
+void lex_and_parse(char *source, char *filename, decl** declarations)
 {
     lex(source, filename);
-        
-    //free_memory_arena(arena);
-    arena = allocate_memory_arena(kilobytes(50));
 
-    decl **decl_array = null;
+    size_t decl_count = 0;
     decl *dec = null;
     for (size_t attempts = 0; attempts < 5; attempts++)
     {
@@ -1557,7 +1554,8 @@ decl **lex_and_parse(char *source, char *filename)
         if (dec)
         {
             attempts = 0;
-            buf_push(decl_array, dec);
+            buf_push(declarations, dec);
+            decl_count++;
         }
         
         if (attempts == 3)
@@ -1579,10 +1577,8 @@ decl **lex_and_parse(char *source, char *filename)
         }
     }
 
-    if (buf_len(decl_array) == 0)
+    if (decl_count == 0)
     {
         parsing_error("Could not parse any declaration");
     }
-
-    return decl_array;
 }

@@ -6,201 +6,146 @@
 #include <string.h>
 #include <stdbool.h>
 
+#define SOURCEFILE_EXTENSION "txt"
+
 #include "lexing.c"
 #include "ast_print.c"
 #include "parsing.c"
 #include "resolve.c"
 #include "cgen.c"
-#include "test_runner.c"
-#include "utils_tests.c"
 
-#include "gc_test.c"
-
-void fuzzy_test(void);
+void run_all_tests(void);
 
 void compile_and_run(void)
 {
-    char *test_file = "interpreter/hashmap.txt";
-    
+    char *test_file = "interpreter/hashmap.txt";    
     string_ref file_buf = read_file_for_parsing(test_file);
     if (file_buf.str)
     {      
-        symbol **resolved = resolve(test_file, file_buf.str, true);
-        c_gen(resolved, "test/testcode.c", "errors.log", false);        
+        
         free(file_buf.str);
     }
 }
 
-void common_includes_test(void);
-
-decl **parse_directory(char *path)
+void parse_file(char *filename, decl **declarations_list)
 {
-    decl **all_decls = 0;
+    string_ref source = read_file_for_parsing(filename);
+    if (source.str == null || source.length == 0)
+    {
+        error("Failed to parse source file", (source_pos) { .filename = filename }, 0);
+        return;
+    }
+
+    lex_and_parse(source.str, filename, declarations_list);
+
+    free(source.str);
+}
+
+void parse_directory(char *path, decl** declarations_list)
+{
     char **source_files = get_source_files_in_dir_and_subdirs(path);
     for (size_t i = 0; i < buf_len(source_files); i++)
     {
         char *filename = source_files[i];
-        string_ref source = read_file_for_parsing(filename);
-        if (source.str == null || source.length == 0)
-        {
-            error("Failed to parse source file", (source_pos) { .filename = filename }, 0);
-            continue;
-        }
-
-        decl **decls_in_file = lex_and_parse(source.str, filename);
-        for (size_t j = 0; j < buf_len(decls_in_file); j++)
-        {
-            buf_push(all_decls, decls_in_file[j]);
-        }
-        buf_free(decls_in_file);
-        //to chyba powinniśmy zrboić później...
-        //free(source.str);
-    }
-       
+        parse_file(filename, declarations_list);       
+    }       
     buf_free(source_files);
-    return all_decls;
 }
 
-int main(int argc, char **argv)
+void compile_sources(char **sources)
 {
+    decl **all_declarations = 0;
+    for (size_t i = 0; i < buf_len(sources); i++)
+    {
+        char *filename = sources[i];
+        if (path_has_extension(filename, SOURCEFILE_EXTENSION))
+        {
+            parse_file(filename, all_declarations);
+        }
+        else
+        {
+            parse_directory(filename, all_declarations);
+        }
+    }
+
+    symbol **resolved = resolve(all_declarations, false);
+    c_gen(resolved, "test/testcode.c", "errors.log", false);
+}
+
+typedef struct cmd_arguments
+{
+    char **sources;
+    bool test_mode;
+    bool help;
+    bool print_ast;
+} cmd_arguments;
+
+cmd_arguments parse_cmd_arguments(int arg_count, char **args)
+{
+    cmd_arguments result = {0};
+    for (size_t i = 1; i < arg_count; i++)
+    {
+        char *arg = args[i];
+        assert(arg != null);
+
+        if (arg[0] = '-')
+        {
+            if (0 == strcmp(arg, "-test"))
+            {
+                result.test_mode = true;
+            }
+            else if (0 == strcmp(arg, "-help"))
+            {
+                result.help = true;
+            }
+            else if (0 == strcmp(arg, "-print-ast"))
+            {
+                result.print_ast = true;
+            }
+        }
+        else
+        {
+            buf_push(result.sources, arg);
+        }
+    }
+    return result;
+}
+
+int main(int arg_count, char **args)
+{
+    arena = allocate_memory_arena(kilobytes(50));
     string_arena = allocate_memory_arena(kilobytes(500));
+    interns = xcalloc(sizeof(hashmap));
+    map_grow(interns, 16);
+        
+    cmd_arguments options = parse_cmd_arguments(arg_count, args);
 
-    stretchy_buffers_test();
-    intern_str_test();
-   
-    buf_copy_test();
-    map_test();
-
-
-    //common_includes_test();
-
-    parse_directory("test");
-    print_errors_to_console();
-
-#if 0
-    parsing_test();
-#elif 0
-    resolve_test();
-    //mangled_names_test();
-#elif 0
-    cgen_test();
-#else
-    compile_and_run();
-
-    //fuzzy_test();
+    // debug
+#if 1
+    buf_push(options.sources, "test");
+    //options.test_mode = true;
 #endif
 
-    //for (size_t i = 1; i < argc; i++)
-    //{
-    //    char *arg = argv[i];
-    //    compile_and_run(arg);
-    //}
-
-    //gc_init();
-    //gc_test();
+    if (options.help)
+    {
+        // po prostu wyrzucamy tekst do konsoli z predefiniowanego pliku
+        printf("not implemented yet");
+    }
+    else if (options.test_mode)
+    {
+        run_all_tests();
+    }
+    else if (options.sources > 0)
+    {        
+        compile_sources(options.sources);
+        print_errors_to_console();
+    }
+    else
+    {
+        printf("No commands or source files provided.");
+    }
 
     return 1;
 }
 
-#include <time.h>
-
-void fuzzy_test(void)
-{
-    char *test_file = "test/testcode.txt";
-    string_ref file_buf = read_file_for_parsing(test_file);
-    if (file_buf.str)
-    {
-        unsigned int seed = (unsigned int)time(null);
-        srand(seed);
-
-        // podmieniamy na losowe znaki
-        size_t substitutions_count = file_buf.length / 30;
-        for (; substitutions_count > 0; substitutions_count--)
-        {
-            size_t char_index = (size_t)(get_random_01() * (file_buf.length - 1));
-            // chcemy kody ascii z przedziału 32-126
-            char new_letter = (char)(get_random_01() * (126 - 32)) + 32;
-            if (new_letter == '%')
-            {
-                new_letter = '_'; // żeby nie wchodziło w konflikty z printf
-            }
-            file_buf.str[char_index] = new_letter;
-        }
-
-        printf("Random seed: %d\n\n", seed);
-        printf("Original text:\n\n");
-        printf(file_buf.str);
-        printf("\n\n");
-
-        symbol **resolved = resolve("fuzzy test", file_buf.str, true);
-
-        if (buf_len(errors) > 0)
-        {
-            print_errors_to_console();
-        }
-    }
-}
-
-#if 0
-
-#include "common_include.c"
-
-void common_includes_test(void)
-{
-    ___list_hdr___ *int_list = ___list_initialize___(4, sizeof(int), 0);
-
-    assert(int_list->length == 0);
-    assert(int_list->capacity == 4);
-   
-    ___list_add___(int_list, 12, int);
-    ___list_add___(int_list, 16, int);
-    ___list_add___(int_list, 20, int);
-
-    assert(((int*)int_list->buffer)[0] == 12);
-    assert(((int*)int_list->buffer)[1] == 16);
-    assert(((int*)int_list->buffer)[2] == 20);
-        
-    assert(___get_list_length___(int_list) == 3);
-    assert(___get_list_capacity___(int_list) == 4);
-
-    ___list_free___(int_list);
-
-    assert(___get_list_length___(int_list) == 0);
-    assert(___get_list_capacity___(int_list) == 0);
-
-    ___list_hdr___ *token_list = ___list_initialize___(16, sizeof(token), 0);
-
-    assert(token_list->length == 0);
-
-    ___list_add___(token_list, ((token){.kind = TOKEN_NAME, .val = 666 }), token);
-
-    assert(token_list->length == 1);
-
-    assert(((token*)(token_list->buffer))[0].kind == TOKEN_NAME);
-    assert(((token*)(token_list->buffer))[0].val == 666);
-
-    ((token*)(token_list->buffer))[0].val = 667;
-
-    assert(((token*)(token_list->buffer))[0].val == 667);
-
-    ((token*)(token_list->buffer))[0] = (token){.kind = TOKEN_ASSIGN, .val = 668};
-
-    assert(((token*)(token_list->buffer))[0].kind == TOKEN_ASSIGN);
-    assert(((token*)(token_list->buffer))[0].val == 668);
-
-    ___list_add___(token_list, ((token){.kind = TOKEN_MUL, .val = 669 }), token);
-    
-    assert(((token*)(token_list->buffer))[1].kind == TOKEN_MUL);
-    assert(((token*)(token_list->buffer))[1].val == 669);
-
-    ___list_remove_at___(token_list, sizeof(token), 1);
-
-    assert(((token*)(token_list->buffer))[1].kind == 0);
-    assert(((token*)(token_list->buffer))[1].val == 0);
-
-    ___list_free___(token_list);
-
-    debug_breakpoint;
-}
-
-#endif
+#include "test_runner.c"

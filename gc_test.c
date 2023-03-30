@@ -49,10 +49,10 @@ uintptr_t max_ptr = 0;
 #define get_obj_ptr(hdr_ptr) (void*)((char*)(hdr_ptr) + sizeof(allocation_header))
 #define get_hdr_ptr(obj_ptr) (allocation_header*)((char*)(obj_ptr) - sizeof(allocation_header))
 
-chained_hashmap* allocations;
-chained_hashmap* gc_allocations;
+chained_hashmap *allocations;
+chained_hashmap *gc_allocations;
 
-void* alloc_wrapper(size_t num_bytes, bool garbage_collect)
+void *alloc_wrapper(size_t num_bytes, bool garbage_collect)
 {
     assert(num_bytes <= 0x7FFFFFFFFFFFFFFF);
 
@@ -312,8 +312,8 @@ void gc_test(void)
 
     size_t gc_count_after = gc_allocations->total_count;
 
-    print_values_from_list(true);
-    print_values_from_list(false);
+    //print_values_from_list(true);
+    //print_values_from_list(false);
 
     debug_breakpoint;
 }

@@ -202,7 +202,7 @@ void get_source_files_in_dir(char *path, char ***source_files_buf, char ***direc
             }
             else
             {
-                if (path_has_extension(filename_buffer, "txt"))
+                if (path_has_extension(filename_buffer, SOURCEFILE_EXTENSION))
                 {
                     buf_push(*source_files_buf, str_intern(filename_buffer));
                 }

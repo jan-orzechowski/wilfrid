@@ -2,26 +2,6 @@
 #include "tokens.h"
 #include "keywords.h"
 
-uint8_t char_to_digit[256] = 
-{
-    ['0'] = 0,
-    ['1'] = 1,
-    ['2'] = 2,
-    ['3'] = 3,
-    ['4'] = 4,
-    ['5'] = 5,
-    ['6'] = 6,
-    ['7'] = 7,
-    ['8'] = 8,
-    ['9'] = 9,
-    ['a'] = 10, ['A'] = 10,
-    ['b'] = 11, ['B'] = 11,
-    ['c'] = 12, ['C'] = 12,
-    ['d'] = 13, ['D'] = 13,
-    ['e'] = 14, ['E'] = 14,
-    ['f'] = 15, ['F'] = 15,
-};
-
 char *stream;
 token tok;
 token *all_tokens;
@@ -610,12 +590,19 @@ bool lex_next_token(void)
 void init_stream(char *source, char *filename)
 {
     init_keywords(); 
-    stream = source;
+    
+    stream = source;    
     current_line_beginning = stream;
+    nested_comments_level = 0;
+    lexed_token_index = 0;
+
+    tok = (token){0};
     tok.pos.filename = filename ? filename : "<string>";
     tok.pos.line = 1;
     tok.pos.character = 1;
+
     buf_free(all_tokens);
+    
     if (source)
     {
         lex_next_token();

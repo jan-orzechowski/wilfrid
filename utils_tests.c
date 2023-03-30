@@ -19,9 +19,6 @@ void map_test(void)
 
 void intern_str_test(void)
 {
-    interns = xcalloc(sizeof(hashmap));
-    map_grow(interns, 16);
-
     char x[] = "hello";
     char y[] = "hello";
 
@@ -35,7 +32,6 @@ void intern_str_test(void)
     const char *pz = str_intern(z);
     assert(pz != px);
 }
-
 
 void buf_remove_at_test(void)
 {
