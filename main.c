@@ -33,6 +33,34 @@ void compile_and_run(void)
 
 void common_includes_test(void);
 
+decl **parse_directory(char *path)
+{
+    decl **all_decls = 0;
+    char **source_files = get_source_files_in_dir_and_subdirs(path);
+    for (size_t i = 0; i < buf_len(source_files); i++)
+    {
+        char *filename = source_files[i];
+        string_ref source = read_file_for_parsing(filename);
+        if (source.str == null || source.length == 0)
+        {
+            error("Failed to parse source file", (source_pos) { .filename = filename }, 0);
+            continue;
+        }
+
+        decl **decls_in_file = lex_and_parse(source.str, filename);
+        for (size_t j = 0; j < buf_len(decls_in_file); j++)
+        {
+            buf_push(all_decls, decls_in_file[j]);
+        }
+        buf_free(decls_in_file);
+        //to chyba powinniśmy zrboić później...
+        //free(source.str);
+    }
+       
+    buf_free(source_files);
+    return all_decls;
+}
+
 int main(int argc, char **argv)
 {
     string_arena = allocate_memory_arena(kilobytes(500));
@@ -43,9 +71,13 @@ int main(int argc, char **argv)
     buf_copy_test();
     map_test();
 
-    common_includes_test();
 
-#if 1
+    //common_includes_test();
+
+    parse_directory("test");
+    print_errors_to_console();
+
+#if 0
     parsing_test();
 #elif 0
     resolve_test();
@@ -109,6 +141,8 @@ void fuzzy_test(void)
     }
 }
 
+#if 0
+
 #include "common_include.c"
 
 void common_includes_test(void)
@@ -168,3 +202,5 @@ void common_includes_test(void)
 
     debug_breakpoint;
 }
+
+#endif

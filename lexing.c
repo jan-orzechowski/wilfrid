@@ -616,7 +616,10 @@ void init_stream(char *source, char *filename)
     tok.pos.line = 1;
     tok.pos.character = 1;
     buf_free(all_tokens);
-    lex_next_token();
+    if (source)
+    {
+        lex_next_token();
+    }
 }
 
 void next_token(void)
@@ -691,7 +694,12 @@ void ignore_tokens_until_next_block(void)
 
 void lex(char *source, char *filename)
 {
-    init_stream(filename, source);
+    init_stream(source, filename);
+
+    if (source == null)
+    {
+        return;
+    }
 
     while (lex_next_token());
 

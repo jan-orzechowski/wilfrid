@@ -67,7 +67,7 @@ void test_file_parsing_test(string_ref source, bool print_results)
             if (test_str)
             {                
                 bool passed = true;
-                decl** decls = lex_and_parse(null, case_str);                    
+                decl** decls = lex_and_parse(case_str, null);
                 for (size_t i = 0; i < buf_len(decls); i++)
                 {
                     char* ast = get_decl_ast(decls[i]);                    
@@ -134,7 +134,7 @@ void single_case_parsing_test(void)
 
     printf("\nParsing test:\n%s\n", test);
     
-    decl **decls = lex_and_parse(null, test);
+    decl **decls = lex_and_parse(test, null);
     if (decls != 0)
     {
         char *ast = get_decl_ast(decls[0]);
@@ -171,7 +171,7 @@ symbol **resolve_test_decls(char **decl_arr, size_t decl_arr_count, bool print)
     for (size_t i = 0; i < decl_arr_count; i++)
     {
         char *str = decl_arr[i];
-        decl **d = lex_and_parse(null, str);
+        decl **d = lex_and_parse(str, null);
         if (print)
         {
             printf("%s", get_decl_ast(*d));

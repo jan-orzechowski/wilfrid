@@ -99,6 +99,11 @@ size_t get_remaining_space_in_block(memory_arena_block *block)
 
 void free_memory_arena(memory_arena *arena)
 {
+    if (arena == null)
+    {
+        return;
+    }
+
     memory_arena_block *block_to_delete = arena->first_block;
     while (block_to_delete)
     {

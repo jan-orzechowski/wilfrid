@@ -1537,11 +1537,11 @@ decl *parse_declaration(void)
     return declaration;
 }
 
-decl **lex_and_parse(char *filename, char *source)
+decl **lex_and_parse(char *source, char *filename)
 {
-    lex(filename, source);
-    
-    free_memory_arena(arena);
+    lex(source, filename);
+        
+    //free_memory_arena(arena);
     arena = allocate_memory_arena(kilobytes(50));
 
     decl **decl_array = null;

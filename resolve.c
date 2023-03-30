@@ -1874,6 +1874,7 @@ symbol *get_entry_point(void)
     if (main_function == null)
     {
         error_in_resolving("Entry point function 'main' not defined", (source_pos) { 0 });
+        return null;
     }
 
     if (false == (main_function->mangled_name == str_intern("___main___0l___0s___0v")
