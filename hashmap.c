@@ -114,6 +114,16 @@ void map_put(hashmap *map, void *key, void *val)
     }
 }
 
+void map_free(hashmap *map)
+{
+    free(map->keys);
+    free(map->values);
+    map->keys = null;
+    map->values = null;
+    map->count = 0;
+    map->capacity = 0;
+}
+
 typedef struct hashmap_value hashmap_value;
 struct hashmap_value
 {

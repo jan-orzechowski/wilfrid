@@ -27,7 +27,7 @@ void compile_and_run(void)
     }
 }
 
-void parse_file(char *filename, decl **declarations_list)
+void parse_file(char *filename, decl ***declarations_list)
 {
     string_ref source = read_file_for_parsing(filename);
     if (source.str == null || source.length == 0)
@@ -41,7 +41,7 @@ void parse_file(char *filename, decl **declarations_list)
     free(source.str);
 }
 
-void parse_directory(char *path, decl** declarations_list)
+void parse_directory(char *path, decl ***declarations_list)
 {
     char **source_files = get_source_files_in_dir_and_subdirs(path);
     for (size_t i = 0; i < buf_len(source_files); i++)
@@ -60,15 +60,15 @@ void compile_sources(char **sources)
         char *filename = sources[i];
         if (path_has_extension(filename, SOURCEFILE_EXTENSION))
         {
-            parse_file(filename, all_declarations);
+            parse_file(filename, &all_declarations);
         }
         else
         {
-            parse_directory(filename, all_declarations);
+            parse_directory(filename, &all_declarations);
         }
     }
 
-    symbol **resolved = resolve(all_declarations, false);
+    symbol **resolved = resolve(all_declarations, true);
     c_gen(resolved, "test/testcode.c", "errors.log", false);
 }
 
@@ -121,8 +121,11 @@ int main(int arg_count, char **args)
     cmd_arguments options = parse_cmd_arguments(arg_count, args);
 
 #if DEBUG_BUILD 
+#if 0
     buf_push(options.sources, "test");
-    //options.test_mode = true;
+#else
+    options.test_mode = true;
+#endif
 #endif
 
     if (options.help)

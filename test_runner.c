@@ -1,6 +1,6 @@
 ﻿#include "utils.h"
 
-char *parse_case(char **source, char *source_end, char *case_label, char *end_label)
+char *test_parse_case(char **source, char *source_end, char *case_label, char *end_label)
 {
     int case_label_length = (int)strlen(case_label);
     int end_label_length = (int)strlen(end_label);
@@ -58,8 +58,8 @@ void test_file_parsing_test(string_ref source, bool print_results)
 
     while (*stream)
     {
-        char *case_str = parse_case(&stream, stream_end, "CASE:", ":END");
-        char *test_str = parse_case(&stream, stream_end, "TEST:", ":END");
+        char *case_str = test_parse_case(&stream, stream_end, "CASE:", ":END");
+        char *test_str = test_parse_case(&stream, stream_end, "TEST:", ":END");
         if (case_str)
         {
             case_counter++;
@@ -68,7 +68,7 @@ void test_file_parsing_test(string_ref source, bool print_results)
             {                
                 bool passed = true;
                 decl **decls = 0;
-                lex_and_parse(case_str, null, decls);
+                lex_and_parse(case_str, null, &decls);
                 for (size_t i = 0; i < buf_len(decls); i++)
                 {
                     char *ast = get_decl_ast(decls[i]);                    
@@ -129,14 +129,14 @@ void test_file_parsing_test(string_ref source, bool print_results)
     }
 }
 
-void single_case_parsing_test(void)
+void test_parsing_single_case(void)
 {
     char *test = "let x := xcalloc(new_capacity * sizeof(void*))";
 
-    printf("\nParsing test:\n%s\n", test);
+    printf("\nParsing test case 0:\n%s\n", test);
     
     decl **decls = 0;
-    lex_and_parse(test, null, decls);
+    lex_and_parse(test, null, &decls);
     if (decls != 0)
     {
         char *ast = get_decl_ast(decls[0]);
@@ -150,83 +150,70 @@ void single_case_parsing_test(void)
     }
 }
 
-void parsing_test(void)
+void test_parsing(void)
 {
-    single_case_parsing_test();
+    printf("\n==== PARSING TEST ====\n");
+
+    test_parsing_single_case();
 
     string_ref test_file = read_file_for_parsing("test/parsing_tests.txt");
     test_file_parsing_test(test_file, true);
 }
 
-symbol **resolve_test_decls(char **decl_arr, size_t decl_arr_count, bool print)
+symbol **test_resolve_decls(char **decl_arr, size_t decl_arr_count)
 {
-    arena = allocate_memory_arena(kilobytes(50));
-    init_installed_types();
-
     buf_free(global_symbols_list);
     buf_free(ordered_global_symbols);
-
-    buf_free(errors);
-
-    if (print)
-    {
-        printf("original:\n\n");
-    }
+    map_free(&global_symbols);
+    map_grow(&global_symbols, 16);
 
     for (size_t i = 0; i < decl_arr_count; i++)
     {
+        buf_free(errors);
+
         char *str = decl_arr[i];
+        
         decl **decls = 0;
-        lex_and_parse(str, null, decls);
+        lex_and_parse(str, null, &decls);
+                
         if (buf_len(decls) > 0)
         {
-            if (print)
-            {
-                printf("%s", get_decl_ast(decls[0]));
-                printf("\n");
-            }
+            assert(buf_len(decls) == 1);
+            printf("\n%s\n", get_decl_ast(decls[0]));
 
-            push_symbol_from_decl(decls[0]);
+            // rezultaty są zapisywane do ordered_global_symbols
+            resolve(decls, false);
+           
+            print_errors_to_console();
         }
         else
         {
-            printf("\nResolve test error: couldn't parse test case %d\n", i);
+            printf("\nResolve test error: couldn't parse test case %lld\n", i);
         }
     }
 
-    for (symbol **it = global_symbols_list;
-        it != buf_end(global_symbols_list);
-        it++)
+    printf("\nDeclarations in sorted order:\n");
+
+    for (symbol **it = ordered_global_symbols; it != buf_end(ordered_global_symbols); it++)
     {
         symbol *sym = *it;
-        complete_symbol(sym);
-    }
-
-    if (print)
-    {
-        printf("\nordered:\n\n");
-        for (symbol **it = ordered_global_symbols; it != buf_end(ordered_global_symbols); it++)
+        if (sym->decl)
         {
-            symbol *sym = *it;
-            if (sym->decl)
-            {
-                printf("%s", get_decl_ast(sym->decl));
-            }
-            else
-            {
-                printf("%s", sym->name);
-            }
-            printf("\n");
+            printf("\n%s\n", get_decl_ast(sym->decl));
+        }
+        else
+        {
+            printf("\n%s\n", sym->name);
         }
     }
-
-    print_errors_to_console();
 
     return ordered_global_symbols;
 }
 
 void resolve_test(void)
 {
+    printf("\n==== RESOLVING TEST ====\n");
+
     char *test_strs[] = {
 #if 1
         "let f := g[1 + 3]",
@@ -291,17 +278,14 @@ void resolve_test(void)
     };
     size_t str_count = sizeof(test_strs) / sizeof(test_strs[0]);
 
-    debug_breakpoint;
-
-    symbol **result = resolve_test_decls(test_strs, str_count, true);
-
-    debug_breakpoint;
-
-    buf_free(result);
+    test_resolve_decls(test_strs, str_count);
 }
 
 void mangled_names_test()
 {
+    printf("\n==== NAME MANGLING TEST ====\n");
+    buf_free(errors);
+
     // uwaga: reordering podczas resolve może zepsuć test
     char *test_strs[] = {
         "struct tee { i: int }",
@@ -334,21 +318,35 @@ void mangled_names_test()
         "___0i___funkcja___0i",
         "___0i___funkcja___0v",
     };
+    size_t cmp_strs_count = sizeof(test_strs) / sizeof(test_strs[0]);
+    size_t test_strs_count = sizeof(cmp_strs) / sizeof(cmp_strs[0]);
+    assert(cmp_strs_count == test_strs_count);
 
-    assert((sizeof(test_strs) / sizeof(test_strs[0])) == sizeof(cmp_strs) / sizeof(cmp_strs[0]))
-
-    symbol **resolved = resolve_test_decls(test_strs, sizeof(test_strs) / sizeof(test_strs[0]), false);
+    size_t error_counter = 0;
+    symbol **resolved = test_resolve_decls(test_strs, test_strs_count);
     for (size_t i = 2 /* dwa pierwsze pomijamy!*/; i < buf_len(resolved); i++)
     {
         symbol *sym = resolved[i];
         const char *mangled_name = get_function_mangled_name(sym->decl);
         if (0 != strcmp(mangled_name, cmp_strs[i]))
         {
-            // błąd!
-            debug_breakpoint;
+            error_counter++;
+            printf("\nError in name mangling, case %lld!\nExpected:\n%s\nGot:\n%s\n",
+                i - 2, cmp_strs[i], mangled_name);
         }
     }
-    debug_breakpoint;
+
+    print_errors_to_console();
+
+    if (error_counter > 0)
+    {
+        printf("\n\n");
+        fatal("Name mangling tests failed! Number of failed cases: %d", error_counter);
+    }
+    else
+    {
+        printf("\nAll name mangling tests passed!\n");
+    }
 }
 
 #include "utils_tests.c"
@@ -364,9 +362,9 @@ void run_all_tests(void)
     buf_copy_test();
     map_test();
 
-    parsing_test();
-    //mangled_names_test();
-    //resolve_test();
+    test_parsing();
+    mangled_names_test();
+    resolve_test();
     fuzzy_test();
     common_includes_test();
 
@@ -405,8 +403,10 @@ void fuzzy_test(void)
         printf("\n\n");
 
         decl **decls = 0;
-        lex_and_parse(file_buf.str, "fuzzy test", decls);
-        symbol **resolved = resolve(decls, true);
+        lex_and_parse(file_buf.str, "fuzzy test", &decls);
+        symbol **resolved = resolve(decls, false);
+
+        // tutaj dodać printf S expressions?
 
         if (buf_len(errors) > 0)
         {

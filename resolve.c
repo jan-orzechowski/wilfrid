@@ -1556,10 +1556,16 @@ void resolve_symbol(symbol *s)
         break;
     }
 
-    assert(s->type);
-
-    s->state = SYMBOL_RESOLVED;
-    buf_push(ordered_global_symbols, s);
+    if (s->type)
+    {
+        s->state = SYMBOL_RESOLVED;
+        buf_push(ordered_global_symbols, s);        
+    }
+    else
+    {
+        error_in_resolving(xprintf("Could not resolve symbol: %s", s->name), s->decl->pos);
+        return;
+    }
 }
 
 void resolve_stmt_block(stmt_block st_block, type *opt_ret_type)
@@ -1889,20 +1895,25 @@ symbol *get_entry_point(void)
 }
 
 void init_installed_types()
-{    
-    push_installed_symbol("void", type_void);
-    push_installed_symbol("char", type_char);
-    push_installed_symbol("int", type_int);
-    push_installed_symbol("uint", type_uint);
-    push_installed_symbol("long", type_long);
-    push_installed_symbol("ulong", type_ulong);
-    push_installed_symbol("float", type_float);
-    push_installed_symbol("bool", type_bool);
+{
+    static bool initialized = false;
+    if (false == initialized)
+    {
+        push_installed_symbol("void", type_void);
+        push_installed_symbol("char", type_char);
+        push_installed_symbol("int", type_int);
+        push_installed_symbol("uint", type_uint);
+        push_installed_symbol("long", type_long);
+        push_installed_symbol("ulong", type_ulong);
+        push_installed_symbol("float", type_float);
+        push_installed_symbol("bool", type_bool);
 
-    resolved_expr_invalid = get_resolved_lvalue_expr(type_invalid);
+        resolved_expr_invalid = get_resolved_lvalue_expr(type_invalid);
+    }
+    initialized = true;
 }
 
-symbol **resolve(decl **declarations, bool print_s_expressions)
+symbol **resolve(decl **declarations, bool check_entry_point)
 {
     assert(arena != null);
     init_installed_types();
@@ -1921,8 +1932,10 @@ symbol **resolve(decl **declarations, bool print_s_expressions)
         complete_symbol(sym);
     }
 
-    // sprawdzamy, czy istnieje main
-    get_entry_point();
-
+    if (check_entry_point)
+    {
+        get_entry_point();        
+    }
+    
     return ordered_global_symbols;
 }

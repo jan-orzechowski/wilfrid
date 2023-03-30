@@ -1537,7 +1537,7 @@ decl *parse_declaration(void)
     return declaration;
 }
 
-void lex_and_parse(char *source, char *filename, decl** declarations)
+void lex_and_parse(char *source, char *filename, decl*** declarations)
 {
     lex(source, filename);
 
@@ -1554,7 +1554,7 @@ void lex_and_parse(char *source, char *filename, decl** declarations)
         if (dec)
         {
             attempts = 0;
-            buf_push(declarations, dec);
+            buf_push(*declarations, dec);
             decl_count++;
         }
         
