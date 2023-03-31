@@ -34,6 +34,8 @@ hashmap global_symbols;
 symbol **global_symbols_list;
 symbol **ordered_global_symbols;
 
+bool installed_types_initialized = false;
+
 enum
 {
     MAX_LOCAL_SYMBOLS = 1024
@@ -41,6 +43,8 @@ enum
 
 symbol local_symbols[MAX_LOCAL_SYMBOLS];
 symbol *last_local_symbol = local_symbols;
+
+bool panic_mode;
 
 void complete_type(type *t);
 void resolve_symbol(symbol *s);
@@ -727,6 +731,10 @@ resolved_expr *resolve_expr_unary(expr *expr)
 
     assert(expr->kind == EXPR_UNARY);
     resolved_expr *operand = resolve_expr(expr->unary.operand);
+    if (operand == null || operand->type == null || operand->type->kind == TYPE_NONE)
+    {
+        return resolved_expr_invalid;
+    }
 
     type *type = operand->type;
     switch (expr->unary.operator)
@@ -829,7 +837,12 @@ resolved_expr *resolve_compound_expr(expr *e, type *expected_type, bool ignore_e
 
     assert(e->kind == EXPR_COMPOUND_LITERAL);
 
-    if (e->compound.type == 0 && expected_type == 0)
+    if (expected_type && expected_type->kind == TYPE_NONE)
+    {
+        return resolved_expr_invalid;
+    }
+
+    if (e->compound.type == 0 && (expected_type == 0))
     {
         error_in_resolving("Implicitly typed compound literal in context without expected type", e->pos);
         return resolved_expr_invalid;
@@ -1407,7 +1420,7 @@ type *resolve_variable_decl(decl *d)
 {
     type *result = type_invalid;
     
-    type *declared_type = type_invalid;
+    type *declared_type = null;
     if (d->variable.type)
     {
         declared_type = resolve_typespec(d->variable.type);
@@ -1416,15 +1429,15 @@ type *resolve_variable_decl(decl *d)
 
     if (d->variable.expr)
     {
-        resolved_expr *expr = resolve_expected_expr(d->variable.expr, result, false);
-        if (expr == null || expr->type->kind == TYPE_NONE || (result == null && expr->type == type_null))
+        resolved_expr *expr = resolve_expected_expr(d->variable.expr, declared_type, false);
+        if (expr == null || expr->type->kind == TYPE_NONE)
         {
             error_in_resolving("Cannot resolve type in the variable declaration", d->pos);
             return null;
         }
-            
+        
         // musimy sprawdzić, czy się zgadzają
-        if (declared_type->kind != TYPE_NONE)
+        if (declared_type && declared_type->kind != TYPE_NONE)
         {
             if (false == can_perform_cast(expr->type, declared_type))
             {
@@ -1513,7 +1526,9 @@ void resolve_symbol(symbol *s)
     }
     else if (s->state == SYMBOL_RESOLVING)
     {
-        fatal("cyclic dependency detected");
+        error_in_resolving(
+            xprintf("Cyclic dependency detected in resolving %s symbol", s->name), s->decl->pos);
+        panic_mode = true;
         return;
     }
 
@@ -1832,6 +1847,10 @@ void complete_function_body(symbol *s)
 void complete_symbol(symbol *sym)
 {
     resolve_symbol(sym);
+    if (panic_mode)
+    {
+        return;
+    }
     if (sym->kind == SYMBOL_TYPE)
     {
         complete_type(sym->type);
@@ -1896,8 +1915,7 @@ symbol *get_entry_point(void)
 
 void init_installed_types()
 {
-    static bool initialized = false;
-    if (false == initialized)
+    if (false == installed_types_initialized)
     {
         push_installed_symbol("void", type_void);
         push_installed_symbol("char", type_char);
@@ -1910,7 +1928,7 @@ void init_installed_types()
 
         resolved_expr_invalid = get_resolved_lvalue_expr(type_invalid);
     }
-    initialized = true;
+    installed_types_initialized = true;
 }
 
 symbol **resolve(decl **declarations, bool check_entry_point)
@@ -1930,9 +1948,13 @@ symbol **resolve(decl **declarations, bool check_entry_point)
     {
         symbol *sym = *it;
         complete_symbol(sym);
+        if (panic_mode)
+        {
+            break;
+        }
     }
 
-    if (check_entry_point)
+    if (check_entry_point && false == panic_mode)
     {
         get_entry_point();        
     }

@@ -160,13 +160,19 @@ void test_parsing(void)
     test_file_parsing_test(test_file, true);
 }
 
-symbol **test_resolve_decls(char **decl_arr, size_t decl_arr_count)
+symbol **test_resolve_decls(char **decl_arr, size_t decl_arr_count, bool print_ast)
 {
+    assert(arena != null);
     buf_free(global_symbols_list);
     buf_free(ordered_global_symbols);
     map_free(&global_symbols);
     map_grow(&global_symbols, 16);
 
+    installed_types_initialized = false;
+    init_installed_types();
+
+    size_t error_counter = 0;
+    decl **all_decls = 0;
     for (size_t i = 0; i < decl_arr_count; i++)
     {
         buf_free(errors);
@@ -179,11 +185,14 @@ symbol **test_resolve_decls(char **decl_arr, size_t decl_arr_count)
         if (buf_len(decls) > 0)
         {
             assert(buf_len(decls) == 1);
-            printf("\n%s\n", get_decl_ast(decls[0]));
+            buf_push(all_decls, decls[0]);
 
-            // rezultaty są zapisywane do ordered_global_symbols
-            resolve(decls, false);
-           
+            if (print_ast)
+            {
+                printf("\n%s\n", get_decl_ast(decls[0]));
+            }
+
+            error_counter += buf_len(errors);
             print_errors_to_console();
         }
         else
@@ -192,19 +201,39 @@ symbol **test_resolve_decls(char **decl_arr, size_t decl_arr_count)
         }
     }
 
-    printf("\nDeclarations in sorted order:\n");
-
-    for (symbol **it = ordered_global_symbols; it != buf_end(ordered_global_symbols); it++)
+    buf_free(errors);
+    // rezultaty są zapisywane do ordered_global_symbols
+    resolve(all_decls, false);
+    error_counter += buf_len(errors);
+    
+    if (print_ast)
     {
-        symbol *sym = *it;
-        if (sym->decl)
+        printf("\nDeclarations in sorted order:\n");
+
+        for (symbol **it = ordered_global_symbols; it != buf_end(ordered_global_symbols); it++)
         {
-            printf("\n%s\n", get_decl_ast(sym->decl));
+            symbol *sym = *it;
+            if (sym->decl)
+            {
+                printf("\n%s\n", get_decl_ast(sym->decl));
+            }
+            else
+            {
+                printf("\n%s\n", sym->name);
+            }
         }
-        else
-        {
-            printf("\n%s\n", sym->name);
-        }
+    }
+
+    print_errors_to_console();
+
+    if (error_counter > 0)
+    {
+        printf("\n\n");
+        fatal("Resolving tests failed! Total number of errors: %d", error_counter);
+    }
+    else
+    {
+        printf("\nAll resolving tests passed!\n");
     }
 
     return ordered_global_symbols;
@@ -215,19 +244,17 @@ void resolve_test(void)
     printf("\n==== RESOLVING TEST ====\n");
 
     char *test_strs[] = {
-#if 1
         "let f := g[1 + 3]",
         "let g: int[10]",
         "let e = *b",
         "let d = b[0]",
         "let c: int[4]",
         "let b = &a[0]",
-        "let x: int = y",
         "let y: int = 1",
         "let i = n+m",
         "let z: Z",
-        "const m = sizeof(z.t)",
-        "const n = sizeof(&a[0])",
+        "const m = sizeof(int)",
+        "const n = sizeof(float)",
         "struct Z { s: S, t: T *}",
         "struct T { i: int }",
         "let a: int[3] = {1, 2, 3}",
@@ -240,7 +267,7 @@ void resolve_test(void)
             vec.x = local\
             return vec.x } ",
         "fn fun(i: int, j: int): int { j++ i++ return i + j }",
-        "let x := (v2){1,2}",
+        "let x := {1,2} as v2",
         "let y = fuu(fuu(7, x), {3, 4})",
         "fn fzz(x: int, y: int) : v2 { return {x + 1, y - 1} }",
         "fn fuu(x: int, v: v2) : int { return v.x + x } ",
@@ -251,17 +278,17 @@ void resolve_test(void)
         "fn ftest5(x: int): int { switch(x) { case 0: case 1: { return 5 } case 3: default: { return -1 } } }",
         "fn return_value_test(arg: int):int{\
             if(arg>0){let i := return_value_test(arg - 2) return i } else { return 0 } }}",
-        "let ooo := (bool)o && (bool)oo || ((bool)o & (bool)oo)",
-        "let oo := (int)o ",
-        "let o := (float)1",
+        "let ooo := o as bool && oo as bool || (o as bool & oo as bool)",
+        "let oo := o as int ",
+        "let o := 1 as float",
         "let x3 = new v2",
         "let y = auto v2()",
         "fn deletetest1() { let x = new v2 x.x = 2 delete x }",
         "fn deletetest2() { let x = auto v2 x.x = 2 delete x }",
-        "let x4 : node *= null",
+        "let x4 : node* = null",
         "fn ft(x: node*): bool { if (x == null) { return true } else { return false } }",
         "struct node { value: int, next: node *}",
-        "let b1 : bool = 1",
+        "let b1 : bool = true",
         "let b2 : bool = (b1 == false)",
         "let list1 := new int[]",
         "let list2 := new v2[]",
@@ -270,18 +297,17 @@ void resolve_test(void)
         "let printed_chars2 := printf(\"numbers: %d, %d\", 1, 2)",
         "let printed_chars3 := printf(\"numbers: %d, %d, %d\", 1, 2, 3)",
         "extern fn printf(str: char*, variadic) : int",
-#endif
         "fn test () { let s := new some_struct(1) }",
         "struct some_struct { member: int } ",
-        "fn constructor () : some_struct { / *empty constructor */ }",
-        "fn constructor (val: int) : some_struct *{ let s := new some_struct s.member = val return s }",
+        "fn constructor () : some_struct { /* empty constructor */ }",
+        "fn constructor (val: int) : some_struct* { let s := new some_struct s.member = val return s }",
     };
     size_t str_count = sizeof(test_strs) / sizeof(test_strs[0]);
 
-    test_resolve_decls(test_strs, str_count);
+    test_resolve_decls(test_strs, str_count, true);
 }
 
-void mangled_names_test()
+void mangled_names_test(void)
 {
     printf("\n==== NAME MANGLING TEST ====\n");
     buf_free(errors);
@@ -323,7 +349,7 @@ void mangled_names_test()
     assert(cmp_strs_count == test_strs_count);
 
     size_t error_counter = 0;
-    symbol **resolved = test_resolve_decls(test_strs, test_strs_count);
+    symbol **resolved = test_resolve_decls(test_strs, test_strs_count, false);
     for (size_t i = 2 /* dwa pierwsze pomijamy!*/; i < buf_len(resolved); i++)
     {
         symbol *sym = resolved[i];
@@ -363,8 +389,8 @@ void run_all_tests(void)
     map_test();
 
     test_parsing();
-    mangled_names_test();
     resolve_test();
+    mangled_names_test();
     fuzzy_test();
     common_includes_test();
 
