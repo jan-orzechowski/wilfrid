@@ -13,6 +13,7 @@
 #include "parsing.c"
 #include "resolve.c"
 #include "cgen.c"
+#include "bytecode_gen.c"
 
 void run_all_tests(void);
 
@@ -124,7 +125,8 @@ int main(int arg_count, char **args)
 #if 0
     buf_push(options.sources, "test");
 #else
-    options.test_mode = true;
+    //options.test_mode = true;
+    bytecode_gen_test();
 #endif
 #endif
 
