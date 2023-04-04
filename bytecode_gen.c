@@ -13,6 +13,10 @@ typedef enum op_kind
     OP_INT_MUL,
     OP_INT_MOD,
 
+    OP_UNARY_ADD,
+    OP_UNARY_SUB,
+    OP_UNARY_NOT,
+    OP_UNARY_BITWISE_NOT,
     OP_PRINT,
     OP_BRANCH,
     OP_CONSTANT,
@@ -29,6 +33,10 @@ const char *op_names[] = {
     op_name_macro(OP_INT_DIV),
     op_name_macro(OP_INT_MUL),
     op_name_macro(OP_INT_MOD),
+    op_name_macro(OP_UNARY_ADD),
+    op_name_macro(OP_UNARY_SUB),
+    op_name_macro(OP_UNARY_NOT),
+    op_name_macro(OP_UNARY_BITWISE_NOT),
     op_name_macro(OP_PRINT),
     op_name_macro(OP_BRANCH),
     op_name_macro(OP_CONSTANT),
@@ -96,14 +104,22 @@ int *vm_output;
 
 // trik z do while jest wykorzystany po to, by lista statementów mogła być wykorzystana także w miejscu
 // w którym można dać jedynie pojedynczy statement
-#define binary_op(type, op) \
+#define unary_op(type, op) \
     do { \
-        type a = stack[sp--];\
-        type b = stack[sp--];\
-        stack[++sp] = b op a;\
-        printf("\noperation %s, result %d\n", #op, stack[sp]);\
+        type x = stack[sp--]; \
+        stack[++sp] = op x; \
+        printf("\nunary operation %s, result %d\n", #op, stack[sp]); \
     } while (false)
 
+#define binary_op(type, op) \
+    do { \
+        type a = stack[sp--]; \
+        type b = stack[sp--]; \
+        stack[++sp] = b op a; \
+        printf("\nbinary operation %s, result %d\n", #op, stack[sp]); \
+    } while (false)
+
+#define unary_op_case(type, op) { unary_op(type, op); } break;
 #define binary_op_case(type, op) { binary_op(type, op); } break;
 
 void run_vm(op *code)
@@ -117,7 +133,7 @@ void run_vm(op *code)
     ip = 0;
     sp = -1;
 
-    printf("\n=== VM RUN: === \n");
+    printf("\n=== VM RUN START === \n");
     while (opcode && ip < code_size)
     {
         switch (opcode)
@@ -154,7 +170,15 @@ void run_vm(op *code)
                 buf_push(vm_output, value);
             }
             break;
-            case OP_INT_ADD: binary_op_case(int, +);        
+            case OP_INT_ADD: binary_op_case(int, +);
+            case OP_INT_SUB: binary_op_case(int, -);
+            case OP_INT_MUL: binary_op_case(int, *);
+            case OP_INT_DIV: binary_op_case(int, /);
+            case OP_INT_MOD: binary_op_case(int, %);
+            case OP_UNARY_ADD: unary_op_case(int, +);
+            case OP_UNARY_SUB: unary_op_case(int, -);
+            case OP_UNARY_NOT: unary_op_case(int, !);
+            case OP_UNARY_BITWISE_NOT: unary_op_case(int, ~);
             case OP_HALT:
             {
                 break;
@@ -166,17 +190,34 @@ void run_vm(op *code)
         opcode = code[++ip];
     }
 
+
+    printf("\n=== VM RUN FINISHED === \n\n");
+
     debug_breakpoint;
 
     free(stack);
 }
 
+#undef unary_op
+#undef unary_op_case
 #undef binary_op
 #undef binary_op_case
 #undef pop
 #undef push
 
-void emit_operator(token_kind operator, int line)
+void emit_unary_operator(token_kind operator, int line)
+{
+    switch (operator)
+    {
+        case TOKEN_ADD:         emit_op(OP_UNARY_ADD, line);            break;
+        case TOKEN_SUB:         emit_op(OP_UNARY_SUB, line);            break;
+        case TOKEN_NOT:         emit_op(OP_UNARY_NOT, line);            break;
+        case TOKEN_BITWISE_NOT: emit_op(OP_UNARY_BITWISE_NOT, line);    break;
+        default:                fatal("operation not implemented");     break;
+    }
+}
+
+void emit_binary_operator(token_kind operator, int line)
 {
     switch (operator)
     {
@@ -250,14 +291,15 @@ void emit_expression(expr *exp)
         break;
         case EXPR_UNARY:
         {
-            fatal("unimplemented");
+            emit_expression(exp->unary.operand);
+            emit_unary_operator(exp->unary.operator, exp->pos.line);
         }
         break;
         case EXPR_BINARY:
         {
             emit_expression(exp->binary.left);
             emit_expression(exp->binary.right);
-            emit_operator(exp->binary.operator, exp->pos.line);
+            emit_binary_operator(exp->binary.operator, exp->pos.line);
         }
         break;
         case EXPR_TERNARY:
@@ -502,7 +544,11 @@ void bytecode_gen_test(void)
 #else 
     char *test_strs[] = {
         "const i = 1024",
-        "fn main() { let x := 42 + 1 }"
+        "fn main() { \
+            let x := 42 + 1\
+            let y := (12 / 3) * 3 + 2\
+            let z := 25 % (3 * 7 + 24 / 8)\
+        }"
     };
     size_t str_count = sizeof(test_strs) / sizeof(test_strs[0]);
     symbol **resolved = test_resolve_decls(test_strs, str_count, false);
