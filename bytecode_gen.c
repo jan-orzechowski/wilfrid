@@ -107,6 +107,25 @@ size_t stack_size;
 ptrdiff_t ip;
 ptrdiff_t sp;
 
+#define exec_printf(str, ...) printf(str, __VA_ARGS__); print_stack();
+
+void print_stack(void)
+{
+    printf("\n        [");
+    if (sp >= 0)
+    {
+        for (word *ptr = stack; ptr != stack + sp + 1; ptr++)
+        {
+            printf("%lld", *ptr);
+            if (ptr != stack + sp)
+            {
+                printf(", ");
+            }
+        }
+    }
+    printf("]");
+}
+
 #define stack_pop() stack[sp--]
 #define stack_push(val) stack[++sp] = val
 
@@ -116,7 +135,7 @@ ptrdiff_t sp;
     do { \
         type x = stack[sp--]; \
         stack[++sp] = op x; \
-        printf("\nunary operation %s, result %lld\n", #op, stack[sp]); \
+        exec_printf("\nunary operation %s, result %lld", #op, stack[sp]); \
     } while (false)
 
 #define binary_op(type, op) \
@@ -124,7 +143,7 @@ ptrdiff_t sp;
         type a = stack[sp--]; \
         type b = stack[sp--]; \
         stack[++sp] = b op a; \
-        printf("\nbinary operation %s, result %lld\n", #op, stack[sp]); \
+        exec_printf("\nbinary operation %s, result %lld", #op, stack[sp]); \
     } while (false)
 
 #define unary_op_case(type, op) { unary_op(type, op); } break;
@@ -150,14 +169,14 @@ void run_vm(op *code)
             {                
                 word value = code[++ip];
                 stack_push(value);
-                printf("\npush on stack: %lld\n", value);
+                exec_printf("\npush on stack: %lld", value);
             }
             break;
             case OP_JUMP_IF_FALSE:
             {                
                 word offset = code[++ip];
                 ip += offset;
-                printf("\njump by offset: %lld\n", offset);
+                exec_printf("\njump by offset: %lld", offset);
             }
             break;
             case OP_GET_GLOBAL:
@@ -165,7 +184,7 @@ void run_vm(op *code)
             {               
                 word name_ptr = stack[sp--];
                 word value = (word)map_get(&globals, (void *)name_ptr);
-                printf("\nget variable: %s, value: %lld\n", (char *)name_ptr, value);
+                exec_printf("\nget variable: %s, value: %lld", (char *)name_ptr, value);
             }
             break;
             case OP_SET_GLOBAL:
@@ -177,7 +196,7 @@ void run_vm(op *code)
                 set_global((void *)name_ptr, value);
                 assert_is_interned(name_ptr);
 
-                printf("\nset variable: %s, value: %lld\n", (char *)name_ptr, value);
+                exec_printf("\nset variable: %s, value: %lld", (char *)name_ptr, value);
             }
             break;  
             case OP_ADD: binary_op_case(int, +);
@@ -249,6 +268,7 @@ void emit_binary_operator(token_kind operator, int line)
         //case TOKEN_GEQ: return left >= right;
         //case TOKEN_AND: return left && right;
         //case TOKEN_OR: return left || right;
+        invalid_default_case;
     }
 }
 
