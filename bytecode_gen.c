@@ -1,60 +1,72 @@
-﻿typedef uint8_t op;
+﻿typedef uint64_t word;
+typedef uint64_t op;
 
 typedef enum op_kind
 {
     OP_RETURN = 0,
     OP_HALT = 0,
-    OP_POP,
-    OP_PUSH,
 
-    OP_INT_ADD,
-    OP_INT_SUB,
-    OP_INT_DIV,
-    OP_INT_MUL,
-    OP_INT_MOD,
+    OP_SET_GLOBAL,
+    OP_GET_GLOBAL,
+    OP_SET_LOCAL,
+    OP_GET_LOCAL,
+
+    OP_ADD,
+    OP_SUB,
+    OP_DIV,
+    OP_MUL,
+    OP_MOD,
 
     OP_UNARY_ADD,
     OP_UNARY_SUB,
     OP_UNARY_NOT,
     OP_UNARY_BITWISE_NOT,
+    OP_JUMP_IF_FALSE,
     OP_PRINT,
-    OP_BRANCH,
-    OP_CONSTANT,
+    OP_STORE,
 } op_kind;
 
 #define op_name_macro(name) [ name ] = #name
 const char *op_names[] = {
     op_name_macro(OP_RETURN),
     op_name_macro(OP_HALT),
-    op_name_macro(OP_POP),
-    op_name_macro(OP_PUSH),
-    op_name_macro(OP_INT_ADD),
-    op_name_macro(OP_INT_SUB),
-    op_name_macro(OP_INT_DIV),
-    op_name_macro(OP_INT_MUL),
-    op_name_macro(OP_INT_MOD),
+    op_name_macro(OP_SET_GLOBAL),
+    op_name_macro(OP_GET_GLOBAL),
+    op_name_macro(OP_SET_LOCAL),
+    op_name_macro(OP_GET_LOCAL),
+    op_name_macro(OP_ADD),
+    op_name_macro(OP_SUB),
+    op_name_macro(OP_DIV),
+    op_name_macro(OP_MUL),
+    op_name_macro(OP_MOD),
     op_name_macro(OP_UNARY_ADD),
     op_name_macro(OP_UNARY_SUB),
     op_name_macro(OP_UNARY_NOT),
     op_name_macro(OP_UNARY_BITWISE_NOT),
     op_name_macro(OP_PRINT),
-    op_name_macro(OP_BRANCH),
-    op_name_macro(OP_CONSTANT),
+    op_name_macro(OP_JUMP_IF_FALSE),
+    op_name_macro(OP_STORE),
 };
 #undef op_name_macro
 
-op *code;
+#if DEBUG_BUILD
+#define assert_is_interned(ptr) assert(str_intern((const char *)ptr) == (const char *)ptr)
+#elif
+#define assert_is_interned 
+#endif
+
+word *code;
 int *lines; // odpowiadające instrukcjom - potem zmienić na run-length encoding
 
 int current_line;
 
-void emit_op(op o, int line)
+void emit(word w, int line)
 {
-    buf_push(code, o);
+    buf_push(code, w);
     buf_push(lines, line);
 }
 
-void emit_ops(op o1, int line1, op o2, int line2)
+void emit_words(op o1, int line1, op o2, int line2)
 {
     buf_push(code, o1);
     buf_push(code, o2);
@@ -62,45 +74,41 @@ void emit_ops(op o1, int line1, op o2, int line2)
     buf_push(lines, line2);
 }
 
-enum { MAX_CONSTANTS = 256 };
-int64_t constants[MAX_CONSTANTS];
-uint8_t constants_count;
-
 void print_ops(void)
 {
     for (size_t i = 0; i < buf_len(code); i++)
     {
-        printf("%04d - %s\n", code[i], op_names[code[i]]);
-        if (code[i] == OP_CONSTANT)
+        printf("%08lld - %s\n", code[i], op_names[code[i]]);
+        if (code[i] == OP_STORE)
         {
             i++;
             assert(i < buf_len(code));
-            printf("cnst - %d - %lld\n", code[i], constants[code[i]]);
+            printf("store    - %lld\n", code[i]);
         }
     }
 }
 
-uint8_t add_constant(int64_t value)
+hashmap globals;
+
+void set_global(char *name, int value_index)
 {
-    if (constants_count >= MAX_CONSTANTS)
-    {
-        fatal("Codegen: index in constants array exceeds the maximum of %d", MAX_CONSTANTS);
-    }
-    int value_index = constants_count;
-    constants[value_index] = value;
-    constants_count++;
-    return value_index;
+    map_put(&globals, (void *)name, (void *)value_index);
 }
 
-int *stack;
-int stack_size;
-int ip;
-int sp;
+void *get_global(void *name)
+{
+    void *result = map_get(&globals, name);
+    assert(result);
+    return result;
+}
 
-int *vm_output;
+word *stack;
+size_t stack_size;
+ptrdiff_t ip;
+ptrdiff_t sp;
 
-#define pop() stack[sp--]
-#define push(val) stack[++sp] = val
+#define stack_pop() stack[sp--]
+#define stack_push(val) stack[++sp] = val
 
 // trik z do while jest wykorzystany po to, by lista statementów mogła być wykorzystana także w miejscu
 // w którym można dać jedynie pojedynczy statement
@@ -108,7 +116,7 @@ int *vm_output;
     do { \
         type x = stack[sp--]; \
         stack[++sp] = op x; \
-        printf("\nunary operation %s, result %d\n", #op, stack[sp]); \
+        printf("\nunary operation %s, result %lld\n", #op, stack[sp]); \
     } while (false)
 
 #define binary_op(type, op) \
@@ -116,7 +124,7 @@ int *vm_output;
         type a = stack[sp--]; \
         type b = stack[sp--]; \
         stack[++sp] = b op a; \
-        printf("\nbinary operation %s, result %d\n", #op, stack[sp]); \
+        printf("\nbinary operation %s, result %lld\n", #op, stack[sp]); \
     } while (false)
 
 #define unary_op_case(type, op) { unary_op(type, op); } break;
@@ -125,7 +133,7 @@ int *vm_output;
 void run_vm(op *code)
 {
     stack_size = 1024;
-    stack = xcalloc(stack_size);
+    stack = xcalloc(stack_size * sizeof(word));
     
     size_t code_size = buf_len(code);
 
@@ -137,44 +145,46 @@ void run_vm(op *code)
     while (opcode && ip < code_size)
     {
         switch (opcode)
-        {
-            case OP_CONSTANT:
+        {          
+            case OP_STORE:
+            {                
+                word value = code[++ip];
+                stack_push(value);
+                printf("\npush on stack: %lld\n", value);
+            }
+            break;
+            case OP_JUMP_IF_FALSE:
+            {                
+                word offset = code[++ip];
+                ip += offset;
+                printf("\njump by offset: %lld\n", offset);
+            }
+            break;
+            case OP_GET_GLOBAL:
+            case OP_GET_LOCAL:
+            {               
+                word name_ptr = stack[sp--];
+                word value = (word)map_get(&globals, (void *)name_ptr);
+                printf("\nget variable: %s, value: %lld\n", (char *)name_ptr, value);
+            }
+            break;
+            case OP_SET_GLOBAL:
+            case OP_SET_LOCAL:
             {
-                ip++;
-                size_t index = code[ip];
-                if (index > MAX_CONSTANTS)
-                {
-                    fatal("Execution: index in constants array exceeds the maximum of %d", MAX_CONSTANTS);
-                    break;
-                }
-                int64_t value = constants[index];
-                push(value);
+                word name_ptr = stack[sp--];
+                word value = stack[sp--];
                 
-                printf("\nconstant: %lld\n", value);
-            } 
-            break;
-            case OP_BRANCH:
-            {
-                // argumentem jest miejsce, do którego mamy przeskoczyć
-                ip = code[++ip] - 1;
+                set_global((void *)name_ptr, value);
+                assert_is_interned(name_ptr);
+
+                printf("\nset variable: %s, value: %lld\n", (char *)name_ptr, value);
             }
-            break;
-            case OP_PUSH:
-            {
-                stack[++sp] = code[++ip];
-            }
-            break;
-            case OP_POP:
-            {
-                int value = stack[sp--];
-                buf_push(vm_output, value);
-            }
-            break;
-            case OP_INT_ADD: binary_op_case(int, +);
-            case OP_INT_SUB: binary_op_case(int, -);
-            case OP_INT_MUL: binary_op_case(int, *);
-            case OP_INT_DIV: binary_op_case(int, /);
-            case OP_INT_MOD: binary_op_case(int, %);
+            break;  
+            case OP_ADD: binary_op_case(int, +);
+            case OP_SUB: binary_op_case(int, -);
+            case OP_MUL: binary_op_case(int, *);
+            case OP_DIV: binary_op_case(int, /);
+            case OP_MOD: binary_op_case(int, %);
             case OP_UNARY_ADD: unary_op_case(int, +);
             case OP_UNARY_SUB: unary_op_case(int, -);
             case OP_UNARY_NOT: unary_op_case(int, !);
@@ -209,10 +219,10 @@ void emit_unary_operator(token_kind operator, int line)
 {
     switch (operator)
     {
-        case TOKEN_ADD:         emit_op(OP_UNARY_ADD, line);            break;
-        case TOKEN_SUB:         emit_op(OP_UNARY_SUB, line);            break;
-        case TOKEN_NOT:         emit_op(OP_UNARY_NOT, line);            break;
-        case TOKEN_BITWISE_NOT: emit_op(OP_UNARY_BITWISE_NOT, line);    break;
+        case TOKEN_ADD:         emit(OP_UNARY_ADD, line);            break;
+        case TOKEN_SUB:         emit(OP_UNARY_SUB, line);            break;
+        case TOKEN_NOT:         emit(OP_UNARY_NOT, line);            break;
+        case TOKEN_BITWISE_NOT: emit(OP_UNARY_BITWISE_NOT, line);    break;
         default:                fatal("operation not implemented");     break;
     }
 }
@@ -221,11 +231,11 @@ void emit_binary_operator(token_kind operator, int line)
 {
     switch (operator)
     {
-        case TOKEN_ADD: emit_op(OP_INT_ADD, line); break;
-        case TOKEN_SUB: emit_op(OP_INT_SUB, line); break;
-        case TOKEN_MUL: emit_op(OP_INT_MUL, line); break;
-        case TOKEN_DIV: emit_op(OP_INT_DIV, line); break;
-        case TOKEN_MOD: emit_op(OP_INT_MOD, line); break;
+        case TOKEN_ADD: emit(OP_ADD, line); break;
+        case TOKEN_SUB: emit(OP_SUB, line); break;
+        case TOKEN_MUL: emit(OP_MUL, line); break;
+        case TOKEN_DIV: emit(OP_DIV, line); break;
+        case TOKEN_MOD: emit(OP_MOD, line); break;
         //case TOKEN_BITWISE_AND: return left & right;
         //case TOKEN_BITWISE_OR: return left | right;
         //case TOKEN_LEFT_SHIFT: return left << right;
@@ -254,8 +264,8 @@ void emit_expression(expr *exp)
         break;
         case EXPR_INT:
         {
-            emit_op(OP_CONSTANT, exp->pos.line);
-            emit_op(add_constant(exp->number_value), exp->pos.line);
+            emit(OP_STORE, exp->pos.line);
+            emit(exp->number_value, exp->pos.line);
         }
         break;
         case EXPR_FLOAT:
@@ -286,7 +296,10 @@ void emit_expression(expr *exp)
 
         case EXPR_NAME:
         {
-            fatal("unimplemented");
+            assert_is_interned(exp->name);
+            emit(OP_STORE, 0);
+            emit((word)exp->name, 0);
+            emit(OP_GET_LOCAL, 0);
         }
         break;
         case EXPR_UNARY:
@@ -347,7 +360,6 @@ void emit_expression(expr *exp)
             fatal("unimplemented");
         }
         break;
-
         case EXPR_STUB:
         {
             fatal("unimplemented");
@@ -375,11 +387,17 @@ void emit_declaration(decl *de)
         case DECL_VARIABLE:
         {
             emit_expression(de->variable.expr);
+            emit(OP_STORE, 0);
+            emit((word)de->name, 0);
+            emit(OP_SET_LOCAL, 0);
         }
         break;
         case DECL_CONST:
         {
-            debug_breakpoint;
+            emit_expression(de->const_decl.expr);
+            emit(OP_STORE, 0);
+            emit((word)de->name, 0);
+            emit(OP_SET_GLOBAL, 0);
         }
         break;
         case DECL_FUNCTION:
@@ -392,6 +410,17 @@ void emit_declaration(decl *de)
             fatal("unimplemented");
         }
         break;
+    }
+}
+
+void emit_statement(stmt *st);
+
+void emit_statement_block(stmt_block block)
+{
+    // tutaj potrzebne jest jeszcze coś dla zaznaczenia scope
+    for (size_t i = 0; i < block.stmts_count; i++)
+    {
+        emit_statement(block.stmts[i]);
     }
 }
 
@@ -493,17 +522,13 @@ void emit_symbol(symbol *sym)
         case SYMBOL_CONST: 
         {
             assert(sym->type == type_int);
-            emit_op(OP_CONSTANT, 0);
-            emit_op(add_constant(sym->val), 0);
+            emit(OP_STORE, 0);
+            emit(sym->val, 0);
         } 
         break;
         case SYMBOL_FUNCTION: 
         {
-            for (size_t i = 0; i < sym->decl->function.stmts.stmts_count; i++)
-            {
-                stmt *st = sym->decl->function.stmts.stmts[i];
-                emit_statement(st);
-            }
+            emit_statement_block(sym->decl->function.stmts);
         }
         break;
         case SYMBOL_TYPE: 
@@ -524,13 +549,13 @@ symbol **test_resolve_decls(char **decl_arr, size_t decl_arr_count, bool print_a
 
 void bytecode_gen_test_simple(void)
 {
-    emit_op(OP_CONSTANT, 0);
-    emit_op(add_constant(12), 0);
-    emit_op(OP_CONSTANT, 0);
-    emit_op(add_constant(3), 0);
-    emit_op(OP_INT_ADD, 0);
-    emit_op(OP_RETURN, 0);
-    emit_op(OP_HALT, 0);
+    emit(OP_STORE, 0);
+    emit(12, 0);
+    emit(OP_STORE, 0);
+    emit(3, 0);
+    emit(OP_ADD, 0);
+    emit(OP_RETURN, 0);
+    emit(OP_HALT, 0);
 
     print_ops();
 
@@ -544,11 +569,21 @@ void bytecode_gen_test(void)
 #else 
     char *test_strs[] = {
         "const i = 1024",
+        "fn f() { let x := 2 }",
+#if 0
         "fn main() { \
             let x := 42 + 1\
             let y := (12 / 3) * 3 + 2\
             let z := 25 % (3 * 7 + 24 / 8)\
-        }"
+            if (x == 43) {\
+                x += 57\
+            }\
+            if (x == 99) {\
+                x -= 20\
+            }\
+            x = x + 1\
+        }",
+#endif
     };
     size_t str_count = sizeof(test_strs) / sizeof(test_strs[0]);
     symbol **resolved = test_resolve_decls(test_strs, str_count, false);
@@ -558,7 +593,7 @@ void bytecode_gen_test(void)
         symbol *sym = resolved[i];
         emit_symbol(sym);
     }
-    emit_op(OP_HALT, 0);
+    emit(OP_HALT, 0);
 
     printf("\nEmitted instructions:\n\n");
     print_ops();
