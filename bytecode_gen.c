@@ -36,6 +36,10 @@ typedef enum op_kind
     OP_AND,
     OP_OR,
 
+    OP_NULL,
+    OP_FALSE,
+    OP_TRUE,
+
     OP_JUMP_IF_FALSE,
     OP_PRINT,
     OP_STORE,
@@ -74,6 +78,10 @@ const char *op_names[] = {
     op_name_macro(OP_LEQ),
     op_name_macro(OP_AND),
     op_name_macro(OP_OR),
+
+    op_name_macro(OP_NULL),
+    op_name_macro(OP_FALSE),
+    op_name_macro(OP_TRUE),
 
     op_name_macro(OP_PRINT),
     op_name_macro(OP_JUMP_IF_FALSE),
@@ -231,7 +239,28 @@ void run_vm(op *code)
 
                 exec_printf("\nset variable: %s, value: %lld", (char *)name_ptr, value);
             }
-            break;  
+            break;
+            case OP_NULL:
+            {
+                word value = 0;
+                stack_push(value);
+                exec_printf("\npush on stack: %lld (null)", value);
+            }
+            break;
+            case OP_FALSE:
+            {
+                word value = 0;
+                stack_push(value);
+                exec_printf("\npush on stack: %lld (false)", value);
+            }
+            break;
+            case OP_TRUE:
+            {
+                word value = 1;
+                stack_push(1);
+                exec_printf("\npush on stack: %lld (true)", value);
+            }
+            break;
 
             case OP_UNARY_ADD: unary_op_case(int, +);
             case OP_UNARY_SUB: unary_op_case(int, -);
@@ -354,12 +383,19 @@ void emit_expression(expr *exp)
         break;
         case EXPR_NULL:
         {
-            fatal("unimplemented");
+            emit(OP_NULL, exp->pos.line);
         }
         break;
         case EXPR_BOOL:
         {
-            fatal("unimplemented");
+            if (exp->bool_value)
+            {
+                emit(OP_TRUE, exp->pos.line);
+            }
+            else
+            {
+                emit(OP_FALSE, exp->pos.line);
+            }
         }
         break;
 
