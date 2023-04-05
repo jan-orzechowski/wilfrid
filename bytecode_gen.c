@@ -11,16 +11,31 @@ typedef enum op_kind
     OP_SET_LOCAL,
     OP_GET_LOCAL,
 
+    OP_UNARY_ADD,
+    OP_UNARY_SUB,
+    OP_UNARY_NOT,
+    OP_UNARY_BITWISE_NOT,
+
     OP_ADD,
     OP_SUB,
     OP_DIV,
     OP_MUL,
     OP_MOD,
+    OP_XOR, // ^
+    OP_BITWISE_OR, // |
+    OP_BITWISE_AND, // &
+    OP_LEFT_SHIFT,
+    OP_RIGHT_SHIFT,
 
-    OP_UNARY_ADD,
-    OP_UNARY_SUB,
-    OP_UNARY_NOT,
-    OP_UNARY_BITWISE_NOT,
+    OP_EQ, // ==
+    OP_NEQ, // !=
+    OP_GT, // >
+    OP_LT, // <
+    OP_GEQ, // >=
+    OP_LEQ, // <=
+    OP_AND,
+    OP_OR,
+
     OP_JUMP_IF_FALSE,
     OP_PRINT,
     OP_STORE,
@@ -34,15 +49,32 @@ const char *op_names[] = {
     op_name_macro(OP_GET_GLOBAL),
     op_name_macro(OP_SET_LOCAL),
     op_name_macro(OP_GET_LOCAL),
+
+    op_name_macro(OP_UNARY_ADD),
+    op_name_macro(OP_UNARY_SUB),
+    op_name_macro(OP_UNARY_NOT),
+    op_name_macro(OP_UNARY_BITWISE_NOT),
+
     op_name_macro(OP_ADD),
     op_name_macro(OP_SUB),
     op_name_macro(OP_DIV),
     op_name_macro(OP_MUL),
     op_name_macro(OP_MOD),
-    op_name_macro(OP_UNARY_ADD),
-    op_name_macro(OP_UNARY_SUB),
-    op_name_macro(OP_UNARY_NOT),
-    op_name_macro(OP_UNARY_BITWISE_NOT),
+    op_name_macro(OP_XOR),
+    op_name_macro(OP_BITWISE_OR),
+    op_name_macro(OP_BITWISE_AND),
+    op_name_macro(OP_LEFT_SHIFT),
+    op_name_macro(OP_RIGHT_SHIFT),
+
+    op_name_macro(OP_EQ),
+    op_name_macro(OP_NEQ),
+    op_name_macro(OP_GT),
+    op_name_macro(OP_LT),
+    op_name_macro(OP_GEQ),
+    op_name_macro(OP_LEQ),
+    op_name_macro(OP_AND),
+    op_name_macro(OP_OR),
+
     op_name_macro(OP_PRINT),
     op_name_macro(OP_JUMP_IF_FALSE),
     op_name_macro(OP_STORE),
@@ -200,15 +232,31 @@ void run_vm(op *code)
                 exec_printf("\nset variable: %s, value: %lld", (char *)name_ptr, value);
             }
             break;  
+
+            case OP_UNARY_ADD: unary_op_case(int, +);
+            case OP_UNARY_SUB: unary_op_case(int, -);
+            case OP_UNARY_NOT: unary_op_case(int, !);
+            case OP_UNARY_BITWISE_NOT: unary_op_case(int, ~);
+
             case OP_ADD: binary_op_case(int, +);
             case OP_SUB: binary_op_case(int, -);
             case OP_MUL: binary_op_case(int, *);
             case OP_DIV: binary_op_case(int, /);
             case OP_MOD: binary_op_case(int, %);
-            case OP_UNARY_ADD: unary_op_case(int, +);
-            case OP_UNARY_SUB: unary_op_case(int, -);
-            case OP_UNARY_NOT: unary_op_case(int, !);
-            case OP_UNARY_BITWISE_NOT: unary_op_case(int, ~);
+            case OP_XOR: binary_op_case(int, ^);
+            case OP_BITWISE_OR: binary_op_case(int, |);
+            case OP_BITWISE_AND: binary_op_case(int, &);
+            case OP_LEFT_SHIFT: binary_op_case(int, <<);
+            case OP_RIGHT_SHIFT: binary_op_case(int, >>);
+            case OP_EQ: binary_op_case(int, ==); 
+            case OP_NEQ: binary_op_case(int, !=);
+            case OP_GT: binary_op_case(int, >);
+            case OP_LT: binary_op_case(int, <);
+            case OP_GEQ: binary_op_case(int, >=);
+            case OP_LEQ: binary_op_case(int, <=);
+            case OP_AND: binary_op_case(int, &&);
+            case OP_OR: binary_op_case(int, ||);
+
             case OP_HALT:
             {
                 break;
@@ -239,11 +287,11 @@ void emit_unary_operator(token_kind operator, int line)
 {
     switch (operator)
     {
-        case TOKEN_ADD:         emit(OP_UNARY_ADD, line);            break;
-        case TOKEN_SUB:         emit(OP_UNARY_SUB, line);            break;
-        case TOKEN_NOT:         emit(OP_UNARY_NOT, line);            break;
-        case TOKEN_BITWISE_NOT: emit(OP_UNARY_BITWISE_NOT, line);    break;
-        default:                fatal("operation not implemented");  break;
+        case TOKEN_ADD:         emit(OP_UNARY_ADD, line); break;
+        case TOKEN_SUB:         emit(OP_UNARY_SUB, line); break;
+        case TOKEN_NOT:         emit(OP_UNARY_NOT, line); break;
+        case TOKEN_BITWISE_NOT: emit(OP_UNARY_BITWISE_NOT, line); break;
+        default:                fatal("operation not implemented"); break;
     }
 }
 
@@ -251,25 +299,25 @@ void emit_binary_operator(token_kind operator, int line)
 {
     switch (operator)
     {
-        case TOKEN_ADD: emit(OP_ADD, line); break;
-        case TOKEN_SUB: emit(OP_SUB, line); break;
-        case TOKEN_MUL: emit(OP_MUL, line); break;
-        case TOKEN_DIV: emit(OP_DIV, line); break;
-        case TOKEN_MOD: emit(OP_MOD, line); break;
-        //case TOKEN_BITWISE_AND: return left & right;
-        //case TOKEN_BITWISE_OR: return left | right;
-        //case TOKEN_LEFT_SHIFT: return left << right;
-        //case TOKEN_RIGHT_SHIFT: return left >> right;
-        //case TOKEN_XOR: return left ^ right;
-        //case TOKEN_EQ: return left == right;
-        //case TOKEN_NEQ: return left != right;
-        //case TOKEN_LT: return left < right;
-        //case TOKEN_LEQ: return left <= right;
-        //case TOKEN_GT: return left > right;
-        //case TOKEN_GEQ: return left >= right;
-        //case TOKEN_AND: return left && right;
-        //case TOKEN_OR: return left || right;
-        invalid_default_case;
+        case TOKEN_ADD:         emit(OP_ADD, line); break;
+        case TOKEN_SUB:         emit(OP_SUB, line); break;
+        case TOKEN_MUL:         emit(OP_MUL, line); break;
+        case TOKEN_DIV:         emit(OP_DIV, line); break;
+        case TOKEN_MOD:         emit(OP_MOD, line); break;
+        case TOKEN_BITWISE_AND: emit(OP_BITWISE_AND, line); break;
+        case TOKEN_BITWISE_OR:  emit(OP_BITWISE_OR, line); break;
+        case TOKEN_LEFT_SHIFT:  emit(OP_LEFT_SHIFT, line); break;
+        case TOKEN_RIGHT_SHIFT: emit(OP_RIGHT_SHIFT, line); break;
+        case TOKEN_XOR:         emit(OP_XOR, line); break;
+        case TOKEN_EQ:          emit(OP_EQ, line); break;
+        case TOKEN_NEQ:         emit(OP_NEQ, line); break;
+        case TOKEN_LT:          emit(OP_LT, line); break;
+        case TOKEN_LEQ:         emit(OP_LEQ, line); break;
+        case TOKEN_GT:          emit(OP_GT, line); break;
+        case TOKEN_GEQ:         emit(OP_GEQ, line); break;
+        case TOKEN_AND:         emit(OP_AND, line); break;
+        case TOKEN_OR:          emit(OP_OR, line); break;
+        default:                fatal("operation not implemented");  break;
     }
 }
 
