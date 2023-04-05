@@ -185,6 +185,7 @@ void run_vm(op *code)
                 word name_ptr = stack[sp--];
                 word value = (word)map_get(&globals, (void *)name_ptr);
                 exec_printf("\nget variable: %s, value: %lld", (char *)name_ptr, value);
+                stack_push(value);
             }
             break;
             case OP_SET_GLOBAL:
@@ -242,7 +243,7 @@ void emit_unary_operator(token_kind operator, int line)
         case TOKEN_SUB:         emit(OP_UNARY_SUB, line);            break;
         case TOKEN_NOT:         emit(OP_UNARY_NOT, line);            break;
         case TOKEN_BITWISE_NOT: emit(OP_UNARY_BITWISE_NOT, line);    break;
-        default:                fatal("operation not implemented");     break;
+        default:                fatal("operation not implemented");  break;
     }
 }
 
@@ -496,8 +497,65 @@ void emit_statement(stmt *st)
         }
         break;
         case STMT_ASSIGN:
-        {
-            fatal("unimplemented");
+        {            
+            assert(is_assign_operation(st->assign.operation));
+            if (st->assign.operation == TOKEN_ASSIGN)
+            {
+                emit_expression(st->assign.value_expr);
+                
+                // tutaj poprzednio było emit_expression(st->assign.assigned_var_expr)
+                // i to było źle
+                // OP_SET_LOCAL potrzebuje adresu, a nie wartości! emit_expression dla nazw zawsze ściąga wartość
+                // jak to lepiej rozwiązać?
+
+                // tymczasowe
+                if (st->assign.assigned_var_expr->name)
+                {
+                    assert_is_interned(st->assign.assigned_var_expr->name);
+                    emit(OP_STORE, 0);
+                    emit((word)st->assign.assigned_var_expr->name, 0);
+                }
+                else
+                {
+                    fatal("unimplemented");
+                    //emit_expression(st->assign.assigned_var_expr);
+                }
+                emit(OP_SET_LOCAL, 0);
+            }
+            else
+            {
+                emit_expression(st->assign.value_expr);
+                emit_expression(st->assign.assigned_var_expr);
+                switch (st->assign.operation)
+                {
+                    case TOKEN_ADD_ASSIGN: { emit_binary_operator(TOKEN_ADD, 0); } break;
+                    case TOKEN_SUB_ASSIGN: { emit_binary_operator(TOKEN_SUB, 0); } break;
+                    case TOKEN_OR_ASSIGN: { emit_binary_operator(TOKEN_OR, 0); } break;
+                    case TOKEN_AND_ASSIGN: { emit_binary_operator(TOKEN_AND, 0); } break;
+                    case TOKEN_BITWISE_OR_ASSIGN: { emit_binary_operator(TOKEN_BITWISE_OR, 0); } break;
+                    case TOKEN_BITWISE_AND_ASSIGN: { emit_binary_operator(TOKEN_BITWISE_AND, 0); } break;
+                    case TOKEN_XOR_ASSIGN: { emit_binary_operator(TOKEN_XOR, 0); } break;
+                    case TOKEN_LEFT_SHIFT_ASSIGN: { emit_binary_operator(TOKEN_LEFT_SHIFT, 0); } break;
+                    case TOKEN_RIGHT_SHIFT_ASSIGN: { emit_binary_operator(TOKEN_RIGHT_SHIFT, 0); } break;
+                    case TOKEN_MUL_ASSIGN: { emit_binary_operator(TOKEN_MUL, 0); } break;
+                    case TOKEN_DIV_ASSIGN: { emit_binary_operator(TOKEN_DIV, 0); } break;
+                    case TOKEN_MOD_ASSIGN: { emit_binary_operator(TOKEN_MOD, 0); } break;
+                }
+
+                // tymczasowe
+                if (st->assign.assigned_var_expr->name)
+                {
+                    assert_is_interned(st->assign.assigned_var_expr->name);
+                    emit(OP_STORE, 0);
+                    emit((word)st->assign.assigned_var_expr->name, 0);
+                }
+                else
+                {
+                    fatal("unimplemented");
+                    //emit_expression(st->assign.assigned_var_expr);
+                }
+                emit(OP_SET_LOCAL, 0);
+            }            
         }
         break;
         case STMT_SWITCH:
@@ -588,13 +646,18 @@ void bytecode_gen_test(void)
     bytecode_gen_test_simple();
 #else 
     char *test_strs[] = {
+#if 0
+        "fn m() { let mx := 2\
+            mx = mx + 2} ",
         "const i = 1024",
         "fn f() { let x := 2 }",
-#if 0
+#endif
         "fn main() { \
             let x := 42 + 1\
             let y := (12 / 3) * 3 + 2\
-            let z := 25 % (3 * 7 + 24 / 8)\
+            x = y + 25 % (3 * 7 + 24 / 8)\
+            x += x / 15 }",
+#if 0
             if (x == 43) {\
                 x += 57\
             }\
