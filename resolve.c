@@ -1466,7 +1466,23 @@ type *resolve_variable_decl(decl *d)
             }
         }
        
-        result = expr->type;                   
+        // jedyny wyjątek dotyczy null
+        if (expr->type->kind == TYPE_NULL)
+        {
+            if (declared_type == null)
+            {
+                error_in_resolving("Must specify a type in the variable declaration with null value.", d->pos);
+                return null;
+            }
+            else
+            {
+                result = declared_type;
+            }
+        }
+        else
+        {
+            result = expr->type;
+        }
     }
 
     return result;
