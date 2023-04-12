@@ -9,8 +9,8 @@
 #define null 0
 
 #ifdef DEBUG_BUILD
-#define assert(condition) { if (!(condition)) { int x = 0; int y = 1 / x; } }
-#define debug_breakpoint { int x = 0; }
+#define assert(condition) { if (!(condition)) { int _debug = 0; _debug = 1 / _debug; } }
+#define debug_breakpoint { int _debug = 0; _debug = 0; }
 #define invalid_default_case default: { assert(0); } break;
 #define fatal(...) __fatal(__VA_ARGS__)
 #else

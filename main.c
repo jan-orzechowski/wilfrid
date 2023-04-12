@@ -89,7 +89,7 @@ cmd_arguments parse_cmd_arguments(int arg_count, char **args)
         char *arg = args[i];
         assert(arg != null);
 
-        if (arg[0] = '-')
+        if (arg[0] == '-')
         {
             if (0 == strcmp(arg, "-test"))
             {
