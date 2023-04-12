@@ -1,4 +1,6 @@
-﻿//#include <stddef.h>
+﻿#pragma pack(1)
+
+//#include <stddef.h>
 #include <stdlib.h> // calloc, realloc
 #include <stdio.h>
 //#include <stdarg.h>

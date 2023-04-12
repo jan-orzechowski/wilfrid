@@ -9,26 +9,26 @@ size_t get_type_size(type *type)
     return type->size;
 }
 
-size_t get_type_align(type *type)
-{
-    assert(type->kind > TYPE_COMPLETING);
-    assert(is_power_of_2(type->align));
-    return type->align;
-}
+//size_t get_type_align(type *type)
+//{
+//    assert(type->kind > TYPE_COMPLETING);
+//    assert(is_power_of_2(type->align));
+//    return type->align;
+//}
 
 const size_t POINTER_SIZE = 8;
 const size_t POINTER_ALIGN = 8;
 
-type *type_void =    &(type) { .kind = TYPE_VOID,    .size = 0, .align = 0 };
-type *type_null =    &(type) { .kind = TYPE_NULL,    .size = 0, .align = 0 };
-type *type_char =    &(type) { .kind = TYPE_CHAR,    .size = 1, .align = 1 };
-type *type_int =     &(type) { .kind = TYPE_INT,     .size = 4, .align = 4 };
-type *type_uint =    &(type) { .kind = TYPE_UINT,    .size = 4, .align = 4 };
-type *type_long =    &(type) { .kind = TYPE_LONG,    .size = 8, .align = 8 };
-type *type_ulong =   &(type) { .kind = TYPE_ULONG,   .size = 8, .align = 8 };
-type *type_float =   &(type) { .kind = TYPE_FLOAT,   .size = 4, .align = 4 };
-type *type_bool =    &(type) { .kind = TYPE_BOOL,    .size = 4, .align = 4 };
-type *type_invalid = &(type) { .kind = TYPE_NONE,    .size = 0, .align = 0 };
+type *type_void =    &(type) { .kind = TYPE_VOID,    .size = 0, /*.align = 0 */ };
+type *type_null =    &(type) { .kind = TYPE_NULL,    .size = 0, /*.align = 0 */ };
+type *type_char =    &(type) { .kind = TYPE_CHAR,    .size = 1, /*.align = 1 */ };
+type *type_int =     &(type) { .kind = TYPE_INT,     .size = 4, /*.align = 4 */ };
+type *type_uint =    &(type) { .kind = TYPE_UINT,    .size = 4, /*.align = 4 */ };
+type *type_long =    &(type) { .kind = TYPE_LONG,    .size = 8, /*.align = 8 */ };
+type *type_ulong =   &(type) { .kind = TYPE_ULONG,   .size = 8, /*.align = 8 */ };
+type *type_float =   &(type) { .kind = TYPE_FLOAT,   .size = 4, /*.align = 4 */ };
+type *type_bool =    &(type) { .kind = TYPE_BOOL,    .size = 4, /*.align = 4 */ };
+type *type_invalid = &(type) { .kind = TYPE_NONE,    .size = 0, /*.align = 0 */ };
 
 hashmap global_symbols;
 symbol **global_symbols_list;
@@ -282,8 +282,8 @@ void get_complete_struct_type(type *type, type_aggregate_field **fields, size_t 
     assert(type->kind == TYPE_COMPLETING);
     type->kind = TYPE_STRUCT;
     type->size = 0;
-    type->align = 0;
-
+    //type->align = 0;
+    
     for (type_aggregate_field **it = fields; it != fields + fields_count; it++)
     {
         type_aggregate_field *field = *it;
@@ -297,8 +297,12 @@ void get_complete_struct_type(type *type, type_aggregate_field **fields, size_t 
             type->kind = TYPE_NONE; 
             return;
         }
-        type->size = get_type_size(field->type) + align_up(type->size, get_type_align(field->type));
-        type->align = max(type->align, get_type_align(field->type));
+        
+        field->offset = type->size;
+        type->size += get_type_size(field->type);
+        
+        //type->size = get_type_size(field->type) + align_up(type->size, get_type_align(field->type));
+        //type->align = max(type->align, get_type_align(field->type));
     }
 
     type->aggregate.fields = xmempcy(fields, fields_count * sizeof(*fields));
@@ -310,14 +314,18 @@ void get_complete_union_type(type *type, type_aggregate_field **fields, size_t f
     assert(type->kind == TYPE_COMPLETING);
     type->kind = TYPE_UNION;
     type->size = 0;
-    type->align = 0;
+    //type->align = 0;
 
     for (type_aggregate_field **it = fields; it != fields + fields_count; it++)
     {
         type_aggregate_field *field = *it;
         assert(field->type->kind > TYPE_COMPLETING);
-        type->size = max(type->size, get_type_size(field->type));
-        type->align = max(type->align, get_type_align(field->type));
+        
+        field->offset = type->size;
+        type->size += get_type_size(field->type);
+        
+        //type->size = max(type->size, get_type_size(field->type));
+        //type->align = max(type->align, get_type_align(field->type));
     }
     
     type->aggregate.fields = xmempcy(fields, fields_count * sizeof(*fields));
@@ -329,7 +337,7 @@ type *get_array_type(type *element, size_t size)
     complete_type(element);
     type *t = get_new_type(TYPE_ARRAY);
     t->size = size * get_type_size(element);
-    t->align = get_type_align(element);
+    //t->align = get_type_align(element);
     t->array.base_type = element;
     t->array.size = size;
     return t; 
@@ -340,7 +348,7 @@ type *get_list_type(type *element)
     complete_type(element);
     type *t = get_new_type(TYPE_LIST);
     t->size = get_type_size(element);
-    t->align = get_type_align(element);
+    //t->align = get_type_align(element);
     t->list.base_type = element;
     return t;
 }
@@ -378,7 +386,7 @@ type *get_pointer_type(type *base_type)
 
     type *type = get_new_type(TYPE_POINTER);
     type->size = POINTER_SIZE;
-    type->align = POINTER_ALIGN;
+    //type->align = POINTER_ALIGN;
     type->pointer.base_type = base_type;
     buf_push(cached_pointer_types, type);
     return type;
@@ -388,7 +396,7 @@ type *get_function_type(type **param_types, size_t param_types_count, type *retu
 {
     type *type = get_new_type(TYPE_FUNCTION);
     type->size = POINTER_SIZE;
-    type->align = POINTER_ALIGN;
+    //type->align = POINTER_ALIGN;
     type->function.param_types = param_types;
     type->function.param_count = param_types_count;
     type->function.return_type = return_type;

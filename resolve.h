@@ -61,6 +61,7 @@ typedef struct type_aggregate_field
 {
     const char *name;
     type *type;
+    size_t offset;
 } type_aggregate_field;
 
 typedef struct type_aggregate
@@ -74,7 +75,7 @@ struct type
     type_kind kind;
     symbol *symbol; // używane tylko przy typach, które muszą być completed
     size_t size;
-    size_t align;
+    //size_t align;
     union
     {
         type_array array;
