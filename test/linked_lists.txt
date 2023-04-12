@@ -1,4 +1,6 @@
-﻿struct node
+﻿extern fn printf(str: char*, variadic) : int
+
+struct node
 {
     value: int
     next: node*,
@@ -17,12 +19,7 @@ struct memory
     size: int
 }
 
-fn main (arguments_count: int, arguments_array: char**) 
-{ 
-    linked_list_test()
-}
-
-fn linked_list_test()
+fn main()
 {
     let list := new linked_list
     

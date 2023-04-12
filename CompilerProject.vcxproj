@@ -147,7 +147,9 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="interpreter\hashmap.txt" />
-    <Text Include="test\constructors.txt" />
+    <Text Include="interpreter\keywords.txt" />
+    <Text Include="interpreter\tokens.txt" />
+    <Text Include="test\test_dir\constructors.txt" />
     <Text Include="test\dynamic_lists.txt" />
     <Text Include="test\extern.txt" />
     <Text Include="test\linked_lists.txt" />

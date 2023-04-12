@@ -27,8 +27,10 @@
     <Text Include="test\overloading.txt" />
     <Text Include="test\extern.txt" />
     <Text Include="test\loops.txt" />
-    <Text Include="test\constructors.txt" />
+    <Text Include="test\test_dir\constructors.txt" />
     <Text Include="test\parsing_tests.txt" />
+    <Text Include="interpreter\keywords.txt" />
+    <Text Include="interpreter\tokens.txt" />
     <Text Include="interpreter\hashmap.txt" />
   </ItemGroup>
 </Project>
