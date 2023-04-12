@@ -245,6 +245,17 @@ symbol *get_symbol(const char *name)
     return null;
 }
 
+bool check_if_symbol_name_unused(const char *name, source_pos pos)
+{
+    symbol *sym = get_symbol(name);
+    if (sym)
+    {
+        error_in_resolving(xprintf("Identifier '%s' is already declared.", sym->name), pos);
+        return false;
+    }
+    return true;
+}
+
 type *get_new_type(type_kind kind)
 {
     type *t = xcalloc(sizeof(type));
@@ -499,16 +510,13 @@ void push_symbol_from_decl(decl *d)
         return;
     }
 
-    if (sym->kind == SYMBOL_TYPE)
+    // nie zezwalamy na podwójne nazwy
+    if (false == check_if_symbol_name_unused(sym->name, d->pos))
     {
-        // nie zezwalamy na podwójne nazwy
-        if (map_get(&global_symbols, sym->name))
-        {
-            error_in_resolving("Duplicate identifiers", d->pos);
-            return;
-        }
+        return;
     }
-    else if (sym->kind == SYMBOL_FUNCTION)
+    
+    if (sym->kind == SYMBOL_FUNCTION)
     {
         sym->mangled_name = get_function_mangled_name(sym->decl);
         // jeśli mamy podwójne nazwy, zachodzi overloading...
@@ -1703,7 +1711,10 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
             {
                 assert(st->decl_stmt.decl->kind == DECL_VARIABLE);
                 type *t = resolve_variable_decl(st->decl_stmt.decl);
-                push_local_symbol(st->decl_stmt.decl->name, t);
+                if (check_if_symbol_name_unused(st->decl_stmt.decl->name, st->pos))
+                {
+                    push_local_symbol(st->decl_stmt.decl->name, t);
+                }
             }
             else
             {
@@ -1832,14 +1843,20 @@ void complete_function_body(symbol *s)
 
     if (s->decl->function.method_receiver)
     {
-        push_local_symbol(s->decl->function.method_receiver->name, 
-            resolve_typespec(s->decl->function.method_receiver->type));
+        function_param *rec = s->decl->function.method_receiver;
+        if (check_if_symbol_name_unused(rec->name, rec->pos))
+        {
+            push_local_symbol(rec->name, resolve_typespec(rec->type));
+        }
     }
 
     for (size_t i = 0; i < s->decl->function.params.param_count; i++)
     {
-        function_param *p = &s->decl->function.params.params[i];
-        push_local_symbol(p->name, resolve_typespec(p->type));
+        function_param *p = &s->decl->function.params.params[i];        
+        if (check_if_symbol_name_unused(p->name, p->pos))
+        {
+            push_local_symbol(p->name, resolve_typespec(p->type));
+        }
     }
     
     size_t count = s->decl->function.stmts.stmts_count;
