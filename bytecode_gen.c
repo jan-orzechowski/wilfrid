@@ -91,8 +91,10 @@ const char *op_names[] = {
 
 #if DEBUG_BUILD
 #define assert_is_interned(ptr) assert(str_intern((const char *)ptr) == (const char *)ptr)
+#define save_debug_string(str) map_put(&debug_strings, str, str);
 #elif
 #define assert_is_interned 
+#define save_debug_string
 #endif
 
 word *code;
@@ -128,17 +130,88 @@ void print_ops(void)
     }
 }
 
-hashmap globals;
+memory_arena *globals_memory;
+memory_arena *locals_memory;
+// heap to po prostu xcalloc / free
 
-void set_global(char *name, int value_index)
+hashmap globals_dict;
+hashmap locals_dict;
+
+#if DEBUG_BUILD
+hashmap globals_names_dict;
+hashmap locals_names_dict;
+hashmap debug_strings;
+#endif
+
+void *define_global(char *name, size_t size, void *initial_value)
 {
-    map_put(&globals, (void *)name, (void *)value_index);
+    void *result = push_size(globals_memory, size);    
+    if (initial_value)
+    {
+        memcpy_s(result, size, initial_value, size);       
+    }
+    else
+    {
+        memset(result, 0, size);
+    }
+    
+    map_put(&globals_dict, (void *)name, result);
+
+#if DEBUG_BUILD
+    map_put(&globals_names_dict, result, (void *)name);
+    map_put(&debug_strings, (void *)name, (void *)name);
+#endif
+
+    return result;
+}
+
+void *define_local(char *name, size_t size, void *initial_value)
+{
+    void *result = push_size(locals_memory, size);
+    if (initial_value)
+    {
+        memcpy_s(result, size, initial_value, size);
+    }
+    else
+    {
+        memset(result, 0, size);
+    }
+
+    map_put(&locals_dict, (void *)name, result);
+
+#if DEBUG_BUILD
+    map_put(&locals_names_dict, result, (void *)name);
+    map_put(&debug_strings, (void *)name, (void *)name);
+#endif
+
+    return result;
+}
+
+
+// te cztery funkcje poniżej są bezużyteczne - nie będziemy mieli name!
+void set_global(char *name, size_t size, void* value)
+{
+    void *result = map_get(&globals_dict, name);
+    assert(result);
+    memcpy_s(result, size, value, size);
+}
+
+void set_local(char *name, size_t size, void *value)
+{
+    void *result = map_get(&locals_dict, name);
+    assert(result);
+    memcpy_s(result, size, value, size);
 }
 
 void *get_global(void *name)
 {
-    void *result = map_get(&globals, name);
-    assert(result);
+    void *result = map_get(&globals_dict, name);
+    return result;
+}
+
+void *get_local(void *name)
+{
+    void *result = map_get(&locals_dict, name);
     return result;
 }
 
@@ -219,27 +292,52 @@ void run_vm(op *code)
                 exec_printf("\njump by offset: %lld", offset);
             }
             break;
-            case OP_GET_GLOBAL:
+             
+            case OP_GET_GLOBAL: { fatal("unimplemented"); }
             case OP_GET_LOCAL:
-            {               
-                word name_ptr = stack[sp--];
-                word value = (word)map_get(&globals, (void *)name_ptr);
-                exec_printf("\nget variable: %s, value: %lld", (char *)name_ptr, value);
+            {
+                void *ptr = (void *)stack[sp--];
+                word value = *(word *)ptr; // structów i innych nie możemy póki co wrzucać na stack...
                 stack_push(value);
+                
+#if DEBUG_BUILD                
+                char *debug_name = (char *)map_get(&locals_names_dict, ptr);
+                if (map_get(&debug_strings, (void *)value))
+                {
+                    exec_printf("\nget variable: %s, value: %lld (as string: '%s')", debug_name, value, (char *)value);
+                }
+                else
+                {
+                    exec_printf("\nget variable: %s, value: %lld", debug_name, value);
+                }
+#endif
             }
             break;
-            case OP_SET_GLOBAL:
+            case OP_SET_GLOBAL: { fatal("unimplemented"); }
             case OP_SET_LOCAL:
             {
-                word name_ptr = stack[sp--];
+                void *ptr = (void *)stack[sp--];
                 word value = stack[sp--];
                 
-                set_global((void *)name_ptr, value);
-                assert_is_interned(name_ptr);
+                memcpy_s(ptr, sizeof(word), (void*)&value, sizeof(word));
 
-                exec_printf("\nset variable: %s, value: %lld", (char *)name_ptr, value);
+#if DEBUG_BUILD
+                char *debug_name = (char *)map_get(&locals_names_dict, ptr);
+                if (map_get(&debug_strings, (void *)value))
+                {
+                    exec_printf("\nset variable: %s, value: %lld (as string: '%s')", debug_name, value, (char *)value);
+                }
+                else
+                {
+                    exec_printf("\nset variable: %s, value: %lld", debug_name, value);
+                }
+#endif
             }
             break;
+
+
+
+
             case OP_NULL:
             {
                 word value = 0;
@@ -298,7 +396,7 @@ void run_vm(op *code)
     }
 
 
-    printf("\n=== VM RUN FINISHED === \n\n");
+    printf("\n\n=== VM RUN FINISHED === \n\n");
 
     debug_breakpoint;
 
@@ -377,8 +475,13 @@ void emit_expression(expr *exp)
         }
         break;
         case EXPR_STRING:
-        {
-            fatal("unimplemented");
+        {            
+            size_t len = strlen(exp->string_value);                       
+            void *ptr = define_local(exp->string_value, len, exp->string_value); // zmienić na global potem
+            emit(OP_STORE, exp->pos.line);
+            emit((word)ptr, exp->pos.line);
+
+            save_debug_string(exp->string_value);
         }
         break;
         case EXPR_NULL:
@@ -403,7 +506,17 @@ void emit_expression(expr *exp)
         {
             assert_is_interned(exp->name);
             emit(OP_STORE, 0);
-            emit((word)exp->name, 0);
+
+            void *ptr = get_local(exp->name);
+            if (ptr == null)
+            {
+                ptr = define_local(exp->name, sizeof(word), 0);
+            }
+            assert(ptr);
+
+            save_debug_string(exp->name);
+
+            emit((word)ptr, 0);
             emit(OP_GET_LOCAL, 0);
         }
         break;
@@ -474,7 +587,7 @@ void emit_expression(expr *exp)
     }
 }
 
-void emit_declaration(decl *de)
+void emit_declaration(decl *de, bool is_global_scope)
 {
     assert(de);
     switch (de->kind)
@@ -491,18 +604,28 @@ void emit_declaration(decl *de)
         break;
         case DECL_VARIABLE:
         {
+            if (is_global_scope)
+            {
+                
+            }
+          
+            // skąd wziąc size, mając tylko decl?
+            size_t size = 10;
+            void *ptr = define_local(de->name, size, 0);
+
             emit_expression(de->variable.expr);
-            emit(OP_STORE, 0);
-            emit((word)de->name, 0);
-            emit(OP_SET_LOCAL, 0);
+            emit(OP_STORE, de->pos.line);
+            emit((word)ptr, de->pos.line);
+            emit(OP_SET_LOCAL, de->pos.line);
         }
         break;
         case DECL_CONST:
         {
-            emit_expression(de->const_decl.expr);
-            emit(OP_STORE, 0);
-            emit((word)de->name, 0);
-            emit(OP_SET_GLOBAL, 0);
+            fatal("unimplemented");
+            //emit_expression(de->const_decl.expr);
+            //emit(OP_STORE, 0);
+            //emit((word)de->name, 0);
+            //emit(OP_SET_LOCAL, 0); // tymczasowe, zmienić na GLOBAL potem
         }
         break;
         case DECL_FUNCTION:
@@ -557,12 +680,31 @@ void emit_statement(stmt *st)
         case STMT_DECL:
         {
             assert(st->decl_stmt.decl);
-            emit_declaration(st->decl_stmt.decl);
+            emit_declaration(st->decl_stmt.decl, false);
         }
         break;
         case STMT_IF_ELSE:
         {
-            fatal("unimplemented");
+            emit_expression(st->if_else.cond_expr);
+            
+            emit(OP_JUMP_IF_FALSE, 0);
+            emit(null, 0);
+            size_t backpatch = buf_len(code);
+
+            if (st->if_else.else_stmt)
+            {
+                emit_statement(st->if_else.else_stmt);
+            }
+
+            size_t current_op = buf_len(code);
+            size_t difference = (current_op - backpatch);
+            if (difference > UINT16_MAX)
+            {
+                fatal("difference in ops too large");
+            }
+            //backpatch = add_constant(difference);
+
+            emit_statement_block(st->if_else.then_block);
         }
         break;
         case STMT_WHILE:
@@ -695,7 +837,10 @@ void emit_symbol(symbol *sym)
         break;
         case SYMBOL_TYPE: 
         {
-            fatal("unimplemented");
+            // czyli deklaracja uniona/structu
+            // chyba nie musimy nic robić?
+
+            //fatal("unimplemented");
         }
         break;
         case SYMBOL_ENUM_CONST: 
@@ -726,6 +871,15 @@ void bytecode_gen_test_simple(void)
 
 void bytecode_gen_test(void)
 {
+    globals_memory = allocate_memory_arena(kilobytes(5));
+    locals_memory = allocate_memory_arena(kilobytes(5));
+
+#if DEBUG_BUILD
+    map_grow(&globals_names_dict, 16);
+    map_grow(&locals_names_dict, 16);
+    map_grow(&debug_strings, 16);
+#endif
+
 #if 0
     bytecode_gen_test_simple();
 #else 
@@ -735,12 +889,16 @@ void bytecode_gen_test(void)
             mx = mx + 2} ",
         "const i = 1024",
         "fn f() { let x := 2 }",
-#endif
-        "fn main() { \
+        "fn n() { \
             let x := 42 + 1\
             let y := (12 / 3) * 3 + 2\
             x = y + 25 % (3 * 7 + 24 / 8)\
             x += x / 15 }",
+        "fn r() { let x := \"Some string\" } ",
+#endif
+        "struct node { val: int }",
+        "fn o () { let x : node* = null let y = (x == null) }",
+        //"fn o () { let x: long = 100 let y: int = 20, x = y + 20 }"
 #if 0
             if (x == 43) {\
                 x += 57\
