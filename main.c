@@ -17,17 +17,6 @@
 
 void run_all_tests(void);
 
-void compile_and_run(void)
-{
-    char *test_file = "interpreter/hashmap.txt";    
-    string_ref file_buf = read_file_for_parsing(test_file);
-    if (file_buf.str)
-    {      
-        
-        free(file_buf.str);
-    }
-}
-
 void parse_file(char *filename, decl ***declarations_list)
 {
     string_ref source = read_file_for_parsing(filename);
@@ -53,7 +42,7 @@ void parse_directory(char *path, decl ***declarations_list)
     buf_free(source_files);
 }
 
-void compile_sources(char **sources)
+void compile_sources(char **sources, bool print_ast)
 {
     decl **all_declarations = 0;
     for (size_t i = 0; i < buf_len(sources); i++)
@@ -67,6 +56,15 @@ void compile_sources(char **sources)
         {
             parse_directory(filename, &all_declarations);
         }
+    }
+
+    if (print_ast)
+    {
+        printf("\nOUTPUT AST:\n");
+        for (size_t i = 0; i < buf_len(all_declarations); i++)
+        {
+            printf("\n%s\n", get_decl_ast(all_declarations[i]));
+        }        
     }
 
     symbol **resolved = resolve(all_declarations, true);
@@ -122,11 +120,12 @@ int main(int arg_count, char **args)
     cmd_arguments options = parse_cmd_arguments(arg_count, args);
 
 #if DEBUG_BUILD 
-#if 0
+    options.print_ast = true;
+#if 1
     buf_push(options.sources, "test");
 #else
     //options.test_mode = true;
-    bytecode_gen_test();
+    //bytecode_gen_test();
 #endif
 #endif
 
@@ -141,7 +140,7 @@ int main(int arg_count, char **args)
     }
     else if (options.sources > 0)
     {        
-        compile_sources(options.sources);
+        compile_sources(options.sources, options.print_ast);
         print_errors_to_console();
     }
     else
