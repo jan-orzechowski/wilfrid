@@ -956,9 +956,9 @@ void gen_symbol_decl(symbol *sym)
     }
 }
 
-void gen_entry_point(void)
+void gen_entry_point(symbol **resolved)
 {
-    symbol *main_function = get_entry_point();
+    symbol *main_function = get_entry_point(resolved);
 
     if (main_function->mangled_name == str_intern("___main___0l___0s___0v"))
     {
@@ -1021,7 +1021,7 @@ void c_gen(symbol **resolved_declarations, char *output_filename, char *output_e
 
     gen_common_includes();
     gen_forward_decls(resolved_declarations);
-    gen_entry_point();
+    gen_entry_point(resolved_declarations);
 
     for (size_t i = 0; i < buf_len(resolved_declarations); i++)
     {

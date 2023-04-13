@@ -1914,13 +1914,13 @@ void complete_symbol(symbol *sym)
     }
 }
 
-symbol *get_entry_point(void)
+symbol *get_entry_point(symbol **symbols)
 {
     symbol *main_function = null;
     const char *main_str = str_intern("main");
 
-    for (symbol **it = global_symbols_list;
-        it != buf_end(global_symbols_list);
+    for (symbol **it = symbols;
+        it != buf_end(symbols);
         it++)
     {
         symbol *sym = *it;
@@ -1929,6 +1929,7 @@ symbol *get_entry_point(void)
             if (main_function)
             {
                 error_in_resolving("Only one function 'main' allowed", sym->decl->pos);
+                return null;
             }
             else
             {
@@ -1949,6 +1950,7 @@ symbol *get_entry_point(void)
         error_in_resolving(
             "Main function has an incorrect declaration. Allowed declarations are 'fn main()' and 'fn main(args: string[])'", 
             main_function->decl->pos);
+        return null;
     }
 
     return main_function;
@@ -1997,7 +1999,7 @@ symbol **resolve(decl **declarations, bool check_entry_point)
 
     if (check_entry_point && false == panic_mode)
     {
-        get_entry_point();        
+        get_entry_point(global_symbols_list);
     }
     
     return ordered_global_symbols;
