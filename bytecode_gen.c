@@ -843,11 +843,6 @@ void emit_symbol(symbol *sym)
             //fatal("unimplemented");
         }
         break;
-        case SYMBOL_ENUM_CONST: 
-        {
-            fatal("unimplemented");
-        }
-        break;
         invalid_default_case;
     }
 }
@@ -856,12 +851,11 @@ symbol **test_resolve_decls(char **decl_arr, size_t decl_arr_count, bool print_a
 
 void bytecode_gen_test_simple(void)
 {
-    emit(OP_STORE, 0);
+    emit(OP_IMMEDIATE, 0);
     emit(12, 0);
-    emit(OP_STORE, 0);
+    emit(OP_IMMEDIATE, 0);
     emit(3, 0);
     emit(OP_ADD, 0);
-    emit(OP_RETURN, 0);
     emit(OP_HALT, 0);
 
     print_ops();

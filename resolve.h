@@ -99,7 +99,6 @@ typedef enum symbol_kind
     SYMBOL_CONST,
     SYMBOL_FUNCTION,
     SYMBOL_TYPE,
-    SYMBOL_ENUM_CONST,
 } symbol_kind;
 
 typedef enum symbol_state
