@@ -1,0 +1,58 @@
+﻿struct external_struct
+{
+    percentage: float
+}
+
+struct struct_within_struct 
+{
+    something_struct : struct
+    {
+        highest_score : int,
+    },
+    struct // anonymous struct
+    {
+        lowest_score: int,
+    },
+    external_struct
+}
+
+struct union_test
+{
+    is_a_version: bool,	
+    fields: union // czy potrzebna jest nazwa?
+    {
+        a_version : struct
+        {
+            val_1 : int,
+            val_2 : int,
+        }, 
+        b_version : struct
+        {
+            val_f : float // czy nazwy mogą się powtarzać?
+        },
+    },
+}
+
+union other_union_test
+{
+    val_int : int,
+    val_float : float,
+    val_bool : bool
+}
+
+fn main() 
+{
+    let a : test_union = { is_a_version: true, a_fields: { 1, 2 } }
+    let b : test_union = { is_a_version: false, b_version: { 3.0 } }
+
+    a.a_version = { 4, 5 }
+
+    let c : test_union = { 1 }
+    c.val_float = 5.0
+    c.val_bool = true
+
+    let d : struct_within_struct = 
+    {
+        { 13 }, { 11 }, { 6.7 }
+    }
+}

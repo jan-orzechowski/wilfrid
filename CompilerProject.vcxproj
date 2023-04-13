@@ -149,6 +149,7 @@
     <Text Include="interpreter\hashmap.txt" />
     <Text Include="interpreter\keywords.txt" />
     <Text Include="interpreter\tokens.txt" />
+    <Text Include="test\compound_literals.txt" />
     <Text Include="test\test_dir\constructors.txt" />
     <Text Include="test\dynamic_lists.txt" />
     <Text Include="test\extern.txt" />
