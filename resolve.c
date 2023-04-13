@@ -4,6 +4,7 @@
 
 size_t get_type_size(type *type)
 {
+    assert(type);
     assert(type->kind > TYPE_COMPLETING);
     assert(type->size != 0);
     return type->size;
@@ -288,10 +289,10 @@ void push_local_symbol(const char *name, type *type)
     };
 }
 
-void get_complete_struct_type(type *type, type_aggregate_field **fields, size_t fields_count)
+void get_complete_aggregate_type(type *type, type_aggregate_field **fields, size_t fields_count, bool is_union)
 {
     assert(type->kind == TYPE_COMPLETING);
-    type->kind = TYPE_STRUCT;
+    type->kind = is_union ? TYPE_UNION : TYPE_STRUCT;
     type->size = 0;
     //type->align = 0;
     
@@ -316,29 +317,6 @@ void get_complete_struct_type(type *type, type_aggregate_field **fields, size_t 
         //type->align = max(type->align, get_type_align(field->type));
     }
 
-    type->aggregate.fields = xmempcy(fields, fields_count * sizeof(*fields));
-    type->aggregate.fields_count = fields_count;
-}
-
-void get_complete_union_type(type *type, type_aggregate_field **fields, size_t fields_count)
-{
-    assert(type->kind == TYPE_COMPLETING);
-    type->kind = TYPE_UNION;
-    type->size = 0;
-    //type->align = 0;
-
-    for (type_aggregate_field **it = fields; it != fields + fields_count; it++)
-    {
-        type_aggregate_field *field = *it;
-        assert(field->type->kind > TYPE_COMPLETING);
-        
-        field->offset = type->size;
-        type->size += get_type_size(field->type);
-        
-        //type->size = max(type->size, get_type_size(field->type));
-        //type->align = max(type->align, get_type_align(field->type));
-    }
-    
     type->aggregate.fields = xmempcy(fields, fields_count * sizeof(*fields));
     type->aggregate.fields_count = fields_count;
 }
@@ -487,6 +465,7 @@ symbol *get_symbol_from_decl(decl *d)
         sym->state = SYMBOL_RESOLVED;
         sym->type = get_incomplete_type(sym);
     }
+
     return sym;
 }
 
@@ -561,7 +540,7 @@ void complete_type(type *t)
 
     if (t->kind == TYPE_COMPLETING)
     {
-        error_in_resolving("Detected type completion cycle", (source_pos){0});
+        error_in_resolving("Detected a cyclic dependency in type declarations", t->symbol->decl->pos);
         return;
     }
     else if (t->kind != TYPE_INCOMPLETE)
@@ -591,18 +570,25 @@ void complete_type(type *t)
 
     if (buf_len(fields) == 0)
     {
-        error_in_resolving("Struct/union has no fields", d->pos);
+        if (d->kind == DECL_STRUCT)
+        {
+            error_in_resolving("Struct must have at least one field declared", d->pos);
+        }
+        else
+        {
+            error_in_resolving("Union must have at least one field declared", d->pos);
+        }
         return;
     }
 
     if (d->kind == DECL_STRUCT)
     {
-        get_complete_struct_type(t, fields, buf_len(fields));
+        get_complete_aggregate_type(t, fields, buf_len(fields), false);
     }
     else
     {
         assert(d->kind == DECL_UNION);
-        get_complete_union_type(t, fields, buf_len(fields));
+        get_complete_aggregate_type(t, fields, buf_len(fields), true);
     }
 
     buf_push(ordered_global_symbols, t->symbol);
@@ -613,7 +599,7 @@ symbol *resolve_name(const char *name, source_pos name_pos)
     symbol *s = get_symbol(name);
     if (s == null)
     {
-        error_in_resolving(xprintf("Non-existent name: %s", name), name_pos);
+        error_in_resolving(xprintf("Unknown identifier: '%s'", name), name_pos);
         return null;
     }
     resolve_symbol(s);
@@ -892,7 +878,10 @@ resolved_expr *resolve_compound_expr(expr *e, type *expected_type, bool ignore_e
         && t->kind != TYPE_UNION 
         && t->kind != TYPE_ARRAY)
     {
-        error_in_resolving("Compound literals can only be used with struct and array types", e->pos);
+        error_in_resolving(
+            xprintf("Compound literals can only be used with struct and array types, got %s instead",
+                pretty_print_type_name(t, false)),
+            e->pos);
         return resolved_expr_invalid;
     }
 
@@ -1610,7 +1599,7 @@ void resolve_symbol(symbol *s)
     }
     else
     {
-        error_in_resolving(xprintf("Could not resolve symbol: %s", s->name), s->decl->pos);
+        error_in_resolving(xprintf("Could not resolve identifier: %s", s->name), s->decl->pos);
         return;
     }
 }
@@ -1735,6 +1724,7 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
             else
             {
                 error_in_resolving("Const declarations not allowed in a function scope", st->pos);
+                return;
             }
         }
         break;
