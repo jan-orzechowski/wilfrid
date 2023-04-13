@@ -56,6 +56,20 @@ void error(const char *error_text, source_pos pos, size_t length)
     buf_push(errors, message);
 }
 
+bool shorten_source_pos = false;
+
+void print_source_pos(char **buffer, source_pos pos)
+{
+    if (shorten_source_pos)
+    {
+        buf_printf(*buffer, "('%s':%lld:%lld)", pos.filename, pos.line, pos.character);
+    }
+    else
+    {
+        buf_printf(*buffer, "(file '%s', line %lld, position %lld)", pos.filename, pos.line, pos.character);
+    }
+}
+
 char *print_errors(void)
 {
     char *buffer = null;
@@ -66,15 +80,13 @@ char *print_errors(void)
         for (size_t i = 0; i < errors_count; i++)
         {
             error_message msg = errors[i];
+            buf_printf(buffer, "- %s", msg.text);
             if (msg.pos.filename)
             {
-                buf_printf(buffer, "- %s (file '%s', line %lld, position %lld)\n", msg.text,
-                    msg.pos.filename, msg.pos.line, msg.pos.character);
+                buf_printf(buffer, " ");
+                print_source_pos(&buffer, msg.pos);
             }
-            else
-            {
-                buf_printf(buffer, "- %s\n", msg.text);
-            }
+            buf_printf(buffer, "\n");
         }
     }
     return buffer;

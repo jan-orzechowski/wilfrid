@@ -10,11 +10,13 @@
 
 #ifdef DEBUG_BUILD
 #define assert(condition) { if (!(condition)) { int _debug = 0; _debug = 1 / _debug; } }
+#define assert_is_interned(str) assert(str_intern((const char *)(str)) == (const char *)(str))
 #define debug_breakpoint { int _debug = 0; _debug = 0; }
 #define invalid_default_case default: { assert(0); } break;
 #define fatal(...) __fatal(__VA_ARGS__)
 #else
 #define assert(condition)
+#define assert_is_interned
 #define debug_breakpoint
 #define invalid_default_case
 #define fatal(...)

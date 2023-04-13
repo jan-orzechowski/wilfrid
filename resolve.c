@@ -1572,6 +1572,7 @@ void resolve_symbol(symbol *s)
         case SYMBOL_VARIABLE:
         {
             s->type = resolve_variable_decl(s->decl);
+            debug_breakpoint;
         }
         break;
         case SYMBOL_TYPE:
@@ -1594,7 +1595,8 @@ void resolve_symbol(symbol *s)
 
     if (s->type)
     {
-        s->state = SYMBOL_RESOLVED;
+        s->state = SYMBOL_RESOLVED;        
+        s->decl->type = s->type;
         buf_push(ordered_global_symbols, s);        
     }
     else
@@ -1716,10 +1718,12 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
             {
                 assert(st->decl_stmt.decl->kind == DECL_VARIABLE);
                 type *t = resolve_variable_decl(st->decl_stmt.decl);
+                assert(t); // jeśli resolve się nie uda przydałby się błąd
                 if (check_if_symbol_name_unused(st->decl_stmt.decl->name, st->pos))
                 {
                     push_local_symbol(st->decl_stmt.decl->name, t);
                 }
+                st->decl_stmt.decl->type = t;
             }
             else
             {

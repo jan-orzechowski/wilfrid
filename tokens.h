@@ -190,3 +190,26 @@ uint8_t char_to_digit[256] =
     ['e'] = 14, ['E'] = 14,
     ['f'] = 15, ['F'] = 15,
 };
+
+token_kind get_assignment_operation_token(token_kind assignment)
+{
+    assert(assignment >= TOKEN_FIRST_ASSIGN_OPERATOR);
+    assert(assignment <= TOKEN_LAST_ASSIGN_OPERATOR);
+    switch (assignment)
+    {
+        case TOKEN_ADD_ASSIGN: return TOKEN_ADD;
+        case TOKEN_SUB_ASSIGN: return TOKEN_SUB;
+        case TOKEN_OR_ASSIGN: return TOKEN_OR;
+        case TOKEN_AND_ASSIGN: return TOKEN_AND;
+        case TOKEN_BITWISE_OR_ASSIGN: return TOKEN_BITWISE_OR;
+        case TOKEN_BITWISE_AND_ASSIGN: return TOKEN_BITWISE_AND;
+        case TOKEN_XOR_ASSIGN: return TOKEN_XOR;
+        case TOKEN_LEFT_SHIFT_ASSIGN: return TOKEN_LEFT_SHIFT;
+        case TOKEN_RIGHT_SHIFT_ASSIGN:  return TOKEN_RIGHT_SHIFT;
+        case TOKEN_MUL_ASSIGN:return TOKEN_MUL;
+        case TOKEN_DIV_ASSIGN: return TOKEN_DIV;
+        case TOKEN_MOD_ASSIGN:return TOKEN_MOD;
+        invalid_default_case;
+    }
+    return TOKEN_EOF;
+}

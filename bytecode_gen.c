@@ -1,4 +1,6 @@
-﻿typedef uint64_t word;
+﻿#if 0
+
+typedef uint64_t word;
 typedef uint64_t op;
 
 typedef enum op_kind
@@ -921,3 +923,5 @@ void bytecode_gen_test(void)
     run_vm(code);
 #endif
 }
+
+#endif

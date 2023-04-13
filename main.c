@@ -13,7 +13,6 @@
 #include "parsing.c"
 #include "resolve.c"
 #include "cgen.c"
-#include "bytecode_gen.c"
 
 void run_all_tests(void);
 
@@ -31,6 +30,8 @@ void parse_file(char *filename, decl ***declarations_list)
     free(source.str);
 }
 
+#include "treewalk.c"
+
 void parse_directory(char *path, decl ***declarations_list)
 {
     char **source_files = get_source_files_in_dir_and_subdirs(path);
@@ -44,7 +45,7 @@ void parse_directory(char *path, decl ***declarations_list)
 
 void compile_sources(char **sources, bool print_ast)
 {
-    decl **all_declarations = 0;
+    decl **all_declarations = null;
     for (size_t i = 0; i < buf_len(sources); i++)
     {
         char *filename = sources[i];
@@ -126,6 +127,7 @@ int main(int arg_count, char **args)
 #else
     //options.test_mode = true;
     //bytecode_gen_test();
+    treewalk_interpreter_test();
 #endif
 #endif
 

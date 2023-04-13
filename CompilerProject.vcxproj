@@ -158,6 +158,7 @@
     <Text Include="test\overloading.txt" />
     <Text Include="test\parsing_tests.txt" />
     <Text Include="test\testcode.txt" />
+    <Text Include="test\treewalk.txt" />
     <Text Include="test\error_examples.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

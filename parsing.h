@@ -384,6 +384,7 @@ struct decl
     const char *name;
     decl_kind kind;
     source_pos pos;
+    type *type;
     union
     {
         function_decl function;

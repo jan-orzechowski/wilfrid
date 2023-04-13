@@ -33,6 +33,7 @@ typedef struct hashmap
 
 void *map_get(hashmap *map, void *key)
 {
+    assert(map->capacity != 0);
     if (map->count == 0)
     {
         return null;
@@ -49,7 +50,7 @@ void *map_get(hashmap *map, void *key)
         {
             return map->values[index];
         }
-        else if (!map->keys[index])
+        else if (map->keys[index] == 0)
         {
             return null;
         }
