@@ -66,8 +66,15 @@ char *print_errors(void)
         for (size_t i = 0; i < errors_count; i++)
         {
             error_message msg = errors[i];
-            buf_printf(buffer, "- %s (file '%s', line %lld, position %lld)\n", msg.text,
-                msg.pos.filename, msg.pos.line, msg.pos.character);
+            if (msg.pos.filename)
+            {
+                buf_printf(buffer, "- %s (file '%s', line %lld, position %lld)\n", msg.text,
+                    msg.pos.filename, msg.pos.line, msg.pos.character);
+            }
+            else
+            {
+                buf_printf(buffer, "- %s\n", msg.text);
+            }
         }
     }
     return buffer;
