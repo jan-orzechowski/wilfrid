@@ -11,6 +11,7 @@
 #include "lexing.c"
 #include "ast_print.c"
 #include "parsing.c"
+#include "arithmetic.c"
 #include "resolve.c"
 #include "cgen.c"
 

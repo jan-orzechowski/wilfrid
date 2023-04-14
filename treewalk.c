@@ -32,7 +32,7 @@ struct vm_value
     {
         int32_t int_value;
         uint32_t uint_value;
-        int64_t _long_value;
+        int64_t long_value;
         uint64_t ulong_value;
         float float_value;
         void *ptr_value;
@@ -138,6 +138,63 @@ vm_value *get_vm_variable(const char *name)
     return null;
 }
 
+void eval_unary_op(vm_value *dest, token_kind operation, vm_value *operand)
+{
+    if (operand->type == type_int)
+    {
+        dest->int_value = (int)eval_long_unary_op(operation, operand->int_value);
+    }
+    else if (operand->type == type_uint)
+    {
+        dest->uint_value = (unsigned int)eval_ulong_unary_op(operation, operand->uint_value);
+    }
+    else if (operand->type == type_long)
+    {
+        dest->long_value = eval_long_unary_op(operation, operand->long_value);
+    }
+    else if (operand->type == type_ulong)
+    {
+        dest->ulong_value = eval_ulong_unary_op(operation, operand->ulong_value);
+    }
+    else if (operand->type == type_float)
+    {
+        dest->float_value = eval_float_unary_op(operation, operand->float_value);
+    }
+    else
+    {
+        fatal("unsupported type");
+    }
+}
+
+void eval_binary_op(vm_value *dest, token_kind op, vm_value *left, vm_value *right)
+{
+    assert(compare_types(left->type, right->type));
+    if (left->type == type_int)
+    {
+        dest->int_value = (int)eval_long_binary_op(op, left->int_value, right->int_value);
+    }
+    else if (left->type == type_uint)
+    {
+        dest->uint_value = (unsigned int)eval_ulong_binary_op(op, left->uint_value, right->uint_value);
+    }
+    else if (left->type == type_long)
+    {
+        dest->long_value = eval_long_binary_op(op, left->long_value, right->long_value);
+    }
+    else if (left->type == type_ulong)
+    {
+        dest->ulong_value = eval_ulong_binary_op(op, left->ulong_value, right->ulong_value);
+    }
+    else if (left->type == type_float)
+    {
+        dest->float_value = eval_float_binary_op(op, left->float_value, right->float_value);
+    }
+    else
+    {
+        fatal("unsupported type");
+    }
+}
+
 vm_value *eval_expression(expr *exp)
 {
     assert(exp);
@@ -190,9 +247,7 @@ vm_value *eval_expression(expr *exp)
         {
             vm_value *operand = eval_expression(exp->unary.operand);
 
-            // co z innymi typami? np. float, ptr, ulong itd.
-
-            result->ulong_value = eval_int_unary_op(exp->unary.operator, operand->ulong_value);
+            eval_unary_op(result, exp->unary.operator, operand);
 
             debug_vm_print(exp->pos, "operation %s, result %lld", get_token_kind_name(exp->unary.operator), result->ulong_value);
         }
@@ -201,10 +256,8 @@ vm_value *eval_expression(expr *exp)
         {
             vm_value *left = eval_expression(exp->binary.left);
             vm_value *right = eval_expression(exp->binary.right);
-
-            // co z innymi typami? np. float, ptr, ulong itd.
-
-            result->ulong_value = eval_int_binary_op(exp->binary.operator, left->ulong_value, right->ulong_value);
+            
+            eval_binary_op(result, exp->binary.operator, left, right);
 
             debug_vm_print(exp->pos, "operation %s, result %lld", get_token_kind_name(exp->binary.operator), result->ulong_value);
         }
@@ -375,12 +428,12 @@ void eval_statement(stmt *st)
             vm_value *old_val = eval_expression(st->assign.assigned_var_expr);
 
             if (st->assign.operation != TOKEN_ASSIGN)
-            {                
+            {
                 token_kind op = get_assignment_operation_token(st->assign.operation);
-                new_val->ulong_value = eval_int_binary_op(op, old_val->ulong_value, new_val->ulong_value);
+                eval_binary_op(old_val, op, old_val, new_val);
 
                 debug_vm_print(st->assign.assigned_var_expr->pos, 
-                    "operation %s for assignment, result %lld", get_token_kind_name(op), new_val->ulong_value);
+                    "operation %s for assignment, result %lld", get_token_kind_name(op), old_val->ulong_value);
             }
 
             copy_vm_val(old_val, new_val);

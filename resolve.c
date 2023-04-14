@@ -680,44 +680,6 @@ type *resolve_typespec(typespec *t)
     return result;
 }
 
-int64_t eval_int_unary_op(token_kind op, int64_t val)
-{
-    switch (op)
-    {
-        case TOKEN_ADD: return +val;
-        case TOKEN_SUB: return -val;
-        case TOKEN_NOT: return !val;
-        case TOKEN_BITWISE_NOT: return ~val;
-        default: fatal("operation not implemented"); return 0;
-    }
-}
-
-int64_t eval_int_binary_op(token_kind op, int64_t left, int64_t right)
-{
-    switch (op)
-    {
-        case TOKEN_ADD: return left + right;
-        case TOKEN_SUB: return left - right;
-        case TOKEN_MUL: return left * right;
-        case TOKEN_DIV: return (right != 0) ? left / right : 0;
-        case TOKEN_MOD: return (right != 0) ? left % right : 0;
-        case TOKEN_BITWISE_AND: return left & right;
-        case TOKEN_BITWISE_OR: return left | right;
-        case TOKEN_LEFT_SHIFT: return left << right;
-        case TOKEN_RIGHT_SHIFT: return left >> right;
-        case TOKEN_XOR: return left ^ right;
-        case TOKEN_EQ: return left == right;
-        case TOKEN_NEQ: return left != right;
-        case TOKEN_LT: return left < right;
-        case TOKEN_LEQ: return left <= right;
-        case TOKEN_GT: return left > right;
-        case TOKEN_GEQ: return left >= right;
-        case TOKEN_AND: return left && right;
-        case TOKEN_OR: return left || right;
-        default: fatal("operation not implemented"); return 0;
-    }
-}
-
 resolved_expr *pointer_decay(resolved_expr *e)
 {        
     if (e->type->kind == TYPE_ARRAY)
@@ -771,7 +733,7 @@ resolved_expr *resolve_expr_unary(expr *expr)
             }
             if (operand->is_const)
             {
-                int64_t value = eval_int_unary_op(expr->unary.operator, operand->val);
+                int64_t value = eval_long_unary_op(expr->unary.operator, operand->val);
                 result = get_resolved_const_expr(value);
             }
             else
@@ -816,7 +778,7 @@ resolved_expr *resolve_expr_binary(expr *expr)
 
     if (left->is_const && right->is_const)
     {   
-        int64_t const_value = eval_int_binary_op(expr->binary.operator, left->val, right->val);
+        int64_t const_value = eval_long_binary_op(expr->binary.operator, left->val, right->val);
         result = get_resolved_const_expr(const_value);
     }
     else 
