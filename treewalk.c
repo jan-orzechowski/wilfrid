@@ -23,26 +23,21 @@ hashmap debug_names_dict;
 #define debug_vm_print
 #endif
 
-typedef void *address;
-
-typedef struct vm_value
+typedef struct vm_value vm_value;
+struct vm_value
 {
+    const char *name;
     type *type;
-    union
+    union value
     {
-        uint32_t uint_value;
         int32_t int_value;
-        uint64_t long_value;
+        uint32_t uint_value;
+        int64_t _long_value;
+        uint64_t ulong_value;
         float float_value;
         void *ptr_value;
     };
-} vm_value;
-
-typedef struct vm_stack_value
-{
-    const char *name;
-    vm_value val;
-} vm_stack_value;
+};
 
 memory_arena *vm_global_memory;
 hashmap global_identifiers;
@@ -50,19 +45,20 @@ hashmap global_identifiers;
 /*
     do przemyślenia... jak to przechowywać? czy alokować tu jeszcze vm_value osobno?
 */
-address define_global_identifier(const char *name, size_t size) // czy podawać typ?
+vm_value *define_global_identifier(const char *name, uintptr_t init_value) // czy podawać typ?
 {
     // to będzie trafione jeśli dwa razy występuje taki sam const string w kodzie źródłowym...
     assert(0 == map_get(&global_identifiers, (void *)name));
 
-    void *result = push_size(vm_global_memory, size);
-    map_put(&global_identifiers, (void *)name, result);
+    vm_value *result = (vm_value *)push_size(vm_global_memory, sizeof(vm_value));
+    result->ulong_value = init_value;
+    map_put(&global_identifiers, (void *)name, (void *)result);
 
 #if DEBUG_BUILD
     map_put(&debug_names_dict, result, (void *)name);
 #endif
 
-    return (address)result;
+    return result;
 }
 
 enum
@@ -70,38 +66,43 @@ enum
     MAX_VM_STACK_LENGTH = 2048
 };
 
-vm_stack_value vm_stack[MAX_VM_STACK_LENGTH];
-vm_stack_value *last_vm_stack_value = vm_stack;
+vm_value vm_stack[MAX_VM_STACK_LENGTH];
+vm_value *last_vm_stack_value = vm_stack;
 
-vm_stack_value *enter_vm_stack_scope(void)
+vm_value *enter_vm_stack_scope(void)
 {
-    vm_stack_value *marker = last_vm_stack_value;
+    vm_value *marker = last_vm_stack_value;
     return marker;
 }
 
-void leave_vm_stack_scope(vm_stack_value *marker)
+void leave_vm_stack_scope(vm_value *marker)
 {
     assert(marker >= vm_stack);
     assert(marker <= last_vm_stack_value);
-    for (vm_stack_value *val_to_clean = marker + 1; // samego markera nie czyścimy
+    for (vm_value *val_to_clean = marker + 1; // samego markera nie czyścimy
         val_to_clean <= last_vm_stack_value;
         val_to_clean++)
     {
-        *val_to_clean = (vm_stack_value){0};
+        *val_to_clean = (vm_value){0};
     }
     last_vm_stack_value = marker;
 }
 
-vm_value *define_identifier_on_stack(const char *name)
-{    
-    assert_is_interned(name);
+vm_value *push_identifier_on_stack(const char *name, type *type)
+{
+    if (name) 
+    { 
+        assert_is_interned(name); 
+    };
+
     vm_value *result = null;
     int64_t stack_size = last_vm_stack_value - vm_stack;
     if (stack_size + 1 < MAX_VM_STACK_LENGTH)
     {        
         last_vm_stack_value++;
         last_vm_stack_value->name = name;
-        result = &last_vm_stack_value->val;
+        last_vm_stack_value->type = type;
+        result = last_vm_stack_value;
     }
     else
     {
@@ -114,57 +115,59 @@ vm_value *define_identifier_on_stack(const char *name)
 // tutaj trzeba będzie jeszcze uwzględnić zmienne globalne
 vm_value *get_vm_variable(const char *name)
 {
+    assert(name);
     assert_is_interned(name); 
+
     if (vm_stack != last_vm_stack_value)
     {
         // pierwsza wartość to zawsze null ze względu na to jak działa define_identifier_on_stack
         // nieeleganckie, pomyśleć nad tym
-        for (vm_stack_value *var = vm_stack + 1;
+        for (vm_value *var = vm_stack + 1;
             var <= last_vm_stack_value;
             var++)
         {
-            assert(var->name);
-            assert(var->val.type);
+            assert(var->type);
             if (var->name == name)
             {
-                return &var->val;
+                return var;
             }
         }
     }
+
     fatal("no variable with name '%s' on the stack", name);
     return null;
 }
 
-vm_value eval_expression(expr *exp)
+vm_value *eval_expression(expr *exp)
 {
-    vm_value result = {0};
-    assert(exp->resolved_type);
-    result.type = exp->resolved_type;
-
     assert(exp);
+    assert(exp->resolved_type);
+    
+    vm_value *result = push_identifier_on_stack(null, exp->resolved_type);
+
     switch (exp->kind)
     {
         case EXPR_INT:
         {    
             // działa niezależnie od konkretnego typu
-            result.long_value = exp->number_value;
+            result->ulong_value = exp->number_value;
         }
         break;
         case EXPR_FLOAT:
         {
             // czy to jest dobrze?
-            result.float_value = exp->number_value;
+            result->float_value = exp->number_value;
         }
         break;
         case EXPR_CHAR:
         case EXPR_STRING:
         {
-            result.ptr_value = exp->string_value;
+            result->ptr_value = exp->string_value;
         }
         break;
         case EXPR_NULL:
         {
-            result.ptr_value = null;
+            result->ptr_value = null;
         }
         break;
         case EXPR_BOOL:
@@ -176,36 +179,40 @@ vm_value eval_expression(expr *exp)
         case EXPR_NAME:
         {
             assert_is_interned(exp->name);
-            result = *get_vm_variable(exp->name);
+            result = get_vm_variable(exp->name);
+            assert(result);
+
+            debug_vm_print(exp->pos, "read var '%s' from stack, value %lld", 
+                result->name, result->ulong_value);
         }
         break;
         case EXPR_UNARY:
         {
-            vm_value operand = eval_expression(exp->unary.operand);
+            vm_value *operand = eval_expression(exp->unary.operand);
 
             // co z innymi typami? np. float, ptr, ulong itd.
 
-            result.long_value = eval_int_unary_op(exp->unary.operator, operand.long_value);
+            result->ulong_value = eval_int_unary_op(exp->unary.operator, operand->ulong_value);
 
-            debug_vm_print(exp->pos, "operation %s, result %lld", get_token_kind_name(exp->unary.operator), result.long_value);
+            debug_vm_print(exp->pos, "operation %s, result %lld", get_token_kind_name(exp->unary.operator), result->ulong_value);
         }
         break;
         case EXPR_BINARY:
         {
-            vm_value left = eval_expression(exp->binary.left);
-            vm_value right = eval_expression(exp->binary.right);
+            vm_value *left = eval_expression(exp->binary.left);
+            vm_value *right = eval_expression(exp->binary.right);
 
             // co z innymi typami? np. float, ptr, ulong itd.
 
-            result.long_value = eval_int_binary_op(exp->binary.operator, left.long_value, right.long_value);
+            result->ulong_value = eval_int_binary_op(exp->binary.operator, left->ulong_value, right->ulong_value);
 
-            debug_vm_print(exp->pos, "operation %s, result %lld", get_token_kind_name(exp->binary.operator), result.long_value);
+            debug_vm_print(exp->pos, "operation %s, result %lld", get_token_kind_name(exp->binary.operator), result->ulong_value);
         }
         break;
         case EXPR_TERNARY:
         {
-            vm_value val = eval_expression(exp->ternary.condition);
-            if (val.uint_value != 0)
+            vm_value *val = eval_expression(exp->ternary.condition);
+            if (val->uint_value != 0)
             {
                 result = eval_expression(exp->ternary.if_true);
             }
@@ -271,7 +278,7 @@ void eval_statement(stmt *st);
 
 void eval_statement_block(stmt_block block)
 {
-    vm_stack_value *marker = enter_vm_stack_scope();
+    vm_value *marker = enter_vm_stack_scope();
     for (size_t i = 0; i < block.stmts_count; i++)
     {
         debug_breakpoint;
@@ -280,7 +287,12 @@ void eval_statement_block(stmt_block block)
     leave_vm_stack_scope(marker);
 }
 
-#define copy_val(addr, val) (*(vm_value *)(addr) = (val))
+void copy_vm_val(vm_value *dest, vm_value *val)
+{
+    assert(compare_types(dest->type, val->type));
+    // do poprawienia
+    dest->ulong_value = val->ulong_value;
+}
 
 void eval_statement(stmt *st)
 {
@@ -317,17 +329,17 @@ void eval_statement(stmt *st)
             {
                 assert(dec->type);
                 //size_t size = get_type_size(dec->type);
-                address memory_addr = define_identifier_on_stack(dec->name);
-                assert(memory_addr);
 
-                vm_value val = eval_expression(dec->variable.expr);
+                vm_value *new_value = eval_expression(dec->variable.expr);
+                assert(new_value);
+                assert(compare_types(new_value->type, dec->type));
+                new_value->name = dec->name;
+
                 // na razie bez structów na stacku
-                assert(val.type->kind != TYPE_STRUCT);
-                assert(val.type->kind != TYPE_UNION);
-                
-                copy_val(memory_addr, val);
-
-                debug_vm_print(dec->pos, "declaration of %s, init value %lld", dec->name, val.long_value);
+                assert(new_value->type->kind != TYPE_STRUCT);
+                assert(new_value->type->kind != TYPE_UNION);
+                                
+                debug_vm_print(dec->pos, "declaration of %s, init value %lld", dec->name, new_value->ulong_value);
             }
             else
             {
@@ -357,25 +369,24 @@ void eval_statement(stmt *st)
         break;
         case STMT_ASSIGN:
         {   
-            vm_value new_val = { 0 };
             assert(is_assign_operation(st->assign.operation));
-            new_val = eval_expression(st->assign.value_expr);
+            
+            vm_value *new_val = eval_expression(st->assign.value_expr);
+            vm_value *old_val = eval_expression(st->assign.assigned_var_expr);
+
             if (st->assign.operation != TOKEN_ASSIGN)
             {                
-                new_val = eval_expression(st->assign.value_expr);
-                vm_value old_val = eval_expression(st->assign.assigned_var_expr);
-
                 token_kind op = get_assignment_operation_token(st->assign.operation);
-
-                new_val.long_value = eval_int_binary_op(op, old_val.long_value, new_val.long_value);
+                new_val->ulong_value = eval_int_binary_op(op, old_val->ulong_value, new_val->ulong_value);
 
                 debug_vm_print(st->assign.assigned_var_expr->pos, 
-                    "operation %s for assignment, result %lld", get_token_kind_name(op), new_val.long_value);
+                    "operation %s for assignment, result %lld", get_token_kind_name(op), new_val->ulong_value);
             }
 
-            // a co, jesli tu będzie jakieś expr typu array[10]->member.other_member?
-            //get_vm_variable(st.a)
-            //copy_val
+            copy_vm_val(old_val, new_val);
+
+            debug_vm_print(st->assign.assigned_var_expr->pos,
+                "copied value %d to variable %s", new_val->ulong_value, old_val->name);
         }
         break;
         case STMT_SWITCH:
@@ -410,21 +421,13 @@ void eval_global_declarations(symbol **syms)
         switch (sym->kind)
         {
             case SYMBOL_VARIABLE:
-            {
-                size_t size = get_type_size(sym->type);
-                address memory = define_global_identifier(sym->name, size);
-                (*(uintptr_t *)memory) = sym->val;
-                assert(sizeof(sym->val) == sizeof(uintptr_t));
-            }
-            break;
             case SYMBOL_CONST:
             {
-                size_t size = get_type_size(sym->type);
-                address memory = define_global_identifier(sym->name, size);
-                (*(uintptr_t *)memory) = sym->val;
+                //size_t size = get_type_size(sym->type);
+                vm_value *global_val = define_global_identifier(sym->name, sym->val);
                 assert(sizeof(sym->val) == sizeof(uintptr_t));
             }
-            break;
+            break;           
         }
     }
 }
@@ -436,21 +439,11 @@ void eval_symbol(symbol *sym)
     switch (sym->kind)
     {      
         case SYMBOL_VARIABLE:
-        {
-            size_t size = get_type_size(sym->type);
-            address memory = define_global_identifier(sym->name, size);
-            (*(uintptr_t *)memory) = sym->val;
-            assert(sizeof(sym->val) == sizeof(uintptr_t));
-        }
-        break;
         case SYMBOL_CONST:
         {
-            size_t size = get_type_size(sym->type);
-            address memory = define_global_identifier(sym->name, size);
-            (*(uintptr_t *)memory) = sym->val;
-            assert(sizeof(sym->val) == sizeof(uintptr_t));
+            // obsłużone w eval_global_declarations          
         }
-        break;
+        break;   
         case SYMBOL_FUNCTION:
         {
             eval_statement_block(sym->decl->function.stmts);
