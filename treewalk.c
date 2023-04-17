@@ -539,7 +539,18 @@ vm_value *eval_expression(expr *exp)
         break;
         case EXPR_CALL:
         {
-            fatal("unimplemented");
+            if (exp->call.resolved_function->name == str_intern("printf"))
+            {
+                assert(exp->call.args_num >= 2);
+                char *format = exp->call.args[0]->string_value;
+
+                vm_value *val = eval_expression(exp->call.args[1]);
+                debug_vm_print(exp->pos, format, debug_print_vm_value(val));                
+            }
+            else
+            {
+                fatal("unimplemented");
+            }
         }
         break;
         case EXPR_FIELD:
