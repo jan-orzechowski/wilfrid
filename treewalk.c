@@ -207,13 +207,13 @@ vm_value *eval_expression(expr *exp)
         case EXPR_INT:
         {    
             // działa niezależnie od konkretnego typu
-            result->ulong_value = exp->number_value;
+            result->ulong_value = exp->integer_value;
         }
         break;
         case EXPR_FLOAT:
         {
             // czy to jest dobrze?
-            result->float_value = exp->number_value;
+            result->float_value = exp->float_value;
         }
         break;
         case EXPR_CHAR:

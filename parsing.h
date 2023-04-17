@@ -187,7 +187,8 @@ struct expr
     source_pos pos;
     union
     {
-        long number_value;
+        uint64_t integer_value;
+        double float_value;
         bool bool_value;
         const char *name;
         const char *string_value;

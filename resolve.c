@@ -1200,7 +1200,14 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
         {
             result = get_resolved_rvalue_expr(type_int);
             result->is_const = true;
-            result->val = e->number_value;
+            result->val = e->integer_value;
+        }
+        break;
+        case EXPR_FLOAT:
+        {
+            result = get_resolved_rvalue_expr(type_float);
+            result->is_const = true;
+            result->val = e->integer_value;
         }
         break;
         case EXPR_STRING:

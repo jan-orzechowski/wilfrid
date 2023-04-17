@@ -37,7 +37,7 @@ bool lex_next_token(void)
                     stream++;
                 }
                 tok.kind = TOKEN_INT;
-                tok.val = val;
+                tok.uint_val = val;
                 break;
             }           
         } 
@@ -45,16 +45,36 @@ bool lex_next_token(void)
         case '1': case '2': case '3': case '4': case '5':
         case '6': case '7': case '8': case '9':
         {
-            long val = 0;
+            uint64_t val = 0;
             while (isdigit(*stream))
             {
-                int digit = char_to_digit[(unsigned char)*stream];
+                uint8_t digit = char_to_digit[(uint8_t)*stream];
                 val *= 10;
                 val += digit;
                 stream++;
             }
-            tok.kind = TOKEN_INT;
-            tok.val = val;
+
+            if (*stream == '.')
+            {
+                stream++;
+                double float_val = (double)val;
+                size_t decimal_place = 0;
+                while (isdigit(*stream))
+                {
+                    decimal_place++;
+                    double digit = (double)char_to_digit[(uint8_t)*stream];
+                    digit /= pow(10, decimal_place);
+                    float_val += digit;
+                    stream++;
+                }
+                tok.kind = TOKEN_FLOAT;
+                tok.float_val = float_val;
+            }
+            else
+            {
+                tok.kind = TOKEN_INT;
+                tok.uint_val = val;
+            }          
         }
         break;
         case 'a': case 'b': case 'c': case 'd': case 'e': case 'f':

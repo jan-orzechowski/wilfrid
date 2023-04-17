@@ -550,12 +550,12 @@ void gen_expr(expr *e)
     {
         case EXPR_INT:
         {
-            gen_printf("%lld", e->number_value);
+            gen_printf("%lld", e->integer_value);
         }
         break;
         case EXPR_FLOAT:
         {
-            gen_printf("%f", e->number_value);
+            gen_printf("%ff", e->float_value);
         }
         break;
         case EXPR_STRING:

@@ -470,31 +470,31 @@ void common_includes_test(void)
 
     assert(token_list->length == 0);
 
-    ___list_add___(token_list, ((token){.kind = TOKEN_NAME, .val = 666 }), token);
+    ___list_add___(token_list, ((token){.kind = TOKEN_NAME, .uint_val = 666 }), token);
 
     assert(token_list->length == 1);
 
     assert(((token *)(token_list->buffer))[0].kind == TOKEN_NAME);
-    assert(((token *)(token_list->buffer))[0].val == 666);
+    assert(((token *)(token_list->buffer))[0].uint_val == 666);
 
-    ((token *)(token_list->buffer))[0].val = 667;
+    ((token *)(token_list->buffer))[0].uint_val = 667;
 
-    assert(((token *)(token_list->buffer))[0].val == 667);
+    assert(((token *)(token_list->buffer))[0].uint_val == 667);
 
-    ((token *)(token_list->buffer))[0] = (token){ .kind = TOKEN_ASSIGN, .val = 668 };
+    ((token *)(token_list->buffer))[0] = (token){ .kind = TOKEN_ASSIGN, .uint_val = 668 };
 
     assert(((token *)(token_list->buffer))[0].kind == TOKEN_ASSIGN);
-    assert(((token *)(token_list->buffer))[0].val == 668);
+    assert(((token *)(token_list->buffer))[0].uint_val == 668);
 
-    ___list_add___(token_list, ((token){.kind = TOKEN_MUL, .val = 669 }), token);
+    ___list_add___(token_list, ((token){.kind = TOKEN_MUL, .uint_val = 669 }), token);
 
     assert(((token *)(token_list->buffer))[1].kind == TOKEN_MUL);
-    assert(((token *)(token_list->buffer))[1].val == 669);
+    assert(((token *)(token_list->buffer))[1].uint_val == 669);
 
     ___list_remove_at___(token_list, sizeof(token), 1);
 
     assert(((token *)(token_list->buffer))[1].kind == 0);
-    assert(((token *)(token_list->buffer))[1].val == 0);
+    assert(((token *)(token_list->buffer))[1].uint_val == 0);
 
     ___list_free___(token_list);
 }

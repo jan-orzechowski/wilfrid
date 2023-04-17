@@ -83,11 +83,20 @@ bool is_comparison_operation(token_kind kind)
     return result;
 }
 
-expr *push_int_expr(source_pos pos, int value)
+expr *push_int_expr(source_pos pos, int64_t value)
 {
     expr *result = push_struct(arena, expr);
     result->kind = EXPR_INT;
-    result->number_value = value;
+    result->integer_value = value;
+    result->pos = pos;
+    return result;
+}
+
+expr *push_float_expr(source_pos pos, double value)
+{
+    expr *result = push_struct(arena, expr);
+    result->kind = EXPR_FLOAT;
+    result->float_value = value;
     result->pos = pos;
     return result;
 }
@@ -398,12 +407,17 @@ expr *parse_base_expr(void)
     expr *result = null;
     if (is_token_kind(TOKEN_INT))
     {
-        result = push_int_expr(tok.pos, tok.val);
+        result = push_int_expr(tok.pos, tok.uint_val);
         next_token();
     }
     else if (is_token_kind(TOKEN_NAME))
     {
         result = push_name_expr(tok.pos, tok.name);
+        next_token();
+    }
+    else if (is_token_kind(TOKEN_FLOAT))
+    {
+        result = push_float_expr(tok.pos, tok.float_val);
         next_token();
     }
     else if (is_token_kind(TOKEN_STRING))
@@ -1335,7 +1349,7 @@ enum_value parse_enum_value(void)
             if (is_token_kind(TOKEN_INT))
             {
                 result.value_set = true;
-                result.value = tok.val;
+                result.value = tok.uint_val;
                 next_token();
             }
         }

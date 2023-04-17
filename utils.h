@@ -5,6 +5,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdint.h>
+#include <math.h>
 
 #define null 0
 

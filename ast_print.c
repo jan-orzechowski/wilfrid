@@ -42,7 +42,12 @@ void ast_print_expr(expr *e)
     {
         case EXPR_INT:
         {
-            ast_printf("%d", e->number_value);
+            ast_printf("%d", e->integer_value);
+        }
+        break;
+        case EXPR_FLOAT:
+        {
+            ast_printf("%ff", e->float_value);
         }
         break;
         case EXPR_NAME:
