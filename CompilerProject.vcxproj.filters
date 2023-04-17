@@ -34,5 +34,6 @@
     <Text Include="interpreter\hashmap.txt" />
     <Text Include="test\compound_literals.txt" />
     <Text Include="test\treewalk.txt" />
+    <Text Include="test\casts.txt" />
   </ItemGroup>
 </Project>

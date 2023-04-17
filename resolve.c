@@ -106,11 +106,14 @@ bool compare_types(type *a, type *b)
     return false;
 }
 
-bool can_perform_cast(type *from_type, type *to_type)
+bool can_perform_cast(type *from_type, type *to_type, bool allow_integer_conversion)
 {
-    if (is_integer_type(from_type) && is_integer_type(to_type))
+    if (allow_integer_conversion)
     {
-        return true;
+        if (is_integer_type(from_type) && is_integer_type(to_type))
+        {
+            return true;
+        }
     }
 
     if (compare_types(from_type, to_type))
@@ -123,7 +126,7 @@ bool can_perform_cast(type *from_type, type *to_type)
         return true;
     }
 
-    if (is_integer_type(from_type))
+    if (from_type == type_ulong)
     {
         if (to_type->kind == TYPE_POINTER)
         {
@@ -131,7 +134,7 @@ bool can_perform_cast(type *from_type, type *to_type)
         }
     }
 
-    if (is_integer_type(to_type))
+    if (to_type == type_ulong)
     {
         if (from_type->kind == TYPE_POINTER)
         {
@@ -724,13 +727,44 @@ resolved_expr *resolve_expr_unary(expr *expr)
             result = get_resolved_rvalue_expr(get_pointer_type(type));
         }
         break;       
-        default:
+        case TOKEN_BITWISE_NOT:
+        case TOKEN_NOT:
         {
-            if (false == is_integer_type(type))
+            if (false == (operand->type == type_uint || operand->type == type_ulong))
             {
-                error_in_resolving(xprintf("Can only use unary %s with integers", get_token_kind_name(expr->unary.operator)), expr->pos);
+                error_in_resolving(
+                    xprintf("Bitwise operators allowed only for unsigned integers types, got %s type instead.", operand->type), expr->pos);
                 return resolved_expr_invalid;
             }
+        }
+        break;
+        case TOKEN_SUB:
+        {
+            if (false == is_numeric_type(type))
+            {
+                error_in_resolving(xprintf("Can use unary %s only with numeric types", get_token_kind_name(expr->unary.operator)), expr->pos);
+                return resolved_expr_invalid;
+            }
+
+            switch (type->kind)
+            {
+                case TYPE_UINT:
+                    return get_resolved_rvalue_expr(type_int);
+                case TYPE_ULONG:                
+                    return get_resolved_rvalue_expr(type_long);
+                default:
+                    return get_resolved_rvalue_expr(type);
+            }
+        }
+        break;
+        default:
+        {
+            if (false == is_numeric_type(type))
+            {
+                error_in_resolving(xprintf("Can use unary %s only with numeric types", get_token_kind_name(expr->unary.operator)), expr->pos);
+                return resolved_expr_invalid;
+            }
+
             if (operand->is_const)
             {
                 int64_t value = eval_long_unary_op(expr->unary.operator, operand->val);
@@ -753,28 +787,50 @@ resolved_expr *resolve_expr_binary(expr *expr)
     assert(expr->kind == EXPR_BINARY);
     resolved_expr *left = resolve_expr(expr->binary.left);
     resolved_expr *right = resolve_expr(expr->binary.right);
-
-    if (expr->binary.operator == TOKEN_ADD
-        || expr->binary.operator == TOKEN_SUB)
-    {
-        if ((is_integer_type(left->type) 
-                || left->type->kind == TYPE_POINTER || left->type->kind == TYPE_FLOAT)
-            && (is_integer_type(right->type) 
-                || right->type->kind == TYPE_POINTER || right->type->kind == TYPE_FLOAT))
-        {
-            // ok
-        }
-        else
-        {
-            error_in_resolving("Operands of +- must be both ints, floats or pointers", expr->pos);
-            return resolved_expr_invalid;
-        }
-    }
-
+    
     if (left == null || right == null)
     {
         return resolved_expr_invalid;
     }
+
+    if (false == can_perform_cast(right->type, left->type, false))
+    {
+        error_in_resolving(
+            xprintf(
+                "Types mismatch in a %s expression: %s and %s. A manual cast is required.",
+                get_token_kind_name(expr->binary.operator),
+                pretty_print_type_name(right->type, false),
+                pretty_print_type_name(left->type, false)),
+            expr->pos);
+        return resolved_expr_invalid;
+    }
+
+    switch (expr->binary.operator)
+    {
+        case TOKEN_MOD:
+        {
+            if (false == is_integer_type(left->type))
+            {
+                error_in_resolving(
+                    xprintf("Modulus operator is allowed only for integer types, got %s type.", left->type), expr->pos);
+                return resolved_expr_invalid;
+            }
+        }
+        case TOKEN_BITWISE_AND:
+        case TOKEN_BITWISE_OR:
+        case TOKEN_LEFT_SHIFT: 
+        case TOKEN_RIGHT_SHIFT: 
+        case TOKEN_XOR:
+        {
+            if (false == (left->type == type_uint || left->type == type_ulong))
+            {
+                error_in_resolving(
+                    xprintf("Bitwise operators allowed only for unsigned integers types, got %s type instead.", left->type), expr->pos);
+                return resolved_expr_invalid;
+            }
+        }
+        break;
+    };
 
     if (left->is_const && right->is_const)
     {   
@@ -872,7 +928,7 @@ resolved_expr *resolve_compound_expr(expr *e, type *expected_type, bool ignore_e
                 return null;
             }
 
-            if (false == can_perform_cast(init_expr->type, expected_type))
+            if (false == can_perform_cast(init_expr->type, expected_type, true))
             {                
                 error_in_resolving(
                     xprintf(
@@ -953,7 +1009,7 @@ resolved_expr *resolve_special_case_methods(expr *e)
                 type *list_element_type = list_type->list.base_type;
                 type *new_element_type = resolve_expr(e->call.args[0])->type;
 
-                if (false == can_perform_cast(list_element_type, new_element_type))
+                if (false == can_perform_cast(new_element_type, list_element_type, true))
                 {
                     error_in_resolving(
                         xprintf("Cannot add %d element to a list of %d",
@@ -1413,7 +1469,7 @@ type *resolve_variable_decl(decl *d)
         // musimy sprawdzić, czy się zgadzają
         if (declared_type && declared_type->kind != TYPE_NONE)
         {
-            if (false == can_perform_cast(expr->type, declared_type))
+            if (false == can_perform_cast(expr->type, declared_type, true))
             {
                 error_in_resolving(
                     xprintf(
@@ -1607,7 +1663,7 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
                     error_in_resolving("Could not resolve return statement", st->pos);
                     return;
                 }
-                if (result && false == can_perform_cast(result->type, opt_ret_type))
+                if (result && false == can_perform_cast(result->type, opt_ret_type, false))
                 {                    
                     error_in_resolving(
                         xprintf("Return type mismatch. Got %s, expected %s",
@@ -1687,11 +1743,18 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
             {
                 assert(st->decl_stmt.decl->kind == DECL_VARIABLE);
                 type *t = resolve_variable_decl(st->decl_stmt.decl);
-                assert(t); // jeśli resolve się nie uda przydałby się błąd
+                
+                if (t == null)
+                {
+                    // jeśli resolve się nie udało, błąd został rzucony już wcześniej
+                    return;
+                }
+
                 if (check_if_symbol_name_unused(st->decl_stmt.decl->name, st->pos))
                 {
                     push_local_symbol(st->decl_stmt.decl->name, t);
                 }
+                
                 st->decl_stmt.decl->type = t;
             }
             else
@@ -1729,7 +1792,7 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
                             return;
                         }
                     }
-                    else if (false == can_perform_cast(right->type, left->type))
+                    else if (false == can_perform_cast(right->type, left->type, true))
                     {
                         error_in_resolving(
                             xprintf("Types do not match in assignment. Trying to assign %s to %s",

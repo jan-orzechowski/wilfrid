@@ -19,8 +19,9 @@ typedef enum type_kind
     FIRST_INTEGER_TYPE = TYPE_INT,
     LAST_FIRST_INTEGER_TYPE = TYPE_ULONG,
 
-    TYPE_CHAR,
     TYPE_FLOAT,
+    
+    TYPE_CHAR,
     TYPE_BOOL,
     TYPE_NULL,
     TYPE_STRUCT,
@@ -89,6 +90,12 @@ struct type
 bool is_integer_type(type *t)
 {
     bool result = (t != null && (t->kind >= FIRST_INTEGER_TYPE && t->kind <= LAST_FIRST_INTEGER_TYPE));
+    return result;
+}
+
+bool is_numeric_type(type *t)
+{
+    bool result = (t != null && (is_integer_type(t) || t->kind == TYPE_FLOAT));
     return result;
 }
 

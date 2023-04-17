@@ -1,0 +1,17 @@
+fn main ()
+{
+    let x : float = 1.0
+    let y : float = 2.007
+
+    let z : int = -4
+    let p : uint = 3
+    let q : long = -124100531
+    let r : ulong = 124100531
+
+    let sum_qr = q + r
+    let sum_zp = z + p
+    let divide_xy = x / y
+    let divide_zy = z as float / y
+
+    let sum_all = x + y + z as float + p as float + q as float + r as float
+}
