@@ -442,6 +442,7 @@ void fuzzy_test(void)
 }
 
 #include "common_include.c"
+#pragma pack(pop)
 
 void common_includes_test(void)
 {

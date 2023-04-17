@@ -1,4 +1,4 @@
-﻿#pragma pack(1)
+﻿#pragma pack(push, 1)
 
 //#include <stddef.h>
 #include <stdlib.h> // calloc, realloc
