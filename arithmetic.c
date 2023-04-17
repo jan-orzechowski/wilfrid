@@ -6,6 +6,8 @@
         case TOKEN_SUB:         return -val;
         case TOKEN_NOT:         return !val;
         case TOKEN_BITWISE_NOT: return ~val;
+        case TOKEN_INC:         return ++val;
+        case TOKEN_DEC:         return --val;
         default: fatal("operation not implemented"); return 0;
     }
 }
@@ -44,6 +46,8 @@ uint64_t eval_ulong_unary_op(token_kind op, uint64_t val)
         case TOKEN_SUB:         return val; // tutaj jest różnica z signed types
         case TOKEN_NOT:         return !val;
         case TOKEN_BITWISE_NOT: return ~val;
+        case TOKEN_INC:         return ++val;
+        case TOKEN_DEC:         return --val;
         default: fatal("operation not implemented"); return 0;
     }
 }
@@ -81,6 +85,8 @@ float eval_float_unary_op(token_kind op, float val)
         case TOKEN_ADD:         return +val;
         case TOKEN_SUB:         return -val;
         case TOKEN_NOT:         return !val;
+        case TOKEN_INC:         return ++val;
+        case TOKEN_DEC:         return --val;
         case TOKEN_BITWISE_NOT: fatal("illegal op"); return 0;
         default: fatal("operation not implemented"); return 0;
     }

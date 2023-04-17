@@ -757,6 +757,20 @@ resolved_expr *resolve_expr_unary(expr *expr)
             }
         }
         break;
+        case TOKEN_INC:
+        case TOKEN_DEC:
+        {            
+            if (type->kind != TYPE_POINTER && false == is_integer_type(type))
+            {
+                error_in_resolving("Increment and decrement expressions only allowed for pointer and integer types.", expr->pos);
+                return resolved_expr_invalid;
+            }
+            else
+            {
+                result = get_resolved_rvalue_expr(type);
+            }
+        }
+        break;
         default:
         {
             if (false == is_numeric_type(type))
@@ -1803,15 +1817,7 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
             {
                 error_in_resolving("Cannot assign to non-lvalue", st->pos);
                 return;
-            }
-
-            if (st->assign.operation == TOKEN_INC || st->assign.operation == TOKEN_DEC)
-            {
-                if (left->type->kind != TYPE_POINTER && false == is_integer_type(left->type))
-                {
-                    error_in_resolving("Increment and decrement statements only allowed for pointer and integer types.", st->pos);
-                }
-            }
+            }            
         }
         break; 
         case STMT_EXPR:

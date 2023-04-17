@@ -500,8 +500,6 @@ void parse_function_call_arguments(expr *e)
     assert(e->kind == EXPR_CALL);
     while (false == is_token_kind(TOKEN_RIGHT_PAREN))
     {
-        // tutaj może się nie udawać sparsować argumentu w nieskończoność
-
         expr *arg = parse_expr();
         if (arg)
         {
@@ -630,6 +628,17 @@ expr *parse_unary_expr(void)
             // tutaj musimy mieć "greedy parsing" w prawo
             // np. &a[10] to adres 10. elementu, a nie 10 element w tabeli adresów
             e = push_unary_expr(pos, TOKEN_BITWISE_AND, parse_unary_expr());
+        }
+    }
+    else
+    {
+        if (match_token_kind(TOKEN_INC))
+        {
+            e = push_unary_expr(pos, TOKEN_INC, e);
+        }
+        else if (match_token_kind(TOKEN_DEC))
+        {
+            e = push_unary_expr(pos, TOKEN_DEC, e);
         }
     }
     return e;
@@ -816,17 +825,6 @@ stmt *parse_simple_statement(void)
         s->kind = STMT_ASSIGN;
         s->assign.operation = op;
         s->assign.value_expr = e;
-        s->assign.assigned_var_expr = left_expr;
-    }
-    else if (is_token_kind(TOKEN_INC) || is_token_kind(TOKEN_DEC))
-    {
-        token_kind op = tok.kind;
-        next_token();
-
-        s = push_struct(arena, stmt);
-        s->kind = STMT_ASSIGN;
-        s->assign.operation = op;
-        s->assign.value_expr = 0;
         s->assign.assigned_var_expr = left_expr;
     }
     else 
