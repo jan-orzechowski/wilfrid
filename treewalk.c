@@ -202,7 +202,9 @@ void eval_unary_op(vm_value *dest, token_kind operation, vm_value *operand)
     {
         dest->int_value = (int32_t)eval_long_unary_op(operation, operand->int_value);
     }
-    else if (operand->type == type_uint)
+    else if (operand->type == type_uint
+        || operand->type == type_bool
+        || operand->type == type_char)
     {
         dest->uint_value = (uint32_t)eval_ulong_unary_op(operation, operand->uint_value);
     }
@@ -231,7 +233,9 @@ void eval_binary_op(vm_value *dest, token_kind op, vm_value *left, vm_value *rig
     {
         dest->int_value = (int32_t)eval_long_binary_op(op, left->int_value, right->int_value);
     }
-    else if (left->type == type_uint)
+    else if (left->type == type_uint 
+        || left->type == type_bool 
+        || left->type == type_char)
     {
         dest->uint_value = (uint32_t)eval_ulong_binary_op(op, left->uint_value, right->uint_value);
     }
@@ -489,7 +493,14 @@ vm_value *eval_expression(expr *exp)
         break;
         case EXPR_BOOL:
         {
-            fatal("unimplemented");
+            if (exp->bool_value)
+            {
+                result->ulong_value = 1;
+            }
+            else
+            {
+                result->ulong_value = 0;
+            }
         }
         break;
 
@@ -507,7 +518,15 @@ vm_value *eval_expression(expr *exp)
         {
             vm_value *operand = eval_expression(exp->unary.operand);
 
-            eval_unary_op(result, exp->unary.operator, operand);
+            if (exp->unary.operator == TOKEN_INC || exp->unary.operator == TOKEN_DEC)
+            {
+                // te operatory zmieniają wartość, do której się odnosiły
+                eval_unary_op(operand, exp->unary.operator, operand);
+            }
+            else
+            {
+                eval_unary_op(result, exp->unary.operator, operand);
+            }
 
             debug_vm_print(exp->pos, "operation %s, result %s", 
                 get_token_kind_name(exp->unary.operator), debug_print_vm_value(result));
@@ -601,23 +620,36 @@ vm_value *eval_expression(expr *exp)
     return result;
 }
 
+bool break_loop = false;
+bool continue_loop = false;
+
 void eval_statement(stmt *st);
 
 void eval_statement_block(stmt_block block)
 {
-    vm_value *marker = enter_vm_stack_scope();
-    for (size_t i = 0; i < block.stmts_count; i++)
+    if (block.stmts_count > 0)
     {
-        debug_breakpoint;
-        eval_statement(block.stmts[i]);
+        debug_vm_print(block.stmts[0]->pos, "BLOCK SCOPE - start");
+        
+        vm_value *marker = enter_vm_stack_scope();
+        for (size_t i = 0; i < block.stmts_count; i++)
+        {
+            eval_statement(block.stmts[i]);
+
+            if (continue_loop || break_loop)
+            {
+                break;
+            }
+        }
+        leave_vm_stack_scope(marker);
+        
+        debug_vm_print(block.stmts[block.stmts_count - 1]->pos, "BLOCK SCOPE - end");
     }
-    leave_vm_stack_scope(marker);
 }
 
 void copy_vm_val(vm_value *dest, vm_value *val)
 {
     assert(compare_types(dest->type, val->type));
-    // do poprawienia
     dest->ulong_value = val->ulong_value;
 }
 
@@ -638,12 +670,13 @@ void eval_statement(stmt *st)
         break;
         case STMT_BREAK:
         {
-            fatal("unimplemented");
+            break_loop = true;
+            return;
         }
         break;
         case STMT_CONTINUE:
         {
-            fatal("unimplemented");
+            continue_loop = true;
         }
         break;
         case STMT_DECL:
@@ -677,22 +710,125 @@ void eval_statement(stmt *st)
         break;
         case STMT_IF_ELSE:
         {
-            fatal("unimplemented");
+            vm_value *branch = eval_expression(st->if_else.cond_expr);
+            debug_vm_print(st->pos, "IF - condition evaluated as: %s", debug_print_vm_value(branch));
+            if (branch && branch->ulong_value)
+            {
+                debug_vm_print(st->pos, "IF - then block start");
+                eval_statement_block(st->if_else.then_block);
+                debug_vm_print(st->pos, "IF - then block end");
+            }
+            else
+            {
+                if (st->if_else.else_stmt)
+                {
+                    debug_vm_print(st->pos, "IF - else stmt start");
+                    eval_statement(st->if_else.else_stmt);
+                    debug_vm_print(st->pos, "IF - else stmt end");
+                }
+            }
         }
         break;
         case STMT_WHILE:
         {
-            fatal("unimplemented");
+            debug_vm_print(st->pos, "WHILE - start");
+
+            vm_value *marker = enter_vm_stack_scope();
+            vm_value *loop = eval_expression(st->while_stmt.cond_expr);
+            debug_vm_print(st->pos, "WHILE - condition evaluated as: %s", debug_print_vm_value(loop));
+            while (loop && loop->ulong_value)
+            {
+                eval_statement_block(st->while_stmt.stmts);
+
+                if (continue_loop)
+                {
+                    debug_vm_print(st->pos, "WHILE - continue");
+                    continue_loop = false;
+                }
+
+                if (break_loop)
+                {
+                    debug_vm_print(st->pos, "WHILE - break");
+                    break_loop = false;
+                    break;
+                }
+
+                loop = eval_expression(st->while_stmt.cond_expr);
+
+                debug_vm_print(st->pos, "WHILE - condition evaluated as: %s", debug_print_vm_value(loop));
+            }
+            leave_vm_stack_scope(marker);
+
+            debug_vm_print(st->pos, "WHILE - end");
         }
         break;
         case STMT_DO_WHILE:
         {
-            fatal("unimplemented");
+            debug_vm_print(st->pos, "DO WHILE - start");
+
+            vm_value *marker = enter_vm_stack_scope();
+            vm_value *loop = null;
+            do
+            {                
+                eval_statement_block(st->do_while_stmt.stmts);
+
+                if (continue_loop)
+                {
+                    debug_vm_print(st->pos, "DO WHILE - continue");
+                    continue_loop = false;
+                }
+
+                if (break_loop)
+                {
+                    debug_vm_print(st->pos, "DO WHILE - break");
+                    break_loop = false;
+                    break;
+                }
+
+                loop = eval_expression(st->do_while_stmt.cond_expr);
+
+                debug_vm_print(st->pos, "DO WHILE - condition evaluated as: %s", debug_print_vm_value(loop));
+            }
+            while (loop && loop->ulong_value);
+            leave_vm_stack_scope(marker);
+
+            debug_vm_print(st->pos, "DO WHILE - end");
         }
         break;
         case STMT_FOR:
         {
-            fatal("unimplemented");
+            debug_vm_print(st->pos, "FOR - start");
+
+            eval_statement(st->for_stmt.init_stmt);
+
+            vm_value *marker = enter_vm_stack_scope();
+            vm_value *loop = eval_expression(st->for_stmt.cond_expr);
+            debug_vm_print(st->pos, "FOR - condition evaluated as: %s", debug_print_vm_value(loop));
+            while (loop && loop->ulong_value)
+            {
+                eval_statement_block(st->for_stmt.stmts);
+
+                if (continue_loop)
+                {
+                    debug_vm_print(st->pos, "FOR - continue");
+                    continue_loop = false;
+                }
+
+                if (break_loop)
+                {
+                    debug_vm_print(st->pos, "FOR - break");
+                    break_loop = false;
+                    break;
+                }
+
+                eval_statement(st->for_stmt.next_stmt);
+                loop = eval_expression(st->for_stmt.cond_expr);
+
+                debug_vm_print(st->pos, "FOR - condition evaluated as: %s", debug_print_vm_value(loop));
+            }
+            leave_vm_stack_scope(marker);          
+
+            debug_vm_print(st->pos, "FOR - end");
         }
         break;
         case STMT_ASSIGN:
@@ -701,7 +837,7 @@ void eval_statement(stmt *st)
             
             vm_value *new_val = eval_expression(st->assign.value_expr);
             vm_value *old_val = eval_expression(st->assign.assigned_var_expr);
-
+            
             if (st->assign.operation != TOKEN_ASSIGN)
             {
                 token_kind op = get_assignment_operation_token(st->assign.operation);
@@ -724,12 +860,14 @@ void eval_statement(stmt *st)
         break;
         case STMT_EXPR:
         {
-            fatal("unimplemented");
+            vm_value *result = eval_expression(st->expr);
+            debug_vm_print(st->assign.assigned_var_expr->pos, "expression as statement, result %s",
+                debug_print_vm_value(result));
         }
         break;
         case STMT_BLOCK:
         {
-            fatal("unimplemented");
+            eval_statement_block(st->block);
         }
         break;
         case STMT_DELETE:
@@ -797,12 +935,18 @@ void treewalk_interpreter_test(void)
 #endif
 
     decl **all_declarations = null;
-    parse_file("test/casts.txt", &all_declarations);
+    parse_file("test/loops.txt", &all_declarations);
     symbol **resolved = resolve(all_declarations, true);
     assert(all_declarations);
     assert(resolved);
 
     shorten_source_pos = true;
+
+    if (buf_len(errors) > 0)
+    {
+        print_errors_to_console();
+        return;
+    }
 
     bool print_ast = true;
     if (print_ast)
@@ -829,6 +973,13 @@ void treewalk_interpreter_test(void)
 
     symbol *main = get_entry_point(resolved);
     assert(main);
+
+    if (buf_len(errors) > 0)
+    {
+        print_errors_to_console();
+        return;
+    }
+
     eval_symbol(main);
 
     shorten_source_pos = false;
