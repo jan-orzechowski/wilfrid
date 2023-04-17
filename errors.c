@@ -62,7 +62,7 @@ void print_source_pos(char **buffer, source_pos pos)
 {
     if (shorten_source_pos)
     {
-        buf_printf(*buffer, "('%s':%lld:%lld)", pos.filename, pos.line, pos.character);
+        buf_printf(*buffer, "('%s':%04lld:%02lld)", pos.filename, pos.line, pos.character);
     }
     else
     {

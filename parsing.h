@@ -160,6 +160,7 @@ typedef struct sizeof_expr
 typedef struct cast_expr
 {
     typespec *type;
+    type *resolved_type;
     expr *expr;
 } cast_expr;
 

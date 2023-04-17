@@ -18,9 +18,11 @@
 hashmap debug_names_dict;
 #define save_debug_string(str) map_put(&debug_strings, str, str);
 #define debug_vm_print(...) _vm_debug_printf(__VA_ARGS__)
+#define debug_print_vm_value(val) _debug_print_vm_value(val)
 #elif
 #define save_debug_string
 #define debug_vm_print
+#define debug_print_vm_value
 #endif
 
 typedef struct vm_value vm_value;
@@ -38,6 +40,62 @@ struct vm_value
         void *ptr_value;
     };
 };
+
+char *_debug_print_vm_value(vm_value *val)
+{
+    // tylko w celach debugowych - nigdy nie dealokujemy
+    size_t buffer_size = 20;
+    char *result = xcalloc(buffer_size * sizeof(char));
+    switch (val->type->kind)
+    {
+        case TYPE_INT:
+        {
+            snprintf(result, buffer_size, "%i", val->int_value);
+        }
+        break;
+        case TYPE_LONG:
+        {
+            snprintf(result, buffer_size, "%lld", val->long_value);
+        }
+        break;
+        case TYPE_BOOL:
+        case TYPE_NULL:
+        case TYPE_CHAR:
+        case TYPE_UINT:
+        {
+            snprintf(result, buffer_size, "%d", val->uint_value);
+        }
+        break;
+        case TYPE_ULONG:
+        {
+            snprintf(result, buffer_size, "%lld", val->ulong_value);
+        }
+        break;
+        case TYPE_POINTER:
+        {
+            snprintf(result, buffer_size, "%p", val->ptr_value);
+        }
+        break;
+        case TYPE_FLOAT:
+        {
+            snprintf(result, buffer_size, "%ff", val->float_value);
+        }
+        break;
+                   
+        case TYPE_STRUCT:
+        case TYPE_UNION:
+        case TYPE_ARRAY:
+        case TYPE_LIST:
+        case TYPE_FUNCTION:
+
+        default:
+        {
+            printf("unimplemented");
+        }
+        break;
+    }
+    return result;
+}
 
 memory_arena *vm_global_memory;
 hashmap global_identifiers;
@@ -142,11 +200,11 @@ void eval_unary_op(vm_value *dest, token_kind operation, vm_value *operand)
 {
     if (operand->type == type_int)
     {
-        dest->int_value = (int)eval_long_unary_op(operation, operand->int_value);
+        dest->int_value = (int32_t)eval_long_unary_op(operation, operand->int_value);
     }
     else if (operand->type == type_uint)
     {
-        dest->uint_value = (unsigned int)eval_ulong_unary_op(operation, operand->uint_value);
+        dest->uint_value = (uint32_t)eval_ulong_unary_op(operation, operand->uint_value);
     }
     else if (operand->type == type_long)
     {
@@ -171,11 +229,11 @@ void eval_binary_op(vm_value *dest, token_kind op, vm_value *left, vm_value *rig
     assert(compare_types(left->type, right->type));
     if (left->type == type_int)
     {
-        dest->int_value = (int)eval_long_binary_op(op, left->int_value, right->int_value);
+        dest->int_value = (int32_t)eval_long_binary_op(op, left->int_value, right->int_value);
     }
     else if (left->type == type_uint)
     {
-        dest->uint_value = (unsigned int)eval_ulong_binary_op(op, left->uint_value, right->uint_value);
+        dest->uint_value = (uint32_t)eval_ulong_binary_op(op, left->uint_value, right->uint_value);
     }
     else if (left->type == type_long)
     {
@@ -192,6 +250,208 @@ void eval_binary_op(vm_value *dest, token_kind op, vm_value *left, vm_value *rig
     else
     {
         fatal("unsupported type");
+    }
+}
+
+void perform_cast(vm_value *new_val, type_kind new_type, vm_value *old_val)
+{
+    assert(new_val);
+    assert(new_type);
+    assert(old_val);
+
+    switch (new_type)
+    {
+        case TYPE_INCOMPLETE:
+        case TYPE_COMPLETING:
+        case TYPE_NONE:
+        {
+            fatal("error");
+        }
+        break;
+
+        case TYPE_INT:
+        {
+            if (old_val->type == type_int)
+            {
+                new_val->int_value = (int32_t)old_val->int_value;
+            }
+            else if (old_val->type == type_uint)
+            {
+                new_val->int_value = (int32_t)old_val->uint_value;
+            }
+            else if (old_val->type == type_long)
+            {
+                new_val->int_value = (int32_t)old_val->long_value;
+            }
+            else if (old_val->type == type_ulong)
+            {
+                new_val->int_value = (int32_t)old_val->ulong_value;
+            }
+            else if (old_val->type == type_float)
+            {
+                new_val->int_value = (int32_t)old_val->float_value;
+            }
+            else if (old_val->type->kind == TYPE_POINTER)
+            {
+                new_val->int_value = (int32_t)old_val->ptr_value;
+            }
+        } 
+        break;
+        case TYPE_LONG:
+        {
+            if (old_val->type == type_int)
+            {
+                new_val->long_value = (int64_t)old_val->int_value;
+            }
+            else if (old_val->type == type_uint)
+            {
+                new_val->long_value = (int64_t)old_val->uint_value;
+            }
+            else if (old_val->type == type_long)
+            {
+                new_val->long_value = (int64_t)old_val->long_value;
+            }
+            else if (old_val->type == type_ulong)
+            {
+                new_val->long_value = (int64_t)old_val->ulong_value;
+            }
+            else if (old_val->type == type_float)
+            {
+                new_val->long_value = (int64_t)old_val->float_value;
+            }
+            else if (old_val->type->kind == TYPE_POINTER)
+            {
+                new_val->long_value = (int64_t)old_val->ptr_value;
+            }
+        }
+        break;
+        case TYPE_CHAR:
+        case TYPE_BOOL:
+        case TYPE_UINT:
+        {
+            if (old_val->type == type_int)
+            {
+                new_val->uint_value = (uint32_t)old_val->int_value;
+            }
+            else if (old_val->type == type_uint)
+            {
+                new_val->uint_value = (uint32_t)old_val->uint_value;
+            }
+            else if (old_val->type == type_long)
+            {
+                new_val->uint_value = (uint32_t)old_val->long_value;
+            }
+            else if (old_val->type == type_ulong)
+            {
+                new_val->uint_value = (uint32_t)old_val->ulong_value;
+            }
+            else if (old_val->type == type_float)
+            {
+                new_val->uint_value = (uint32_t)old_val->float_value;
+            }
+            else if (old_val->type->kind == TYPE_POINTER)
+            {
+                new_val->uint_value = (uint32_t)old_val->ptr_value;
+            }
+        }
+        break;
+        case TYPE_ULONG:
+        {
+            if (old_val->type == type_int)
+            {
+                new_val->ulong_value = (uint64_t)old_val->int_value;
+            }
+            else if (old_val->type == type_uint)
+            {
+                new_val->ulong_value = (uint64_t)old_val->uint_value;
+            }
+            else if (old_val->type == type_long)
+            {
+                new_val->ulong_value = (uint64_t)old_val->long_value;
+            }
+            else if (old_val->type == type_ulong)
+            {
+                new_val->ulong_value = (uint64_t)old_val->ulong_value;
+            }
+            else if (old_val->type == type_float)
+            {
+                new_val->ulong_value = (uint64_t)old_val->float_value;
+            }
+            else if (old_val->type->kind == TYPE_POINTER)
+            {
+                new_val->ulong_value = (uint64_t)old_val->ptr_value;
+            }
+        }
+        break;
+        case TYPE_FLOAT:
+        {
+            if (old_val->type == type_int)
+            {
+                new_val->float_value = (float)old_val->int_value;
+            }
+            else if (old_val->type == type_uint)
+            {
+                new_val->float_value = (float)old_val->uint_value;
+            }
+            else if (old_val->type == type_long)
+            {
+                new_val->float_value = (float)old_val->long_value;
+            }
+            else if (old_val->type == type_ulong)
+            {
+                new_val->float_value = (float)old_val->ulong_value;
+            }
+            else if (old_val->type == type_float)
+            {
+                new_val->float_value = (float)old_val->float_value;
+            }
+            else if (old_val->type->kind == TYPE_POINTER)
+            {
+                new_val->float_value = (float)(uintptr_t)old_val->ptr_value;
+            }
+        }
+        break;
+        case TYPE_POINTER:
+        {
+            if (old_val->type == type_int)
+            {
+                new_val->ptr_value = (void *)(uintptr_t)old_val->int_value;
+            }
+            else if (old_val->type == type_uint)
+            {
+                new_val->ptr_value = (void *)(uintptr_t)old_val->uint_value;
+            }
+            else if (old_val->type == type_long)
+            {
+                new_val->ptr_value = (void *)(uintptr_t)old_val->long_value;
+            }
+            else if (old_val->type == type_ulong)
+            {
+                new_val->ptr_value = (void *)(uintptr_t)old_val->ulong_value;
+            }
+            else if (old_val->type == type_float)
+            {
+                new_val->ptr_value = (void *)(uintptr_t)old_val->float_value;
+            }
+            else if (old_val->type->kind == TYPE_POINTER)
+            {
+                new_val->ptr_value = (void *)(uintptr_t)old_val->ptr_value;
+            }
+        } 
+        break; 
+
+        case TYPE_NULL: 
+        case TYPE_STRUCT:
+        case TYPE_UNION: 
+        case TYPE_ARRAY: 
+        case TYPE_LIST: 
+        case TYPE_FUNCTION: 
+        
+        default:
+        {
+            fatal("unimplemented");
+        }
+        break;
     }
 }
 
@@ -224,7 +484,7 @@ vm_value *eval_expression(expr *exp)
         break;
         case EXPR_NULL:
         {
-            result->ptr_value = null;
+            result->ptr_value = 0;
         }
         break;
         case EXPR_BOOL:
@@ -239,8 +499,8 @@ vm_value *eval_expression(expr *exp)
             result = get_vm_variable(exp->name);
             assert(result);
 
-            debug_vm_print(exp->pos, "read var '%s' from stack, value %lld", 
-                result->name, result->ulong_value);
+            debug_vm_print(exp->pos, "read var '%s' from stack, value %s", 
+                result->name, debug_print_vm_value(result));
         }
         break;
         case EXPR_UNARY:
@@ -249,7 +509,8 @@ vm_value *eval_expression(expr *exp)
 
             eval_unary_op(result, exp->unary.operator, operand);
 
-            debug_vm_print(exp->pos, "operation %s, result %lld", get_token_kind_name(exp->unary.operator), result->ulong_value);
+            debug_vm_print(exp->pos, "operation %s, result %s", 
+                get_token_kind_name(exp->unary.operator), debug_print_vm_value(result));
         }
         break;
         case EXPR_BINARY:
@@ -259,7 +520,8 @@ vm_value *eval_expression(expr *exp)
             
             eval_binary_op(result, exp->binary.operator, left, right);
 
-            debug_vm_print(exp->pos, "operation %s, result %lld", get_token_kind_name(exp->binary.operator), result->ulong_value);
+            debug_vm_print(exp->pos, "operation %s, result %s", 
+                get_token_kind_name(exp->binary.operator), debug_print_vm_value(result));
         }
         break;
         case EXPR_TERNARY:
@@ -307,7 +569,8 @@ vm_value *eval_expression(expr *exp)
         break;
         case EXPR_CAST:
         {
-            fatal("unimplemented");
+            vm_value *old_val = eval_expression(exp->cast.expr);
+            perform_cast(result, exp->cast.resolved_type->kind, old_val);
         }
         break;
         case EXPR_COMPOUND_LITERAL:
@@ -392,7 +655,8 @@ void eval_statement(stmt *st)
                 assert(new_value->type->kind != TYPE_STRUCT);
                 assert(new_value->type->kind != TYPE_UNION);
                                 
-                debug_vm_print(dec->pos, "declaration of %s, init value %lld", dec->name, new_value->ulong_value);
+                debug_vm_print(dec->pos, "declaration of %s, init value %s", 
+                    dec->name, debug_print_vm_value(new_value));
             }
             else
             {
@@ -432,14 +696,14 @@ void eval_statement(stmt *st)
                 token_kind op = get_assignment_operation_token(st->assign.operation);
                 eval_binary_op(old_val, op, old_val, new_val);
 
-                debug_vm_print(st->assign.assigned_var_expr->pos, 
-                    "operation %s for assignment, result %lld", get_token_kind_name(op), old_val->ulong_value);
+                debug_vm_print(st->assign.assigned_var_expr->pos, "operation %s for assignment, result %s",
+                    get_token_kind_name(op), debug_print_vm_value(old_val));
             }
 
             copy_vm_val(old_val, new_val);
 
-            debug_vm_print(st->assign.assigned_var_expr->pos,
-                "copied value %d to variable %s", new_val->ulong_value, old_val->name);
+            debug_vm_print(st->assign.assigned_var_expr->pos, "copied value %d to variable %s", 
+                debug_print_vm_value(new_val), debug_print_vm_value(old_val));
         }
         break;
         case STMT_SWITCH:
@@ -522,12 +786,33 @@ void treewalk_interpreter_test(void)
 #endif
 
     decl **all_declarations = null;
-    parse_file("test/treewalk.txt", &all_declarations);
+    parse_file("test/casts.txt", &all_declarations);
     symbol **resolved = resolve(all_declarations, true);
     assert(all_declarations);
     assert(resolved);
 
     shorten_source_pos = true;
+
+    bool print_ast = true;
+    if (print_ast)
+    {
+        printf("\nDeclarations in sorted order:\n");
+
+        for (symbol **it = ordered_global_symbols; it != buf_end(ordered_global_symbols); it++)
+        {
+            symbol *sym = *it;
+            if (sym->decl)
+            {
+                printf("\n%s\n", get_decl_ast(sym->decl));
+            }
+            else
+            {
+                printf("\n%s\n", sym->name);
+            }
+        }
+    }
+
+    printf("\n=== TREEWALK INTERPRETER RUN ===\n\n");
 
     eval_global_declarations(resolved);
 

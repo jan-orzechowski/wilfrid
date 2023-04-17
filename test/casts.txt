@@ -13,5 +13,5 @@ fn main ()
     let divide_xy = x / y
     let divide_zy = z as float / y
 
-    let sum_all = x + y + z as float + p as float + q as float + r as float
+    let sum_all = x + y + z as float + p as float
 }

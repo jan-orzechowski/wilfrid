@@ -1297,12 +1297,7 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
             type *t = resolve_typespec(e->cast.type);
             resolved_expr *expr = resolve_expr(e->cast.expr);
 
-            // tutaj powinniśmy sprawdzić, czy możemy dokonać castu            
-            if (expr->type->kind == TYPE_STRUCT
-                || expr->type->kind == TYPE_UNION)
-            {
-                // nie pozwalamy na to
-            }
+            e->cast.resolved_type = t;            
 
             result = get_resolved_lvalue_expr(t);
         }
