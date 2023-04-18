@@ -41,9 +41,16 @@ struct vm_value
     };
 };
 
+void copy_vm_val(vm_value *dest, vm_value *val)
+{
+    assert(compare_types(dest->type, val->type));
+    dest->ulong_value = val->ulong_value;
+}
+
 char *_debug_print_vm_value(vm_value *val)
 {
     // tylko w celach debugowych - nigdy nie dealokujemy
+    // można ew. wrzucić na listę dynamiczną i posprzątać po jakimś czasie
     size_t buffer_size = 20;
     char *result = xcalloc(buffer_size * sizeof(char));
     switch (val->type->kind)
@@ -81,7 +88,13 @@ char *_debug_print_vm_value(vm_value *val)
             snprintf(result, buffer_size, "%ff", val->float_value);
         }
         break;
-                   
+        
+        case TYPE_VOID:
+        {
+            snprintf(result, buffer_size, "VOID");
+        }
+        break;
+
         case TYPE_STRUCT:
         case TYPE_UNION:
         case TYPE_ARRAY:
@@ -90,12 +103,14 @@ char *_debug_print_vm_value(vm_value *val)
 
         default:
         {
-            printf("unimplemented");
+            fatal("unimplemented");
         }
         break;
     }
     return result;
 }
+
+void eval_function(symbol *function_sym, vm_value *ret_value);
 
 memory_arena *vm_global_memory;
 hashmap global_identifiers;
@@ -179,10 +194,12 @@ vm_value *get_vm_variable(const char *name)
     if (vm_stack != last_vm_stack_value)
     {
         // pierwsza wartość to zawsze null ze względu na to jak działa define_identifier_on_stack
-        // nieeleganckie, pomyśleć nad tym
-        for (vm_value *var = vm_stack + 1;
-            var <= last_vm_stack_value;
-            var++)
+        // ze względu na to, że w funkcji nazwa parametru może być taka sama 
+        // jak w zewnętrznym scope w którym została wezana
+        // - trzeba iść od tyłu
+        for (vm_value *var = last_vm_stack_value;
+            var > vm_stack;
+            var--)
         {
             assert(var->type);
             if (var->name == name)
@@ -558,17 +575,52 @@ vm_value *eval_expression(expr *exp)
         break;
         case EXPR_CALL:
         {
+            // specjalny przypadek na razie
             if (exp->call.resolved_function->name == str_intern("printf"))
             {
                 assert(exp->call.args_num >= 2);
                 char *format = exp->call.args[0]->string_value;
 
                 vm_value *val = eval_expression(exp->call.args[1]);
-                debug_vm_print(exp->pos, format, debug_print_vm_value(val));                
+                debug_vm_print(exp->pos, format, val->ulong_value);
             }
             else
             {
-                fatal("unimplemented");
+                assert(exp->call.resolved_function);
+                assert(exp->call.resolved_function->type);
+
+                debug_vm_print(exp->pos, "FUNCTION CALL - %s - enter", exp->call.resolved_function->name);
+
+                vm_value **arg_vals = null;
+                for (size_t i = 0; i < exp->call.args_num; i++)
+                {
+                    expr *arg_expr = exp->call.args[i];
+                    vm_value *arg_val = eval_expression(arg_expr);                    
+                    buf_push(arg_vals, arg_val);
+                }
+
+                assert(buf_len(arg_vals) == exp->call.args_num);
+                assert(exp->call.args_num == exp->call.resolved_function->type->function.param_count);
+
+                vm_value *ret_val = push_identifier_on_stack(null, exp->resolved_type);
+
+                vm_value *marker = enter_vm_stack_scope();
+                {
+                    for (size_t i = 0; i < buf_len(arg_vals); i++)
+                    {
+                        const char *name = exp->call.resolved_function->decl->function.params.params[i].name;
+                        type *t = exp->call.resolved_function->type->function.param_types[i];
+                        
+                        vm_value *arg_val = push_identifier_on_stack(name, t);
+                        copy_vm_val(arg_val, arg_vals[i]);
+                    }
+
+                    eval_function(exp->call.resolved_function, ret_val);
+                }
+                leave_vm_stack_scope(marker);
+                buf_free(arg_vals);
+
+                debug_vm_print(exp->pos, "FUNCTION CALL - %s - exit", exp->call.resolved_function->name);
             }
         }
         break;
@@ -622,10 +674,11 @@ vm_value *eval_expression(expr *exp)
 
 bool break_loop = false;
 bool continue_loop = false;
+bool return_func = false;
 
-void eval_statement(stmt *st);
+void eval_statement(stmt *st, vm_value *opt_ret_value);
 
-void eval_statement_block(stmt_block block)
+void eval_statement_block(stmt_block block, vm_value *opt_ret_value)
 {
     if (block.stmts_count > 0)
     {
@@ -634,10 +687,11 @@ void eval_statement_block(stmt_block block)
         vm_value *marker = enter_vm_stack_scope();
         for (size_t i = 0; i < block.stmts_count; i++)
         {
-            eval_statement(block.stmts[i]);
+            eval_statement(block.stmts[i], opt_ret_value);
 
-            if (continue_loop || break_loop)
+            if (continue_loop || break_loop || return_func)
             {
+                debug_vm_print(block.stmts[i]->pos, "BLOCK SCOPE - continue/break/return");
                 break;
             }
         }
@@ -647,13 +701,7 @@ void eval_statement_block(stmt_block block)
     }
 }
 
-void copy_vm_val(vm_value *dest, vm_value *val)
-{
-    assert(compare_types(dest->type, val->type));
-    dest->ulong_value = val->ulong_value;
-}
-
-void eval_statement(stmt *st)
+void eval_statement(stmt *st, vm_value *opt_ret_value)
 {
     assert(st);
     switch (st->kind)
@@ -665,7 +713,11 @@ void eval_statement(stmt *st)
         break;
         case STMT_RETURN:
         {
-            fatal("unimplemented");
+            assert(opt_ret_value);
+            vm_value *val = eval_expression(st->return_stmt.ret_expr);
+            copy_vm_val(opt_ret_value, val);
+            return_func = true;
+            return;
         }
         break;
         case STMT_BREAK:
@@ -692,6 +744,13 @@ void eval_statement(stmt *st)
 
                 vm_value *new_value = eval_expression(dec->variable.expr);
                 assert(new_value);
+
+                if (new_value->type->kind == TYPE_VOID)
+                {
+                    debug_breakpoint;
+                    new_value = eval_expression(dec->variable.expr);
+                }
+
                 assert(compare_types(new_value->type, dec->type));
                 new_value->name = dec->name;
 
@@ -715,7 +774,7 @@ void eval_statement(stmt *st)
             if (branch && branch->ulong_value)
             {
                 debug_vm_print(st->pos, "IF - then block start");
-                eval_statement_block(st->if_else.then_block);
+                eval_statement_block(st->if_else.then_block, opt_ret_value);
                 debug_vm_print(st->pos, "IF - then block end");
             }
             else
@@ -723,7 +782,7 @@ void eval_statement(stmt *st)
                 if (st->if_else.else_stmt)
                 {
                     debug_vm_print(st->pos, "IF - else stmt start");
-                    eval_statement(st->if_else.else_stmt);
+                    eval_statement(st->if_else.else_stmt, opt_ret_value);
                     debug_vm_print(st->pos, "IF - else stmt end");
                 }
             }
@@ -738,7 +797,13 @@ void eval_statement(stmt *st)
             debug_vm_print(st->pos, "WHILE - condition evaluated as: %s", debug_print_vm_value(loop));
             while (loop && loop->ulong_value)
             {
-                eval_statement_block(st->while_stmt.stmts);
+                eval_statement_block(st->while_stmt.stmts, opt_ret_value);
+
+                if (return_func)
+                {
+                    debug_vm_print(st->pos, "WHILE - return");
+                    break;
+                }
 
                 if (continue_loop)
                 {
@@ -770,7 +835,13 @@ void eval_statement(stmt *st)
             vm_value *loop = null;
             do
             {                
-                eval_statement_block(st->do_while_stmt.stmts);
+                eval_statement_block(st->do_while_stmt.stmts, opt_ret_value);
+
+                if (return_func)
+                {
+                    debug_vm_print(st->pos, "DO WHILE - return");
+                    break;
+                }
 
                 if (continue_loop)
                 {
@@ -799,14 +870,20 @@ void eval_statement(stmt *st)
         {
             debug_vm_print(st->pos, "FOR - start");
 
-            eval_statement(st->for_stmt.init_stmt);
+            eval_statement(st->for_stmt.init_stmt, null);
 
             vm_value *marker = enter_vm_stack_scope();
             vm_value *loop = eval_expression(st->for_stmt.cond_expr);
             debug_vm_print(st->pos, "FOR - condition evaluated as: %s", debug_print_vm_value(loop));
             while (loop && loop->ulong_value)
             {
-                eval_statement_block(st->for_stmt.stmts);
+                eval_statement_block(st->for_stmt.stmts, opt_ret_value);
+
+                if (return_func)
+                {
+                    debug_vm_print(st->pos, "WHILE - return");
+                    break;
+                }
 
                 if (continue_loop)
                 {
@@ -821,7 +898,7 @@ void eval_statement(stmt *st)
                     break;
                 }
 
-                eval_statement(st->for_stmt.next_stmt);
+                eval_statement(st->for_stmt.next_stmt, null);
                 loop = eval_expression(st->for_stmt.cond_expr);
 
                 debug_vm_print(st->pos, "FOR - condition evaluated as: %s", debug_print_vm_value(loop));
@@ -861,13 +938,13 @@ void eval_statement(stmt *st)
         case STMT_EXPR:
         {
             vm_value *result = eval_expression(st->expr);
-            debug_vm_print(st->assign.assigned_var_expr->pos, "expression as statement, result %s",
+            debug_vm_print(st->expr->pos, "expression as statement, result %s",
                 debug_print_vm_value(result));
         }
         break;
         case STMT_BLOCK:
         {
-            eval_statement_block(st->block);
+            eval_statement_block(st->block, opt_ret_value);
         }
         break;
         case STMT_DELETE:
@@ -898,31 +975,13 @@ void eval_global_declarations(symbol **syms)
     }
 }
 
-void eval_symbol(symbol *sym)
+void eval_function(symbol *function_sym, vm_value *ret_value)
 {
-    assert(sym);
-    assert(sym->state == SYMBOL_RESOLVED);
-    switch (sym->kind)
-    {      
-        case SYMBOL_VARIABLE:
-        case SYMBOL_CONST:
-        {
-            // obsłużone w eval_global_declarations          
-        }
-        break;   
-        case SYMBOL_FUNCTION:
-        {
-            eval_statement_block(sym->decl->function.stmts);
-        }
-        break;
-        case SYMBOL_TYPE:
-        {
-            // deklaracja uniona / structu - nie musimy nic robić
-        }
-        break;
-        case SYMBOL_NONE:
-        invalid_default_case;
-    }
+    assert(function_sym);
+    assert(function_sym->state == SYMBOL_RESOLVED);
+    assert(function_sym->kind == SYMBOL_FUNCTION);
+
+    eval_statement_block(function_sym->decl->function.stmts, ret_value);
 }
 
 void treewalk_interpreter_test(void)
@@ -980,9 +1039,12 @@ void treewalk_interpreter_test(void)
         return;
     }
 
-    eval_symbol(main);
+    // main teoretycznie zwraca int - można tutaj to uszanować
+    eval_function(main, null);
 
     shorten_source_pos = false;
+
+    printf("\n=== FINISHED INTERPRETER RUN ===\n\n");
 
     debug_breakpoint;
 }
