@@ -535,10 +535,26 @@ vm_value *eval_expression(expr *exp)
         {
             vm_value *operand = eval_expression(exp->unary.operand);
 
-            if (exp->unary.operator == TOKEN_INC || exp->unary.operator == TOKEN_DEC)
+            if (exp->unary.operator == TOKEN_MUL) // pointer dereference
+            {
+                assert(operand->type->kind == TYPE_POINTER);          
+                assert(exp->resolved_type == operand->type->pointer.base_type);
+                
+                result = ((vm_value *)operand->ptr_value);
+
+                debug_breakpoint;
+            }
+            else if (exp->unary.operator == TOKEN_BITWISE_AND) // address of
+            {
+                result->ptr_value = operand; // wskaźnik do całego vm_value - trzeba to będzie poprawić
+                
+                debug_breakpoint;
+            }
+            else if (exp->unary.operator == TOKEN_INC || exp->unary.operator == TOKEN_DEC)
             {
                 // te operatory zmieniają wartość, do której się odnosiły
                 eval_unary_op(operand, exp->unary.operator, operand);
+                copy_vm_val(result, operand);
             }
             else
             {
