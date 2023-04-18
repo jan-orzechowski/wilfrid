@@ -1,6 +1,22 @@
 extern fn printf(str: char*, variadic) : int
 
+fn sub_loop(sum: int*, start: int, end: int)
+{    
+    for (let i := start, i < end, i++)
+    {
+        (*sum)++
+    }
+}
+
 fn main()
+{
+    let sum := 0
+    sub_loop(&sum, 25, 35)
+    sub_loop(&sum, 10, 15)
+    printf("sum: %d", sum)
+}
+
+fn main2()
 {
     let sum := 0
     for (let i := 0, i < 10, i++)
@@ -18,18 +34,22 @@ fn main()
         }
     }
 
+    sub_loop(&sum, 25, 35)
+    sub_loop(&sum, 10, 15)
+
+    loop = true
     do 
     {
         sum++
 
-        if (sum >= 30)
+        if (sum >= 45)
         {
-            loop = true
+            loop = false
         }
     }
-    while (false == loop)
+    while (loop)
 
-    while(true)
+    while (true)
     {
         sum++
 
