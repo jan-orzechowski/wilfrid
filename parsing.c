@@ -1133,6 +1133,11 @@ stmt *parse_statement(void)
         s = parse_simple_statement();
         s->pos = pos;
     }
+    else if (is_token_kind(TOKEN_LEFT_PAREN)) // expression in parens
+    {
+        s = parse_simple_statement();
+        s->pos = pos;
+    }
     else if (is_token_kind(TOKEN_LEFT_BRACE))
     {
         stmt_block block = parse_statement_block();
