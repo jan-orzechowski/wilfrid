@@ -846,9 +846,9 @@ void gen_forward_decls(symbol **resolved)
         symbol *sym = resolved[i];
         if (sym->decl)
         {
+            gen_line_hint(sym->decl->pos);
             switch (sym->decl->kind)
             {
-                gen_line_hint(sym->decl->pos);
                 case DECL_STRUCT:
                 {
                     gen_printf_newline("typedef struct %s %s;", sym->name, sym->name);
