@@ -18,51 +18,68 @@
 hashmap debug_names_dict;
 #define save_debug_string(str) map_put(&debug_strings, str, str);
 #define debug_vm_print(...) _vm_debug_printf(__VA_ARGS__)
-#define debug_print_vm_value(val) _debug_print_vm_value(val)
+#define debug_print_vm_value(val, typ) _debug_print_vm_value(val, typ)
 #elif
 #define save_debug_string
 #define debug_vm_print
 #define debug_print_vm_value
 #endif
 
-typedef struct vm_value vm_value;
-struct vm_value
+typedef struct vm_value_meta
 {
-    const char *name;
+    char *name;
     type *type;
-    union value
-    {
-        int32_t int_value;
-        uint32_t uint_value;
-        int64_t long_value;
-        uint64_t ulong_value;
-        float float_value;
-        void *ptr_value;
-    };
-};
+    void *stack_ptr;
+} vm_value_meta;
 
-void copy_vm_val(vm_value *dest, vm_value *val)
+typedef char byte;
+
+void copy_vm_val(byte *dest, byte *val, size_t size)
 {
-    assert(compare_types(dest->type, val->type));
-    dest->ulong_value = val->ulong_value;
+    if (val)
+    {
+        for (size_t offset = 0; offset < size; offset++)
+        {
+            *(dest + offset) = *(val + offset);
+        }
+    }
+    else
+    {
+        for (size_t offset = 0; offset < size; offset++)
+        {
+            *(dest + offset) = 0;
+        }
+    }
 }
 
-char *_debug_print_vm_value(vm_value *val)
+bool is_non_zero(byte *val, size_t size)
+{
+    for (byte *b = val; b < val + size; b++)
+    {
+        if (*b)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+char *_debug_print_vm_value(byte *val, type *typ)
 {
     // tylko w celach debugowych - nigdy nie dealokujemy
     // można ew. wrzucić na listę dynamiczną i posprzątać po jakimś czasie
     size_t buffer_size = 20;
     char *result = xcalloc(buffer_size * sizeof(char));
-    switch (val->type->kind)
+    switch (typ->kind)
     {
         case TYPE_INT:
         {
-            snprintf(result, buffer_size, "%i", val->int_value);
+            snprintf(result, buffer_size, "%i", *(int32_t*)val);
         }
         break;
         case TYPE_LONG:
         {
-            snprintf(result, buffer_size, "%lld", val->long_value);
+            snprintf(result, buffer_size, "%lld", *(int64_t*)val);
         }
         break;
         case TYPE_BOOL:
@@ -70,22 +87,22 @@ char *_debug_print_vm_value(vm_value *val)
         case TYPE_CHAR:
         case TYPE_UINT:
         {
-            snprintf(result, buffer_size, "%d", val->uint_value);
+            snprintf(result, buffer_size, "%d", *(uint32_t *)val);
         }
         break;
         case TYPE_ULONG:
         {
-            snprintf(result, buffer_size, "%lld", val->ulong_value);
+            snprintf(result, buffer_size, "%lld", *(uint64_t *)val);
         }
         break;
         case TYPE_POINTER:
         {
-            snprintf(result, buffer_size, "%p", val->ptr_value);
+            snprintf(result, buffer_size, "%p", (void *)val);
         }
         break;
         case TYPE_FLOAT:
         {
-            snprintf(result, buffer_size, "%ff", val->float_value);
+            snprintf(result, buffer_size, "%ff", *(float *)val);
         }
         break;
         
@@ -110,7 +127,8 @@ char *_debug_print_vm_value(vm_value *val)
     return result;
 }
 
-void eval_function(symbol *function_sym, vm_value *ret_value);
+// czy podawać eval size, żeby na pewno rozmiar się zgadzał?
+void eval_function(symbol *function_sym, byte *ret_value);
 
 memory_arena *vm_global_memory;
 hashmap global_identifiers;
@@ -118,13 +136,23 @@ hashmap global_identifiers;
 /*
     do przemyślenia... jak to przechowywać? czy alokować tu jeszcze vm_value osobno?
 */
-vm_value *define_global_identifier(const char *name, uintptr_t init_value) // czy podawać typ?
+byte *define_global_identifier(const char *name, byte* init_value, type *t)
 {
+    fatal("unimplemented");
+
     // to będzie trafione jeśli dwa razy występuje taki sam const string w kodzie źródłowym...
     assert(0 == map_get(&global_identifiers, (void *)name));
 
-    vm_value *result = (vm_value *)push_size(vm_global_memory, sizeof(vm_value));
-    result->ulong_value = init_value;
+    vm_value_meta *header = (vm_value_meta *)push_size(vm_global_memory, get_type_size(t) + sizeof(vm_value_meta));
+    byte *result = (byte *)header + sizeof(vm_value_meta);
+    
+    copy_vm_val(result, init_value, get_type_size(t));
+
+    // czy może jednak w osobnej strukturze, w jakiejś hashmapie?
+    header->name = name;
+    header->type = t;
+    header->stack_ptr = result;
+
     map_put(&global_identifiers, (void *)name, (void *)result);
 
 #if DEBUG_BUILD
@@ -136,75 +164,105 @@ vm_value *define_global_identifier(const char *name, uintptr_t init_value) // cz
 
 enum
 {
-    MAX_VM_STACK_LENGTH = 2048
+    MAX_VM_STACK_SIZE = megabytes(1),
+    MAX_VM_METADATA_COUNT = MAX_VM_STACK_SIZE / 4, // raczej nie będziemy zapychać stacku jednobajtowymi zmiennymi
 };
 
-vm_value vm_stack[MAX_VM_STACK_LENGTH];
-vm_value *last_vm_stack_value = vm_stack;
+byte vm_stack[MAX_VM_STACK_SIZE];
+byte *last_used_vm_stack_byte = vm_stack;
+vm_value_meta stack_metadata[MAX_VM_METADATA_COUNT];
+size_t vm_metadata_count = 0;
 
-vm_value *enter_vm_stack_scope(void)
+byte *enter_vm_stack_scope(void)
 {
-    vm_value *marker = last_vm_stack_value;
+    byte *marker = last_used_vm_stack_byte;
     return marker;
 }
 
-void leave_vm_stack_scope(vm_value *marker)
+void leave_vm_stack_scope(byte *marker)
 {
     assert(marker >= vm_stack);
-    assert(marker <= last_vm_stack_value);
-    for (vm_value *val_to_clean = marker + 1; // samego markera nie czyścimy
-        val_to_clean <= last_vm_stack_value;
-        val_to_clean++)
+    assert(marker <= last_used_vm_stack_byte);
+    assert(vm_metadata_count > 0);
+
+    for (byte *byte_to_clean = marker + 1;
+        byte_to_clean <= last_used_vm_stack_byte;
+        byte_to_clean++)
     {
-        *val_to_clean = (vm_value){0};
+        *byte_to_clean = 0;
     }
-    last_vm_stack_value = marker;
+    last_used_vm_stack_byte = marker;
+
+    for (int64_t index = vm_metadata_count - 1; index >= 0; index--)
+    {
+        vm_value_meta *m = &stack_metadata[index];
+        assert(m->stack_ptr);
+        if ((byte *)m->stack_ptr > marker)
+        {
+            *m = (vm_value_meta){0};
+            vm_metadata_count--;
+        }
+        else
+        {
+            break;
+        }
+    }
 }
 
-vm_value *push_identifier_on_stack(const char *name, type *type)
+byte *push_identifier_on_stack(const char *name, type *type)
 {
+    size_t size = get_type_size(type);
     if (name) 
     { 
         assert_is_interned(name); 
-    };
+    }
 
-    vm_value *result = null;
-    int64_t stack_size = last_vm_stack_value - vm_stack;
-    if (stack_size + 1 < MAX_VM_STACK_LENGTH)
-    {        
-        last_vm_stack_value++;
-        last_vm_stack_value->name = name;
-        last_vm_stack_value->type = type;
-        result = last_vm_stack_value;
+    byte *result = null;
+    int64_t stack_size = last_used_vm_stack_byte - vm_stack;
+    if (stack_size + size < MAX_VM_STACK_SIZE
+        && vm_metadata_count < MAX_VM_METADATA_COUNT)
+    {
+        last_used_vm_stack_byte++;
+        copy_vm_val(last_used_vm_stack_byte, null, size);
+        result = last_used_vm_stack_byte;
+        last_used_vm_stack_byte += size /*- 1*/;
+
+        stack_metadata[vm_metadata_count] = (vm_value_meta){
+            .name = name,
+            .type = type,
+            .stack_ptr = result,
+        };
+        vm_metadata_count++;
     }
     else
     {
         // tutaj powinniśmy rzucić błędem i przerwać program
         fatal("stack overflow");
     }
+
     return result;
 }
 
 // tutaj trzeba będzie jeszcze uwzględnić zmienne globalne
-vm_value *get_vm_variable(const char *name)
+vm_value_meta *get_vm_variable(const char *name)
 {
     assert(name);
     assert_is_interned(name); 
 
-    if (vm_stack != last_vm_stack_value)
+    if (vm_stack != last_used_vm_stack_byte)
     {
+        assert(vm_metadata_count != 0);
         // pierwsza wartość to zawsze null ze względu na to jak działa define_identifier_on_stack
         // ze względu na to, że w funkcji nazwa parametru może być taka sama 
         // jak w zewnętrznym scope w którym została wezana
         // - trzeba iść od tyłu
-        for (vm_value *var = last_vm_stack_value;
-            var > vm_stack;
-            var--)
+        for (size_t index = vm_metadata_count - 1 ; index >= 0; index--)
         {
-            assert(var->type);
-            if (var->name == name)
+            vm_value_meta *m = &stack_metadata[index];
+            assert(m->stack_ptr);
+            if (m->name == name)
             {
-                return var;
+                return m;
             }
         }
     }
@@ -213,29 +271,51 @@ vm_value *get_vm_variable(const char *name)
     return null;
 }
 
-void eval_unary_op(vm_value *dest, token_kind operation, vm_value *operand)
+vm_value_meta *get_metadata_by_ptr(byte *ptr)
 {
-    if (operand->type == type_int)
+    if (vm_stack != last_used_vm_stack_byte)
     {
-        dest->int_value = (int32_t)eval_long_unary_op(operation, operand->int_value);
+        assert(vm_metadata_count != 0);
+        for (size_t index = vm_metadata_count - 1; index >= 0; index--)
+        {
+            vm_value_meta *m = &stack_metadata[index];
+            if (m->stack_ptr == ptr)
+            {
+                return m;
+            }
+        }
     }
-    else if (operand->type == type_uint
-        || operand->type == type_bool
-        || operand->type == type_char)
+    fatal("no variable on address '%p' on the stack", ptr);
+    return null;
+}
+
+void eval_unary_op(byte *dest, token_kind operation, byte *operand, type *operand_type)
+{
+    assert(dest);
+    assert(operand);
+    assert(operand_type);
+
+    if (operand_type == type_int)
     {
-        dest->uint_value = (uint32_t)eval_ulong_unary_op(operation, operand->uint_value);
+        *(int32_t *)dest = (int32_t)eval_long_unary_op(operation, *(int32_t *)operand);
     }
-    else if (operand->type == type_long)
+    else if (operand_type == type_uint
+        || operand_type == type_bool
+        || operand_type == type_char)
     {
-        dest->long_value = eval_long_unary_op(operation, operand->long_value);
+        *(uint32_t *)dest = (uint32_t)eval_ulong_unary_op(operation, *(uint32_t *)operand);
     }
-    else if (operand->type == type_ulong)
+    else if (operand_type == type_long)
     {
-        dest->ulong_value = eval_ulong_unary_op(operation, operand->ulong_value);
+        *(int64_t *)dest = eval_long_unary_op(operation, *(int64_t *)operand);
     }
-    else if (operand->type == type_float)
+    else if (operand_type == type_ulong)
     {
-        dest->float_value = eval_float_unary_op(operation, operand->float_value);
+        *(uint64_t *)dest = eval_ulong_unary_op(operation, *(uint32_t *)operand);
+    }
+    else if (operand_type == type_float)
+    {
+        *(float *)dest = eval_float_unary_op(operation, *(float *)operand);
     }
     else
     {
@@ -243,30 +323,34 @@ void eval_unary_op(vm_value *dest, token_kind operation, vm_value *operand)
     }
 }
 
-void eval_binary_op(vm_value *dest, token_kind op, vm_value *left, vm_value *right)
+void eval_binary_op(byte *dest, token_kind op, byte *left, byte *right, type *operands_type)
 {
-    assert(compare_types(left->type, right->type));
-    if (left->type == type_int)
+    assert(dest);
+    assert(left);
+    assert(right);
+    assert(operands_type);
+
+    if (operands_type== type_int)
     {
-        dest->int_value = (int32_t)eval_long_binary_op(op, left->int_value, right->int_value);
+        *(int32_t *)dest = (int32_t)eval_long_binary_op(op, *(int32_t *)left, *(int32_t *)right);
     }
-    else if (left->type == type_uint 
-        || left->type == type_bool 
-        || left->type == type_char)
+    else if (operands_type== type_uint 
+        || operands_type== type_bool 
+        || operands_type== type_char)
     {
-        dest->uint_value = (uint32_t)eval_ulong_binary_op(op, left->uint_value, right->uint_value);
+        *(uint32_t *)dest = (uint32_t)eval_ulong_binary_op(op, *(uint32_t *)left, *(uint32_t *)right);
     }
-    else if (left->type == type_long)
+    else if (operands_type== type_long)
     {
-        dest->long_value = eval_long_binary_op(op, left->long_value, right->long_value);
+        *(int64_t *)dest = eval_long_binary_op(op, *(int64_t *)left, *(int64_t *)right);
     }
-    else if (left->type == type_ulong)
+    else if (operands_type== type_ulong)
     {
-        dest->ulong_value = eval_ulong_binary_op(op, left->ulong_value, right->ulong_value);
+        *(uint64_t *)dest = eval_ulong_binary_op(op, *(uint64_t *)left, *(uint64_t *)right);
     }
-    else if (left->type == type_float)
+    else if (operands_type== type_float)
     {
-        dest->float_value = eval_float_binary_op(op, left->float_value, right->float_value);
+        *(float *)dest = eval_float_binary_op(op, *(float *)left, *(float *)right);
     }
     else
     {
@@ -274,11 +358,12 @@ void eval_binary_op(vm_value *dest, token_kind op, vm_value *left, vm_value *rig
     }
 }
 
-void perform_cast(vm_value *new_val, type_kind new_type, vm_value *old_val)
+void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_type)
 {
     assert(new_val);
     assert(new_type);
     assert(old_val);
+    assert(old_type);
 
     switch (new_type)
     {
@@ -292,57 +377,57 @@ void perform_cast(vm_value *new_val, type_kind new_type, vm_value *old_val)
 
         case TYPE_INT:
         {
-            if (old_val->type == type_int)
+            if (old_type == type_int)
             {
-                new_val->int_value = (int32_t)old_val->int_value;
+                *(int32_t *)new_val = (int32_t)*(int32_t *)old_val;
             }
-            else if (old_val->type == type_uint)
+            else if (old_type == type_uint)
             {
-                new_val->int_value = (int32_t)old_val->uint_value;
+                *(int32_t *)new_val = (int32_t)*(uint32_t *)old_val;
             }
-            else if (old_val->type == type_long)
+            else if (old_type == type_long)
             {
-                new_val->int_value = (int32_t)old_val->long_value;
+                *(int32_t *)new_val = (int32_t)*(int64_t *)old_val;
             }
-            else if (old_val->type == type_ulong)
+            else if (old_type == type_ulong)
             {
-                new_val->int_value = (int32_t)old_val->ulong_value;
+                *(int32_t *)new_val = (int32_t)*(uint64_t *)old_val;
             }
-            else if (old_val->type == type_float)
+            else if (old_type == type_float)
             {
-                new_val->int_value = (int32_t)old_val->float_value;
+                *(int32_t *)new_val = (int32_t)*(float *)old_val;
             }
-            else if (old_val->type->kind == TYPE_POINTER)
+            else if (old_type->kind == TYPE_POINTER)
             {
-                new_val->int_value = (int32_t)old_val->ptr_value;
+                *(int32_t *)new_val = (int32_t)*(uintptr_t *)old_val;
             }
         } 
         break;
         case TYPE_LONG:
         {
-            if (old_val->type == type_int)
+            if (old_type == type_int)
             {
-                new_val->long_value = (int64_t)old_val->int_value;
+                *(int64_t *)new_val = (int64_t)*(int32_t *)old_val;
             }
-            else if (old_val->type == type_uint)
+            else if (old_type == type_uint)
             {
-                new_val->long_value = (int64_t)old_val->uint_value;
+                *(int64_t *)new_val = (int64_t)*(uint32_t *)old_val;
             }
-            else if (old_val->type == type_long)
+            else if (old_type == type_long)
             {
-                new_val->long_value = (int64_t)old_val->long_value;
+                *(int64_t *)new_val = (int64_t)*(int64_t *)old_val;
             }
-            else if (old_val->type == type_ulong)
+            else if (old_type == type_ulong)
             {
-                new_val->long_value = (int64_t)old_val->ulong_value;
+                *(int64_t *)new_val = (int64_t)*(uint64_t *)old_val;
             }
-            else if (old_val->type == type_float)
+            else if (old_type == type_float)
             {
-                new_val->long_value = (int64_t)old_val->float_value;
+                *(int64_t *)new_val = (int64_t)*(float *)old_val;
             }
-            else if (old_val->type->kind == TYPE_POINTER)
+            else if (old_type->kind == TYPE_POINTER)
             {
-                new_val->long_value = (int64_t)old_val->ptr_value;
+                *(int64_t *)new_val = (int64_t)*(uintptr_t *)old_val;
             }
         }
         break;
@@ -350,113 +435,113 @@ void perform_cast(vm_value *new_val, type_kind new_type, vm_value *old_val)
         case TYPE_BOOL:
         case TYPE_UINT:
         {
-            if (old_val->type == type_int)
+            if (old_type == type_int)
             {
-                new_val->uint_value = (uint32_t)old_val->int_value;
+                *(uint32_t *)new_val = (uint32_t)*(int32_t *)old_val;
             }
-            else if (old_val->type == type_uint)
+            else if (old_type == type_uint)
             {
-                new_val->uint_value = (uint32_t)old_val->uint_value;
+                *(uint32_t *)new_val = (uint32_t)*(uint32_t *)old_val;
             }
-            else if (old_val->type == type_long)
+            else if (old_type == type_long)
             {
-                new_val->uint_value = (uint32_t)old_val->long_value;
+                *(uint32_t *)new_val = (uint32_t)*(int64_t *)old_val;
             }
-            else if (old_val->type == type_ulong)
+            else if (old_type == type_ulong)
             {
-                new_val->uint_value = (uint32_t)old_val->ulong_value;
+                *(uint32_t *)new_val = (uint32_t)*(uint64_t *)old_val;
             }
-            else if (old_val->type == type_float)
+            else if (old_type == type_float)
             {
-                new_val->uint_value = (uint32_t)old_val->float_value;
+                *(uint32_t *)new_val = (uint32_t)*(float *)old_val;
             }
-            else if (old_val->type->kind == TYPE_POINTER)
+            else if (old_type->kind == TYPE_POINTER)
             {
-                new_val->uint_value = (uint32_t)old_val->ptr_value;
+                *(uint32_t *)new_val = (uint32_t)*(uintptr_t *)old_val;
             }
         }
         break;
         case TYPE_ULONG:
         {
-            if (old_val->type == type_int)
+            if (old_type == type_int)
             {
-                new_val->ulong_value = (uint64_t)old_val->int_value;
+                *(uint64_t *)new_val = (uint64_t)*(int32_t *)old_val;
             }
-            else if (old_val->type == type_uint)
+            else if (old_type == type_uint)
             {
-                new_val->ulong_value = (uint64_t)old_val->uint_value;
+                *(uint64_t *)new_val = (uint64_t)*(uint32_t *)old_val;
             }
-            else if (old_val->type == type_long)
+            else if (old_type == type_long)
             {
-                new_val->ulong_value = (uint64_t)old_val->long_value;
+                *(uint64_t *)new_val = (uint64_t)*(int64_t *)old_val;
             }
-            else if (old_val->type == type_ulong)
+            else if (old_type == type_ulong)
             {
-                new_val->ulong_value = (uint64_t)old_val->ulong_value;
+                *(uint64_t *)new_val = (uint64_t)*(uint64_t *)old_val;
             }
-            else if (old_val->type == type_float)
+            else if (old_type == type_float)
             {
-                new_val->ulong_value = (uint64_t)old_val->float_value;
+                *(uint64_t *)new_val = (uint64_t)*(float *)old_val;
             }
-            else if (old_val->type->kind == TYPE_POINTER)
+            else if (old_type->kind == TYPE_POINTER)
             {
-                new_val->ulong_value = (uint64_t)old_val->ptr_value;
+                *(uint64_t *)new_val = (uint64_t)*(uintptr_t *)old_val;
             }
         }
         break;
         case TYPE_FLOAT:
         {
-            if (old_val->type == type_int)
+            if (old_type == type_int)
             {
-                new_val->float_value = (float)old_val->int_value;
+                *(float *)new_val  = (float)*(int32_t *)old_val;
             }
-            else if (old_val->type == type_uint)
+            else if (old_type == type_uint)
             {
-                new_val->float_value = (float)old_val->uint_value;
+                *(float *)new_val  = (float)*(uint32_t *)old_val;
             }
-            else if (old_val->type == type_long)
+            else if (old_type == type_long)
             {
-                new_val->float_value = (float)old_val->long_value;
+                *(float *)new_val  = (float)*(int64_t *)old_val;
             }
-            else if (old_val->type == type_ulong)
+            else if (old_type == type_ulong)
             {
-                new_val->float_value = (float)old_val->ulong_value;
+                *(float *)new_val  = (float)*(uint64_t *)old_val;
             }
-            else if (old_val->type == type_float)
+            else if (old_type == type_float)
             {
-                new_val->float_value = (float)old_val->float_value;
+                *(float *)new_val  = (float)*(float *)old_val;
             }
-            else if (old_val->type->kind == TYPE_POINTER)
+            else if (old_type->kind == TYPE_POINTER)
             {
-                new_val->float_value = (float)(uintptr_t)old_val->ptr_value;
+                *(float *)new_val  = (float)*(uintptr_t *)old_val;
             }
         }
         break;
         case TYPE_POINTER:
         {
-            if (old_val->type == type_int)
+            if (old_type == type_int)
             {
-                new_val->ptr_value = (void *)(uintptr_t)old_val->int_value;
+                *(uintptr_t *)new_val = (uintptr_t)*(int32_t *)old_val;
             }
-            else if (old_val->type == type_uint)
+            else if (old_type == type_uint)
             {
-                new_val->ptr_value = (void *)(uintptr_t)old_val->uint_value;
+                *(uintptr_t *)new_val = (uintptr_t)*(uint32_t *)old_val;
             }
-            else if (old_val->type == type_long)
+            else if (old_type == type_long)
             {
-                new_val->ptr_value = (void *)(uintptr_t)old_val->long_value;
+                *(uintptr_t *)new_val = (uintptr_t)*(int64_t *)old_val;
             }
-            else if (old_val->type == type_ulong)
+            else if (old_type == type_ulong)
             {
-                new_val->ptr_value = (void *)(uintptr_t)old_val->ulong_value;
+                *(uintptr_t *)new_val = (uintptr_t)*(uint64_t *)old_val;
             }
-            else if (old_val->type == type_float)
+            else if (old_type == type_float)
             {
-                new_val->ptr_value = (void *)(uintptr_t)old_val->float_value;
+                *(uintptr_t *)new_val = (uintptr_t)*(float *)old_val;
             }
-            else if (old_val->type->kind == TYPE_POINTER)
+            else if (old_type->kind == TYPE_POINTER)
             {
-                new_val->ptr_value = (void *)(uintptr_t)old_val->ptr_value;
+                *(uintptr_t *)new_val = (uintptr_t)*(uintptr_t *)old_val;;
             }
         } 
         break; 
@@ -476,110 +561,146 @@ void perform_cast(vm_value *new_val, type_kind new_type, vm_value *old_val)
     }
 }
 
-vm_value *eval_expression(expr *exp)
+byte *eval_expression(expr *exp)
 {
     assert(exp);
     assert(exp->resolved_type);
     
-    vm_value *result = push_identifier_on_stack(null, exp->resolved_type);
+    byte *result = push_identifier_on_stack(null, exp->resolved_type);
 
     switch (exp->kind)
     {
         case EXPR_INT:
         {    
-            // działa niezależnie od konkretnego typu
-            result->ulong_value = exp->integer_value;
+            if (exp->resolved_type->size == 4)
+            {
+                *((uint32_t *)result) = exp->integer_value;
+            }
+            else
+            {
+                *((uint64_t *)result) = exp->integer_value;
+            }
         }
         break;
         case EXPR_FLOAT:
         {
-            // czy to jest dobrze?
-            result->float_value = exp->float_value;
+            assert(sizeof(double) == sizeof(exp->resolved_type->size));
+            *((float *)result) = exp->float_value;
         }
         break;
         case EXPR_CHAR:
         case EXPR_STRING:
         {
-            result->ptr_value = exp->string_value;
+            assert(sizeof(uintptr_t) == sizeof(exp->string_value));
+            *((uintptr_t *)result) = (uintptr_t)exp->string_value;
         }
         break;
         case EXPR_NULL:
         {
-            result->ptr_value = 0;
+            assert(type_bool->size == sizeof(byte));
+            *result = 0;
         }
         break;
         case EXPR_BOOL:
         {
+            assert(type_bool->size == sizeof(uint32_t));
             if (exp->bool_value)
             {
-                result->ulong_value = 1;
+                *((uint32_t *)result) = 1;
             }
             else
             {
-                result->ulong_value = 0;
+                *((uint32_t *)result) = 0;
             }
         }
         break;
-
         case EXPR_NAME:
         {
             assert_is_interned(exp->name);
-            result = get_vm_variable(exp->name);
-            assert(result);
+            vm_value_meta *m = get_vm_variable(exp->name);
+            assert(m);
+            assert(m->stack_ptr);
+            assert((byte*)m->stack_ptr <= last_used_vm_stack_byte);
+            result = m->stack_ptr;
+
+            if (false == compare_types(m->type, exp->resolved_type))
+            {
+                debug_breakpoint;
+            }
 
             debug_vm_print(exp->pos, "read var '%s' from stack, value %s", 
-                result->name, debug_print_vm_value(result));
+                exp->name, debug_print_vm_value(result, m->type));
         }
         break;
         case EXPR_UNARY:
         {
-            vm_value *operand = eval_expression(exp->unary.operand);
+            assert(exp->unary.operand->resolved_type);
 
+            byte *operand = eval_expression(exp->unary.operand);       
+            vm_value_meta *m = get_metadata_by_ptr(operand);
+            assert(m);
+                            
             if (exp->unary.operator == TOKEN_MUL) // pointer dereference
-            {
-                assert(operand->type->kind == TYPE_POINTER);          
-                assert(exp->resolved_type == operand->type->pointer.base_type);
+            {       
+                assert(m->type->kind == TYPE_POINTER);
+                assert(exp->resolved_type == m->type->pointer.base_type);
                 
-                result = ((vm_value *)operand->ptr_value);
+                debug_vm_print(exp->pos, "deref ptr %s", debug_print_vm_value(operand, m->type));
 
-                debug_breakpoint;
+                result = (byte *)*(uintptr_t *)operand;
+                
+                debug_vm_print(exp->pos, "result is val %s", debug_print_vm_value(result, m->type->pointer.base_type));
             }
             else if (exp->unary.operator == TOKEN_BITWISE_AND) // address of
             {
-                result->ptr_value = operand; // wskaźnik do całego vm_value - trzeba to będzie poprawić
-                
-                debug_breakpoint;
+                assert(exp->resolved_type->pointer.base_type == m->type);
+
+                debug_vm_print(exp->pos, "address of val %s", debug_print_vm_value(operand, m->type));
+
+                copy_vm_val(result, (byte *)&operand, sizeof(byte *));
+
+                debug_vm_print(exp->pos, "result is ptr %s", debug_print_vm_value(result, exp->resolved_type));
             }
             else if (exp->unary.operator == TOKEN_INC || exp->unary.operator == TOKEN_DEC)
             {
-                // te operatory zmieniają wartość, do której się odnosiły
-                eval_unary_op(operand, exp->unary.operator, operand);
-                copy_vm_val(result, operand);
+                // te operatory zmieniają wartość, do której się odnosiły               
+                eval_unary_op(operand, exp->unary.operator, operand, exp->unary.operand->resolved_type);
+
+                copy_vm_val(result, operand, get_type_size(exp->resolved_type));
             }
             else
             {
-                eval_unary_op(result, exp->unary.operator, operand);
+                eval_unary_op(result, exp->unary.operator, operand, exp->unary.operand->resolved_type);
             }
 
             debug_vm_print(exp->pos, "operation %s, result %s", 
-                get_token_kind_name(exp->unary.operator), debug_print_vm_value(result));
+                get_token_kind_name(exp->unary.operator), debug_print_vm_value(result, exp->resolved_type));
         }
         break;
         case EXPR_BINARY:
         {
-            vm_value *left = eval_expression(exp->binary.left);
-            vm_value *right = eval_expression(exp->binary.right);
+            byte *left = eval_expression(exp->binary.left);
+            byte *right = eval_expression(exp->binary.right);
             
-            eval_binary_op(result, exp->binary.operator, left, right);
+            type *left_t = exp->binary.left->resolved_type;
+            assert(left_t);
+            type *right_t = exp->binary.right->resolved_type;
+            assert(right_t);
+            assert(compare_types(left_t, right_t));
+
+            size_t left_size = get_type_size(left_t);
+            size_t right_size = get_type_size(right_t);
+            
+            eval_binary_op(result, exp->binary.operator, left, right, left_t);
 
             debug_vm_print(exp->pos, "operation %s, result %s", 
-                get_token_kind_name(exp->binary.operator), debug_print_vm_value(result));
+                get_token_kind_name(exp->binary.operator), debug_print_vm_value(result, exp->binary.left->resolved_type));
         }
         break;
         case EXPR_TERNARY:
         {
-            vm_value *val = eval_expression(exp->ternary.condition);
-            if (val->uint_value != 0)
+            byte *val = eval_expression(exp->ternary.condition);
+            if (*val)
             {
                 result = eval_expression(exp->ternary.if_true);
             }
@@ -597,8 +718,11 @@ vm_value *eval_expression(expr *exp)
                 assert(exp->call.args_num >= 2);
                 char *format = exp->call.args[0]->string_value;
 
-                vm_value *val = eval_expression(exp->call.args[1]);
-                debug_vm_print(exp->pos, format, val->ulong_value);
+                byte *val = eval_expression(exp->call.args[1]);
+                vm_value_meta *m = get_metadata_by_ptr(val);
+                char *val_str = debug_print_vm_value(val, m->type);
+
+                printf("--------------------------- PRINTF CALL: format: %s, vals: %s\n", format, val_str);                
             }
             else
             {
@@ -607,28 +731,28 @@ vm_value *eval_expression(expr *exp)
 
                 debug_vm_print(exp->pos, "FUNCTION CALL - %s - enter", exp->call.resolved_function->name);
 
-                vm_value **arg_vals = null;
+                byte **arg_vals = null;
                 for (size_t i = 0; i < exp->call.args_num; i++)
                 {
                     expr *arg_expr = exp->call.args[i];
-                    vm_value *arg_val = eval_expression(arg_expr);                    
+                    byte *arg_val = eval_expression(arg_expr);
                     buf_push(arg_vals, arg_val);
                 }
 
                 assert(buf_len(arg_vals) == exp->call.args_num);
                 assert(exp->call.args_num == exp->call.resolved_function->type->function.param_count);
 
-                vm_value *ret_val = push_identifier_on_stack(null, exp->resolved_type);
+                byte *ret_val = push_identifier_on_stack(null, exp->resolved_type);
 
-                vm_value *marker = enter_vm_stack_scope();
+                byte *marker = enter_vm_stack_scope();
                 {
                     for (size_t i = 0; i < buf_len(arg_vals); i++)
                     {
                         const char *name = exp->call.resolved_function->decl->function.params.params[i].name;
                         type *t = exp->call.resolved_function->type->function.param_types[i];
                         
-                        vm_value *arg_val = push_identifier_on_stack(name, t);
-                        copy_vm_val(arg_val, arg_vals[i]);
+                        byte *arg_val = push_identifier_on_stack(name, t);
+                        copy_vm_val(arg_val, arg_vals[i], get_type_size(t));
                     }
 
                     eval_function(exp->call.resolved_function, ret_val);
@@ -667,8 +791,8 @@ vm_value *eval_expression(expr *exp)
         break;
         case EXPR_CAST:
         {
-            vm_value *old_val = eval_expression(exp->cast.expr);
-            perform_cast(result, exp->cast.resolved_type->kind, old_val);
+            byte *old_val = eval_expression(exp->cast.expr);
+            perform_cast(result, exp->cast.resolved_type->kind, old_val, exp->cast.expr->resolved_type);
         }
         break;
         case EXPR_COMPOUND_LITERAL:
@@ -685,6 +809,15 @@ vm_value *eval_expression(expr *exp)
         case EXPR_NONE:
         invalid_default_case;
     }
+
+#if DEBUG_BUILD
+    assert(result);
+    vm_value_meta *m = get_metadata_by_ptr(result);
+    assert(m);
+    assert(m->stack_ptr == result);
+    assert(compare_types(m->type, exp->resolved_type));
+#endif
+
     return result;
 }
 
@@ -692,15 +825,15 @@ bool break_loop = false;
 bool continue_loop = false;
 bool return_func = false;
 
-void eval_statement(stmt *st, vm_value *opt_ret_value);
+void eval_statement(stmt *st, byte *opt_ret_value);
 
-void eval_statement_block(stmt_block block, vm_value *opt_ret_value)
+void eval_statement_block(stmt_block block, byte *opt_ret_value)
 {
     if (block.stmts_count > 0)
     {
         debug_vm_print(block.stmts[0]->pos, "BLOCK SCOPE - start");
         
-        vm_value *marker = enter_vm_stack_scope();
+        byte *marker = enter_vm_stack_scope();
         for (size_t i = 0; i < block.stmts_count; i++)
         {
             eval_statement(block.stmts[i], opt_ret_value);
@@ -717,7 +850,7 @@ void eval_statement_block(stmt_block block, vm_value *opt_ret_value)
     }
 }
 
-void eval_statement(stmt *st, vm_value *opt_ret_value)
+void eval_statement(stmt *st, byte *opt_ret_value)
 {
     assert(st);
     switch (st->kind)
@@ -730,8 +863,8 @@ void eval_statement(stmt *st, vm_value *opt_ret_value)
         case STMT_RETURN:
         {
             assert(opt_ret_value);
-            vm_value *val = eval_expression(st->return_stmt.ret_expr);
-            copy_vm_val(opt_ret_value, val);
+            byte *val = eval_expression(st->return_stmt.ret_expr);
+            copy_vm_val(opt_ret_value, val, get_type_size(st->return_stmt.ret_expr->resolved_type));
             return_func = true;
             return;
         }
@@ -749,33 +882,26 @@ void eval_statement(stmt *st, vm_value *opt_ret_value)
         break;
         case STMT_DECL:
         {
-            assert(st->decl_stmt.decl);
-            assert(st->decl_stmt.decl->type);
             decl *dec = st->decl_stmt.decl;
+            assert(dec);
+            assert(dec->type);
+            // na razie bez structów na stacku
+            assert(dec->type->kind != TYPE_STRUCT);
+            assert(dec->type->kind != TYPE_UNION);
 
             if (dec->kind == DECL_VARIABLE)
             {
                 assert(dec->type);
                 //size_t size = get_type_size(dec->type);
 
-                vm_value *new_value = eval_expression(dec->variable.expr);
-                assert(new_value);
-
-                if (new_value->type->kind == TYPE_VOID)
-                {
-                    debug_breakpoint;
-                    new_value = eval_expression(dec->variable.expr);
-                }
-
-                assert(compare_types(new_value->type, dec->type));
-                new_value->name = dec->name;
-
-                // na razie bez structów na stacku
-                assert(new_value->type->kind != TYPE_STRUCT);
-                assert(new_value->type->kind != TYPE_UNION);
+                byte *new_value = eval_expression(dec->variable.expr);
+                              
+                assert(compare_types(dec->variable.expr->resolved_type, dec->type));
+                vm_value_meta *m = get_metadata_by_ptr(new_value);
+                m->name = dec->name;
                                 
                 debug_vm_print(dec->pos, "declaration of %s, init value %s", 
-                    dec->name, debug_print_vm_value(new_value));
+                    dec->name, debug_print_vm_value(new_value, dec->type));
             }
             else
             {
@@ -785,9 +911,14 @@ void eval_statement(stmt *st, vm_value *opt_ret_value)
         break;
         case STMT_IF_ELSE:
         {
-            vm_value *branch = eval_expression(st->if_else.cond_expr);
-            debug_vm_print(st->pos, "IF - condition evaluated as: %s", debug_print_vm_value(branch));
-            if (branch && branch->ulong_value)
+            byte *cond_var = eval_expression(st->if_else.cond_expr);
+            type *cond_type = st->if_else.cond_expr->resolved_type;
+            assert(cond_var);
+            assert(cond_type);
+
+            debug_vm_print(st->pos, "IF - condition evaluated as: %s", debug_print_vm_value(cond_var, cond_type));
+
+            if (is_non_zero(cond_var, get_type_size(st->if_else.cond_expr->resolved_type)))
             {
                 debug_vm_print(st->pos, "IF - then block start");
                 eval_statement_block(st->if_else.then_block, opt_ret_value);
@@ -808,10 +939,16 @@ void eval_statement(stmt *st, vm_value *opt_ret_value)
         {
             debug_vm_print(st->pos, "WHILE - start");
 
-            vm_value *marker = enter_vm_stack_scope();
-            vm_value *loop = eval_expression(st->while_stmt.cond_expr);
-            debug_vm_print(st->pos, "WHILE - condition evaluated as: %s", debug_print_vm_value(loop));
-            while (loop && loop->ulong_value)
+            type *cond_type = st->while_stmt.cond_expr->resolved_type;
+            assert(cond_type);
+
+            size_t cond_var_size = get_type_size(cond_type);
+            byte *cond_var = eval_expression(st->while_stmt.cond_expr);
+
+            debug_vm_print(st->pos, "WHILE - condition evaluated as: %s", debug_print_vm_value(cond_var, cond_type));
+            
+            byte *marker = enter_vm_stack_scope();
+            while (is_non_zero(cond_var, cond_var_size))
             {
                 eval_statement_block(st->while_stmt.stmts, opt_ret_value);
 
@@ -834,9 +971,9 @@ void eval_statement(stmt *st, vm_value *opt_ret_value)
                     break;
                 }
 
-                loop = eval_expression(st->while_stmt.cond_expr);
+                cond_var = eval_expression(st->while_stmt.cond_expr);
 
-                debug_vm_print(st->pos, "WHILE - condition evaluated as: %s", debug_print_vm_value(loop));
+                debug_vm_print(st->pos, "WHILE - condition evaluated as: %s", debug_print_vm_value(cond_var, cond_type));
             }
             leave_vm_stack_scope(marker);
 
@@ -847,8 +984,13 @@ void eval_statement(stmt *st, vm_value *opt_ret_value)
         {
             debug_vm_print(st->pos, "DO WHILE - start");
 
-            vm_value *marker = enter_vm_stack_scope();
-            vm_value *loop = null;
+            type *cond_type = st->do_while_stmt.cond_expr->resolved_type;
+            assert(cond_type);
+
+            size_t cond_var_size = get_type_size(cond_type);
+            byte *cond_var = null;
+
+            byte *marker = enter_vm_stack_scope();
             do
             {                
                 eval_statement_block(st->do_while_stmt.stmts, opt_ret_value);
@@ -872,11 +1014,11 @@ void eval_statement(stmt *st, vm_value *opt_ret_value)
                     break;
                 }
 
-                loop = eval_expression(st->do_while_stmt.cond_expr);
+                cond_var = eval_expression(st->do_while_stmt.cond_expr);
 
-                debug_vm_print(st->pos, "DO WHILE - condition evaluated as: %s", debug_print_vm_value(loop));
-            }
-            while (loop && loop->ulong_value);
+                debug_vm_print(st->pos, "DO WHILE - condition evaluated as: %s", debug_print_vm_value(cond_var, cond_type));
+            }           
+            while (is_non_zero(cond_var, cond_var_size));
             leave_vm_stack_scope(marker);
 
             debug_vm_print(st->pos, "DO WHILE - end");
@@ -888,10 +1030,16 @@ void eval_statement(stmt *st, vm_value *opt_ret_value)
 
             eval_statement(st->for_stmt.init_stmt, null);
 
-            vm_value *marker = enter_vm_stack_scope();
-            vm_value *loop = eval_expression(st->for_stmt.cond_expr);
-            debug_vm_print(st->pos, "FOR - condition evaluated as: %s", debug_print_vm_value(loop));
-            while (loop && loop->ulong_value)
+            type *cond_type = st->for_stmt.cond_expr->resolved_type;
+            assert(cond_type);
+
+            size_t cond_var_size = get_type_size(cond_type);
+            byte *cond_var = eval_expression(st->for_stmt.cond_expr);
+
+            debug_vm_print(st->pos, "FOR - condition evaluated as: %s", debug_print_vm_value(cond_var, cond_type));
+
+            byte *marker = enter_vm_stack_scope();
+            while (is_non_zero(cond_var, cond_var_size))
             {
                 eval_statement_block(st->for_stmt.stmts, opt_ret_value);
 
@@ -915,9 +1063,9 @@ void eval_statement(stmt *st, vm_value *opt_ret_value)
                 }
 
                 eval_statement(st->for_stmt.next_stmt, null);
-                loop = eval_expression(st->for_stmt.cond_expr);
+                cond_var = eval_expression(st->for_stmt.cond_expr);
 
-                debug_vm_print(st->pos, "FOR - condition evaluated as: %s", debug_print_vm_value(loop));
+                debug_vm_print(st->pos, "FOR - condition evaluated as: %s", debug_print_vm_value(cond_var, cond_type));
             }
             leave_vm_stack_scope(marker);          
 
@@ -928,22 +1076,29 @@ void eval_statement(stmt *st, vm_value *opt_ret_value)
         {   
             assert(is_assign_operation(st->assign.operation));
             
-            vm_value *new_val = eval_expression(st->assign.value_expr);
-            vm_value *old_val = eval_expression(st->assign.assigned_var_expr);
+            byte *new_val = eval_expression(st->assign.value_expr);
+            byte *old_val = eval_expression(st->assign.assigned_var_expr);
             
+            type *new_val_t = st->assign.value_expr->resolved_type;
+            type *old_val_t = st->assign.assigned_var_expr->resolved_type;
+
+            assert(new_val_t);
+            assert(old_val_t);
+            assert(compare_types(new_val_t, old_val_t));
+
             if (st->assign.operation != TOKEN_ASSIGN)
             {
                 token_kind op = get_assignment_operation_token(st->assign.operation);
-                eval_binary_op(old_val, op, old_val, new_val);
+                eval_binary_op(old_val, op, old_val, new_val, new_val_t);
 
                 debug_vm_print(st->assign.assigned_var_expr->pos, "operation %s for assignment, result %s",
-                    get_token_kind_name(op), debug_print_vm_value(old_val));
+                    get_token_kind_name(op), debug_print_vm_value(old_val, old_val_t));
             }
 
-            copy_vm_val(old_val, new_val);
+            copy_vm_val(old_val, new_val, get_type_size(old_val_t));
 
             debug_vm_print(st->assign.assigned_var_expr->pos, "copied value %d to variable %s", 
-                debug_print_vm_value(new_val), debug_print_vm_value(old_val));
+                debug_print_vm_value(new_val, new_val_t), debug_print_vm_value(old_val, old_val_t));
         }
         break;
         case STMT_SWITCH:
@@ -953,9 +1108,10 @@ void eval_statement(stmt *st, vm_value *opt_ret_value)
         break;
         case STMT_EXPR:
         {
-            vm_value *result = eval_expression(st->expr);
+            assert(st->expr->resolved_type);
+            byte *result = eval_expression(st->expr);
             debug_vm_print(st->expr->pos, "expression as statement, result %s",
-                debug_print_vm_value(result));
+                debug_print_vm_value(result, st->expr->resolved_type));
         }
         break;
         case STMT_BLOCK:
@@ -983,15 +1139,15 @@ void eval_global_declarations(symbol **syms)
             case SYMBOL_CONST:
             {
                 //size_t size = get_type_size(sym->type);
-                vm_value *global_val = define_global_identifier(sym->name, sym->val);
-                assert(sizeof(sym->val) == sizeof(uintptr_t));
+                byte *global_val = define_global_identifier(sym->name, (byte *)sym->val, sym->type);
+                //assert(sizeof(sym->val) == sizeof(uintptr_t));
             }
             break;           
         }
     }
 }
 
-void eval_function(symbol *function_sym, vm_value *ret_value)
+void eval_function(symbol *function_sym, byte *ret_value)
 {
     assert(function_sym);
     assert(function_sym->state == SYMBOL_RESOLVED);

@@ -20,8 +20,8 @@ size_t get_type_size(type *type)
 const size_t POINTER_SIZE = 8;
 const size_t POINTER_ALIGN = 8;
 
-type *type_void =    &(type) { .kind = TYPE_VOID,    .size = 0, /*.align = 0 */ };
-type *type_null =    &(type) { .kind = TYPE_NULL,    .size = 0, /*.align = 0 */ };
+type *type_void =    &(type) { .kind = TYPE_VOID,    .size = 1, /*.align = 0 */ };
+type *type_null =    &(type) { .kind = TYPE_NULL,    .size = 1, /*.align = 0 */ };
 type *type_char =    &(type) { .kind = TYPE_CHAR,    .size = 1, /*.align = 1 */ };
 type *type_int =     &(type) { .kind = TYPE_INT,     .size = 4, /*.align = 4 */ };
 type *type_uint =    &(type) { .kind = TYPE_UINT,    .size = 4, /*.align = 4 */ };
