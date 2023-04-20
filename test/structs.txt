@@ -1,0 +1,70 @@
+extern fn printf(str: char*, variadic) : int
+extern fn assert(condition: bool)
+
+struct test_struct
+{
+    long_val: long,
+    int_val1: int,
+    int_val2: int,
+}
+
+fn get_test_struct () : test_struct
+{
+    let result : test_struct = { 3, 4, 5}
+
+    printf("result long: %d", result.long_val)
+    printf("result int1: %d", result.int_val1)
+    printf("result int2: %d", result.int_val2)
+
+    assert(result.long_val == 3 as long)
+    assert(result.int_val1 == 4)
+    assert(result.int_val2 == 5)
+
+    return result
+}
+
+fn change_test_struct_values(arg: test_struct) : test_struct
+{
+    arg.long_val = 6 as long
+    arg.int_val1 = 7
+    arg.int_val2 = 8
+    return arg
+}
+
+fn change_test_struct_values_in_place(arg: test_struct*)
+{
+    arg.long_val = 10 as long
+    arg.int_val1 = 11
+    arg.int_val2 = 12
+}
+
+fn main() 
+{
+    let st : test_struct = { 0, 1, 2 }
+
+    assert(st.long_val == 0 as long)
+    assert(st.int_val1 == 1)
+    assert(st.int_val2 == 2)
+
+    let other_st = get_test_struct()
+
+    printf("long: %d", other_st.long_val)
+    printf("int1: %d", other_st.int_val1)
+    printf("int2: %d", other_st.int_val2)
+
+    assert(other_st.long_val == 3 as long)
+    assert(other_st.int_val1 == 4)
+    assert(other_st.int_val2 == 5)
+
+    st = change_test_struct_values(st)
+
+    assert(st.long_val == 6 as long)
+    assert(st.int_val1 == 7)
+    assert(st.int_val2 == 8)
+
+    change_test_struct_values_in_place(&st)
+
+    assert(st.long_val == 10 as long)
+    assert(st.int_val1 == 11)
+    assert(st.int_val2 == 12)
+}
