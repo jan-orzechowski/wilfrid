@@ -16,6 +16,8 @@
 
 #if DEBUG_BUILD
 hashmap debug_names_dict;
+char *debug_print_buffer;
+size_t debug_print_buffer_size = 100;
 #define save_debug_string(str) map_put(&debug_strings, str, str);
 #define debug_vm_print(...) _vm_debug_printf(__VA_ARGS__)
 #define debug_print_vm_value(val, typ) _debug_print_vm_value(val, typ)
@@ -64,22 +66,32 @@ bool is_non_zero(byte *val, size_t size)
     return false;
 }
 
+vm_value_meta *get_metadata_by_ptr(byte *ptr);
+
 char *_debug_print_vm_value(byte *val, type *typ)
-{
-    // tylko w celach debugowych - nigdy nie dealokujemy
-    // można ew. wrzucić na listę dynamiczną i posprzątać po jakimś czasie
-    size_t buffer_size = 20;
-    char *result = xcalloc(buffer_size * sizeof(char));
+{     
+    // jeśli używamy tylko jednego bufora, nie możemy użyć dwa razy debug_print_vm_value w jednej wiadomości...
+
+    //if (debug_print_buffer == null)
+    //{
+        debug_print_buffer = xcalloc(debug_print_buffer_size * sizeof(char));
+    //}
+    
+    // w ramach testu - później możemy nie podawać typ w ogóle
+    vm_value_meta *m = get_metadata_by_ptr(val);
+    assert(m);
+    assert(compare_types(m->type, typ));
+
     switch (typ->kind)
     {
         case TYPE_INT:
         {
-            snprintf(result, buffer_size, "%i", *(int32_t*)val);
+            snprintf(debug_print_buffer, debug_print_buffer_size, "%i", *(int32_t*)val);
         }
         break;
         case TYPE_LONG:
         {
-            snprintf(result, buffer_size, "%lld", *(int64_t*)val);
+            snprintf(debug_print_buffer, debug_print_buffer_size, "%lld", *(int64_t*)val);
         }
         break;
         case TYPE_BOOL:
@@ -87,33 +99,54 @@ char *_debug_print_vm_value(byte *val, type *typ)
         case TYPE_CHAR:
         case TYPE_UINT:
         {
-            snprintf(result, buffer_size, "%d", *(uint32_t *)val);
+            snprintf(debug_print_buffer, debug_print_buffer_size, "%d", *(uint32_t *)val);
         }
         break;
         case TYPE_ULONG:
         {
-            snprintf(result, buffer_size, "%lld", *(uint64_t *)val);
+            snprintf(debug_print_buffer, debug_print_buffer_size, "%lld", *(uint64_t *)val);
         }
         break;
         case TYPE_POINTER:
         {
-            snprintf(result, buffer_size, "%p", (void *)val);
+            snprintf(debug_print_buffer, debug_print_buffer_size, "%p", (void *)val);
         }
         break;
         case TYPE_FLOAT:
         {
-            snprintf(result, buffer_size, "%ff", *(float *)val);
+            snprintf(debug_print_buffer, debug_print_buffer_size, "%ff", *(float *)val);
         }
         break;
         
         case TYPE_VOID:
         {
-            snprintf(result, buffer_size, "VOID");
+            snprintf(debug_print_buffer, debug_print_buffer_size, "VOID");
         }
         break;
 
         case TYPE_STRUCT:
         case TYPE_UNION:
+        {            
+            char *temp = null;
+            buf_printf(temp, "[");
+            for (size_t offset = 0; offset < get_type_size(typ); offset++)
+            {
+                byte b = *(val + offset);
+                buf_printf(temp, "%d", b);
+                if (offset < get_type_size(typ) - 1)
+                {
+                    buf_printf(temp, ",");
+                }
+            }
+            buf_printf(temp, "]");
+
+            snprintf(debug_print_buffer, debug_print_buffer_size, "struct '%s', bytes: %s", 
+                typ->symbol->name, temp);
+
+            buf_free(temp);
+        }
+        break;
+
         case TYPE_ARRAY:
         case TYPE_LIST:
         case TYPE_FUNCTION:
@@ -124,7 +157,11 @@ char *_debug_print_vm_value(byte *val, type *typ)
         }
         break;
     }
-    return result;
+    
+    // zabezpieczenie
+    debug_print_buffer[debug_print_buffer_size - 1] = 0;
+
+    return debug_print_buffer;
 }
 
 // czy podawać eval size, żeby na pewno rozmiar się zgadzał?
@@ -276,7 +313,7 @@ vm_value_meta *get_metadata_by_ptr(byte *ptr)
     if (vm_stack != last_used_vm_stack_byte)
     {
         assert(vm_metadata_count != 0);
-        for (size_t index = vm_metadata_count - 1; index >= 0; index--)
+        for (int64_t index = vm_metadata_count - 1; index >= 0; index--)
         {
             vm_value_meta *m = &stack_metadata[index];
             if (m->stack_ptr == ptr)
@@ -628,6 +665,11 @@ byte *eval_expression(expr *exp)
                 debug_breakpoint;
             }
 
+            if (m->type->kind == TYPE_STRUCT)
+            {
+                debug_breakpoint;
+            }
+
             debug_vm_print(exp->pos, "read var '%s' from stack, value %s", 
                 exp->name, debug_print_vm_value(result, m->type));
         }
@@ -638,7 +680,6 @@ byte *eval_expression(expr *exp)
 
             byte *operand = eval_expression(exp->unary.operand);       
             vm_value_meta *m = get_metadata_by_ptr(operand);
-            assert(m);
                             
             if (exp->unary.operator == TOKEN_MUL) // pointer dereference
             {       
@@ -694,7 +735,7 @@ byte *eval_expression(expr *exp)
             eval_binary_op(result, exp->binary.operator, left, right, left_t);
 
             debug_vm_print(exp->pos, "operation %s, result %s", 
-                get_token_kind_name(exp->binary.operator), debug_print_vm_value(result, exp->binary.left->resolved_type));
+                get_token_kind_name(exp->binary.operator), debug_print_vm_value(result, exp->resolved_type));
         }
         break;
         case EXPR_TERNARY:
@@ -724,6 +765,14 @@ byte *eval_expression(expr *exp)
 
                 printf("--------------------------- PRINTF CALL: format: %s, vals: %s\n", format, val_str);                
             }
+            else if (exp->call.resolved_function->name == str_intern("assert"))
+            {
+                assert(exp->call.args_num == 1);
+                byte *val = eval_expression(exp->call.args[0]);
+                vm_value_meta *m = get_metadata_by_ptr(val);
+                bool passed = is_non_zero(val, get_type_size(m->type));
+                assert(passed);   
+            }
             else
             {
                 assert(exp->call.resolved_function);
@@ -742,7 +791,7 @@ byte *eval_expression(expr *exp)
                 assert(buf_len(arg_vals) == exp->call.args_num);
                 assert(exp->call.args_num == exp->call.resolved_function->type->function.param_count);
 
-                byte *ret_val = push_identifier_on_stack(null, exp->resolved_type);
+                result = push_identifier_on_stack(null, exp->resolved_type);
 
                 byte *marker = enter_vm_stack_scope();
                 {
@@ -755,18 +804,29 @@ byte *eval_expression(expr *exp)
                         copy_vm_val(arg_val, arg_vals[i], get_type_size(t));
                     }
 
-                    eval_function(exp->call.resolved_function, ret_val);
+                    eval_function(exp->call.resolved_function, result);
                 }
                 leave_vm_stack_scope(marker);
                 buf_free(arg_vals);
 
                 debug_vm_print(exp->pos, "FUNCTION CALL - %s - exit", exp->call.resolved_function->name);
+                debug_vm_print(exp->pos, "returned value from function call: %s", debug_print_vm_value(result, exp->resolved_type));
             }
         }
         break;
         case EXPR_FIELD:
         {
-            fatal("unimplemented");
+            byte *val = eval_expression(exp->field.expr);
+            vm_value_meta *m = get_metadata_by_ptr(val);
+
+            assert(m->type->kind == TYPE_STRUCT || m->type->kind == TYPE_UNION);
+            assert(compare_types(exp->resolved_type, get_field_type(m->type, exp->field.field_name)));
+
+            size_t field_offset = get_field_offset(m->type, exp->field.field_name);
+
+            //result = val + field_offset;
+
+            copy_vm_val(result, val + field_offset, get_type_size(exp->resolved_type));
         }
         break;
         case EXPR_INDEX:
@@ -797,7 +857,27 @@ byte *eval_expression(expr *exp)
         break;
         case EXPR_COMPOUND_LITERAL:
         {
-            fatal("COMPOUND LITERALS NOT SUPPORTED");
+            type *aggr_type = exp->resolved_type;
+            assert(aggr_type->kind == TYPE_STRUCT || aggr_type->kind == TYPE_UNION);
+            
+            for (size_t i = 0; i < exp->compound.fields_count; i++)
+            {
+                compound_literal_field *f = exp->compound.fields[i];
+                byte *f_val = eval_expression(f->expr);
+                f->expr->resolved_type;
+
+                size_t offset = 0;
+                if (f->field_name)
+                {
+                    offset = get_field_offset(aggr_type, f->field_name);
+                }
+                else
+                {
+                    offset = get_field_offset_by_index(aggr_type, i);
+                }
+                
+                copy_vm_val(result + offset, f_val, get_type_size(f->expr->resolved_type));                               
+            }            
         }
         break;
         case EXPR_STUB:
@@ -864,7 +944,13 @@ void eval_statement(stmt *st, byte *opt_ret_value)
         {
             assert(opt_ret_value);
             byte *val = eval_expression(st->return_stmt.ret_expr);
+            
+            vm_value_meta *m = get_metadata_by_ptr(val);
+            assert(m->type == st->return_stmt.ret_expr->resolved_type);
+
+            size_t type_size = get_type_size(st->return_stmt.ret_expr->resolved_type);
             copy_vm_val(opt_ret_value, val, get_type_size(st->return_stmt.ret_expr->resolved_type));
+
             return_func = true;
             return;
         }
@@ -885,18 +971,12 @@ void eval_statement(stmt *st, byte *opt_ret_value)
             decl *dec = st->decl_stmt.decl;
             assert(dec);
             assert(dec->type);
-            // na razie bez structów na stacku
-            assert(dec->type->kind != TYPE_STRUCT);
-            assert(dec->type->kind != TYPE_UNION);
-
+            assert(compare_types(dec->variable.expr->resolved_type, dec->type));
+            
             if (dec->kind == DECL_VARIABLE)
-            {
-                assert(dec->type);
-                //size_t size = get_type_size(dec->type);
-
+            {                
                 byte *new_value = eval_expression(dec->variable.expr);
                               
-                assert(compare_types(dec->variable.expr->resolved_type, dec->type));
                 vm_value_meta *m = get_metadata_by_ptr(new_value);
                 m->name = dec->name;
                                 
@@ -1095,10 +1175,10 @@ void eval_statement(stmt *st, byte *opt_ret_value)
                     get_token_kind_name(op), debug_print_vm_value(old_val, old_val_t));
             }
 
-            copy_vm_val(old_val, new_val, get_type_size(old_val_t));
-
-            debug_vm_print(st->assign.assigned_var_expr->pos, "copied value %d to variable %s", 
+            debug_vm_print(st->assign.assigned_var_expr->pos, "copied new value %s over old value %s", 
                 debug_print_vm_value(new_val, new_val_t), debug_print_vm_value(old_val, old_val_t));
+            
+            copy_vm_val(old_val, new_val, get_type_size(old_val_t));
         }
         break;
         case STMT_SWITCH:
@@ -1154,6 +1234,11 @@ void eval_function(symbol *function_sym, byte *ret_value)
     assert(function_sym->kind == SYMBOL_FUNCTION);
 
     eval_statement_block(function_sym->decl->function.stmts, ret_value);
+
+    if (return_func)
+    {
+        return_func = false;
+    }
 }
 
 void treewalk_interpreter_test(void)
@@ -1166,7 +1251,7 @@ void treewalk_interpreter_test(void)
 #endif
 
     decl **all_declarations = null;
-    parse_file("test/loops.txt", &all_declarations);
+    parse_file("test/treewalk.txt", &all_declarations);
     symbol **resolved = resolve(all_declarations, true);
     assert(all_declarations);
     assert(resolved);

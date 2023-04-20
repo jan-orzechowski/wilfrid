@@ -191,7 +191,6 @@ void pop_arena_stack(memory_arena *arena, arena_stack_marker marker)
     assert(arena->stack_frames > 0);
     arena->stack_frames--;
 
-    memory_arena_block *current_block = arena->last_block;
     if (marker.block == arena->last_block)
     {
         zero_memory_arena_block(marker.block, marker.address);

@@ -68,6 +68,52 @@ const char *pretty_print_type_name(type *ty, bool plural);
 #define on_invalid_type_return(t) if (!(t) || (t->kind == TYPE_NONE)) { return null; }
 #define on_invalid_expr_return(e) if (!(e) || !((e)->type) || ((e)->type->kind == TYPE_NONE)) { return null; }
 
+size_t get_field_offset(type *aggregate, char *field_name)
+{
+    assert_is_interned(field_name);
+    assert(aggregate->kind == TYPE_STRUCT || aggregate->kind == TYPE_UNION);
+
+    for (size_t i = 0; i < aggregate->aggregate.fields_count; i++)
+    {
+        type_aggregate_field *f = aggregate->aggregate.fields[i];
+        if (f->name == field_name)
+        {
+            return f->offset;
+        }
+    }
+
+    fatal("Unknown field after resolve!");
+    return 0;
+}
+
+type *get_field_type(type *aggregate, char *field_name)
+{
+    assert_is_interned(field_name);
+    assert(aggregate->kind == TYPE_STRUCT || aggregate->kind == TYPE_UNION);
+
+    for (size_t i = 0; i < aggregate->aggregate.fields_count; i++)
+    {
+        type_aggregate_field *f = aggregate->aggregate.fields[i];
+        if (f->name == field_name)
+        {
+            return f->type;
+        }
+    }
+
+    fatal("Unknown field after resolve!");
+    return null;
+}
+
+size_t get_field_offset_by_index(type *aggr_type, size_t field_index)
+{
+    assert(aggr_type);
+    assert(aggr_type->kind == TYPE_STRUCT || aggr_type->kind == TYPE_UNION);
+
+    assert(field_index < aggr_type->aggregate.fields_count);
+    type_aggregate_field *f = aggr_type->aggregate.fields[field_index];
+    return f->offset;
+}
+
 bool compare_types(type *a, type *b)
 {
     assert(a);
@@ -826,10 +872,12 @@ resolved_expr *resolve_expr_binary(expr *expr)
             if (false == is_integer_type(left->type))
             {
                 error_in_resolving(
-                    xprintf("Modulus operator is allowed only for integer types, got %s type.", left->type), expr->pos);
+                    xprintf("Modulus operator is allowed only for integer types, got %s type.", 
+                        pretty_print_type_name(left->type, false)), expr->pos);
                 return resolved_expr_invalid;
             }
         }
+        break;
         case TOKEN_BITWISE_AND:
         case TOKEN_BITWISE_OR:
         case TOKEN_LEFT_SHIFT: 
@@ -839,7 +887,8 @@ resolved_expr *resolve_expr_binary(expr *expr)
             if (false == (left->type == type_uint || left->type == type_ulong))
             {
                 error_in_resolving(
-                    xprintf("Bitwise operators allowed only for unsigned integers types, got %s type instead.", left->type), expr->pos);
+                    xprintf("Bitwise operators allowed only for unsigned integers types, got %s type instead.", 
+                        pretty_print_type_name(left->type, false)), expr->pos);
                 return resolved_expr_invalid;
             }
         }
