@@ -31,6 +31,13 @@ fn change_test_struct_values(arg: test_struct) : test_struct
     return arg
 }
 
+fn change_test_struct_values_in_place(arg: test_struct*)
+{
+    arg.long_val = 10 as long
+    arg.int_val1 = 11
+    arg.int_val2 = 12
+}
+
 fn main() 
 {
     let x := 42 + 1 // 43
@@ -57,8 +64,14 @@ fn main()
 
     st = change_test_struct_values(st)
 
-    //assert(st.long_val == 6 as long)
-    //assert(st.int_val1 == 7)
-    //assert(st.int_val2 == 8)
+    assert(st.long_val == 6 as long)
+    assert(st.int_val1 == 7)
+    assert(st.int_val2 == 8)
+
+    change_test_struct_values_in_place(&st)
+
+    assert(st.long_val == 10 as long)
+    assert(st.int_val1 == 11)
+    assert(st.int_val2 == 12)
 
 }

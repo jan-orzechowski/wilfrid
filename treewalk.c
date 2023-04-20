@@ -30,7 +30,6 @@ size_t debug_print_buffer_size = 100;
 typedef struct vm_value_meta
 {
     char *name;
-    type *type;
     void *stack_ptr;
 } vm_value_meta;
 
@@ -77,11 +76,6 @@ char *_debug_print_vm_value(byte *val, type *typ)
         debug_print_buffer = xcalloc(debug_print_buffer_size * sizeof(char));
     //}
     
-    // w ramach testu - później możemy nie podawać typ w ogóle
-    vm_value_meta *m = get_metadata_by_ptr(val);
-    assert(m);
-    assert(compare_types(m->type, typ));
-
     switch (typ->kind)
     {
         case TYPE_INT:
@@ -164,15 +158,11 @@ char *_debug_print_vm_value(byte *val, type *typ)
     return debug_print_buffer;
 }
 
-// czy podawać eval size, żeby na pewno rozmiar się zgadzał?
 void eval_function(symbol *function_sym, byte *ret_value);
 
 memory_arena *vm_global_memory;
 hashmap global_identifiers;
 
-/*
-    do przemyślenia... jak to przechowywać? czy alokować tu jeszcze vm_value osobno?
-*/
 byte *define_global_identifier(const char *name, byte* init_value, type *t)
 {
     fatal("unimplemented");
@@ -187,7 +177,6 @@ byte *define_global_identifier(const char *name, byte* init_value, type *t)
 
     // czy może jednak w osobnej strukturze, w jakiejś hashmapie?
     header->name = name;
-    header->type = t;
     header->stack_ptr = result;
 
     map_put(&global_identifiers, (void *)name, (void *)result);
@@ -266,7 +255,6 @@ byte *push_identifier_on_stack(const char *name, type *type)
 
         stack_metadata[vm_metadata_count] = (vm_value_meta){
             .name = name,
-            .type = type,
             .stack_ptr = result,
         };
         vm_metadata_count++;
@@ -603,6 +591,7 @@ byte *eval_expression(expr *exp)
     assert(exp);
     assert(exp->resolved_type);
     
+    // w niektórych case'ach result jest nadpisany - można to będzie później usprawnić
     byte *result = push_identifier_on_stack(null, exp->resolved_type);
 
     switch (exp->kind)
@@ -659,19 +648,9 @@ byte *eval_expression(expr *exp)
             assert(m->stack_ptr);
             assert((byte*)m->stack_ptr <= last_used_vm_stack_byte);
             result = m->stack_ptr;
-
-            if (false == compare_types(m->type, exp->resolved_type))
-            {
-                debug_breakpoint;
-            }
-
-            if (m->type->kind == TYPE_STRUCT)
-            {
-                debug_breakpoint;
-            }
-
+            
             debug_vm_print(exp->pos, "read var '%s' from stack, value %s", 
-                exp->name, debug_print_vm_value(result, m->type));
+                exp->name, debug_print_vm_value(result, exp->resolved_type));
         }
         break;
         case EXPR_UNARY:
@@ -679,24 +658,21 @@ byte *eval_expression(expr *exp)
             assert(exp->unary.operand->resolved_type);
 
             byte *operand = eval_expression(exp->unary.operand);       
-            vm_value_meta *m = get_metadata_by_ptr(operand);
-                            
+            
             if (exp->unary.operator == TOKEN_MUL) // pointer dereference
             {       
-                assert(m->type->kind == TYPE_POINTER);
-                assert(exp->resolved_type == m->type->pointer.base_type);
-                
-                debug_vm_print(exp->pos, "deref ptr %s", debug_print_vm_value(operand, m->type));
+                assert(exp->resolved_type->kind == TYPE_POINTER);
+                assert(exp->resolved_type->pointer.base_type);
+
+                debug_vm_print(exp->pos, "deref ptr %s", debug_print_vm_value(operand, exp->resolved_type->pointer.base_type));
 
                 result = (byte *)*(uintptr_t *)operand;
                 
-                debug_vm_print(exp->pos, "result is val %s", debug_print_vm_value(result, m->type->pointer.base_type));
+                debug_vm_print(exp->pos, "result is val %s", debug_print_vm_value(result, exp->resolved_type));
             }
             else if (exp->unary.operator == TOKEN_BITWISE_AND) // address of
             {
-                assert(exp->resolved_type->pointer.base_type == m->type);
-
-                debug_vm_print(exp->pos, "address of val %s", debug_print_vm_value(operand, m->type));
+                debug_vm_print(exp->pos, "address of val %s", debug_print_vm_value(operand, exp->resolved_type->pointer.base_type));
 
                 copy_vm_val(result, (byte *)&operand, sizeof(byte *));
 
@@ -759,18 +735,18 @@ byte *eval_expression(expr *exp)
                 assert(exp->call.args_num >= 2);
                 char *format = exp->call.args[0]->string_value;
 
+                assert(exp->call.args[1]->resolved_type);
                 byte *val = eval_expression(exp->call.args[1]);
-                vm_value_meta *m = get_metadata_by_ptr(val);
-                char *val_str = debug_print_vm_value(val, m->type);
+                char *val_str = debug_print_vm_value(val, exp->call.args[1]->resolved_type);
 
                 printf("--------------------------- PRINTF CALL: format: %s, vals: %s\n", format, val_str);                
             }
             else if (exp->call.resolved_function->name == str_intern("assert"))
             {
                 assert(exp->call.args_num == 1);
+                assert(exp->call.args[0]->resolved_type);
                 byte *val = eval_expression(exp->call.args[0]);
-                vm_value_meta *m = get_metadata_by_ptr(val);
-                bool passed = is_non_zero(val, get_type_size(m->type));
+                bool passed = is_non_zero(val, get_type_size(exp->call.args[0]->resolved_type));
                 assert(passed);   
             }
             else
@@ -817,16 +793,17 @@ byte *eval_expression(expr *exp)
         case EXPR_FIELD:
         {
             byte *val = eval_expression(exp->field.expr);
-            vm_value_meta *m = get_metadata_by_ptr(val);
 
-            assert(m->type->kind == TYPE_STRUCT || m->type->kind == TYPE_UNION);
-            assert(compare_types(exp->resolved_type, get_field_type(m->type, exp->field.field_name)));
+            type *aggr_type = exp->field.expr->resolved_type;
+            while (aggr_type->kind == TYPE_POINTER)
+            {
+                debug_vm_print(exp->pos, "auto deref ptr %s", debug_print_vm_value(val, aggr_type));
+                aggr_type = aggr_type->pointer.base_type;                
+                (uintptr_t)val = *(uintptr_t *)val;
+            }
 
-            size_t field_offset = get_field_offset(m->type, exp->field.field_name);
-
-            //result = val + field_offset;
-
-            copy_vm_val(result, val + field_offset, get_type_size(exp->resolved_type));
+            size_t field_offset = get_field_offset(aggr_type, exp->field.field_name);
+            result = val + field_offset;
         }
         break;
         case EXPR_INDEX:
@@ -890,14 +867,7 @@ byte *eval_expression(expr *exp)
         invalid_default_case;
     }
 
-#if DEBUG_BUILD
     assert(result);
-    vm_value_meta *m = get_metadata_by_ptr(result);
-    assert(m);
-    assert(m->stack_ptr == result);
-    assert(compare_types(m->type, exp->resolved_type));
-#endif
-
     return result;
 }
 
@@ -945,11 +915,8 @@ void eval_statement(stmt *st, byte *opt_ret_value)
             assert(opt_ret_value);
             byte *val = eval_expression(st->return_stmt.ret_expr);
             
-            vm_value_meta *m = get_metadata_by_ptr(val);
-            assert(m->type == st->return_stmt.ret_expr->resolved_type);
-
             size_t type_size = get_type_size(st->return_stmt.ret_expr->resolved_type);
-            copy_vm_val(opt_ret_value, val, get_type_size(st->return_stmt.ret_expr->resolved_type));
+            copy_vm_val(opt_ret_value, val, type_size);
 
             return_func = true;
             return;
@@ -976,10 +943,10 @@ void eval_statement(stmt *st, byte *opt_ret_value)
             if (dec->kind == DECL_VARIABLE)
             {                
                 byte *new_value = eval_expression(dec->variable.expr);
-                              
+
                 vm_value_meta *m = get_metadata_by_ptr(new_value);
                 m->name = dec->name;
-                                
+
                 debug_vm_print(dec->pos, "declaration of %s, init value %s", 
                     dec->name, debug_print_vm_value(new_value, dec->type));
             }
