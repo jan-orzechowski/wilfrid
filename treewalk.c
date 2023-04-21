@@ -842,7 +842,9 @@ byte *eval_expression(expr *exp)
         break;
         case EXPR_SIZEOF:
         {
-            fatal("unimplemented");
+            size_t size = get_type_size(exp->size_of.resolved_type);
+            assert(get_type_size(exp->resolved_type) == sizeof(size_t));
+            copy_vm_val(result, (byte *)&size, sizeof(size_t));
         }
         break;
         case EXPR_CAST:
@@ -1251,7 +1253,7 @@ void treewalk_interpreter_test(void)
 #endif
 
     decl **all_declarations = null;
-    parse_file("test/globals.txt", &all_declarations);
+    parse_file("test/sizeof.txt", &all_declarations);
     symbol **resolved = resolve(all_declarations, true);
     assert(all_declarations);
     assert(resolved);

@@ -471,7 +471,7 @@ resolved_expr *get_resolved_lvalue_expr(type *t)
 resolved_expr *get_resolved_const_expr(int64_t val)
 {
     resolved_expr *result = xcalloc(sizeof(resolved_expr));
-    result->type = type_int;
+    result->type = type_long;
     result->is_const = true;
     result->val = val;
     return result;
@@ -1406,6 +1406,7 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
         {
             type *t = resolve_typespec(e->size_of.type);
             complete_type(t);
+            e->size_of.resolved_type = t;
             int64_t size = get_type_size(t);
             result = get_resolved_const_expr(size);
         }

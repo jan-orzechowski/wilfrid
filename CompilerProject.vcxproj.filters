@@ -37,5 +37,6 @@
     <Text Include="test\casts.txt" />
     <Text Include="test\structs.txt" />
     <Text Include="test\globals.txt" />
+    <Text Include="test\sizeof.txt" />
   </ItemGroup>
 </Project>
