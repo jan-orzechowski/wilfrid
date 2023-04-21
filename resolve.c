@@ -1679,7 +1679,7 @@ void resolve_symbol(symbol *s)
     if (s->type)
     {
         s->state = SYMBOL_RESOLVED;        
-        s->decl->type = s->type;
+        s->decl->resolved_type = s->type;
         buf_push(ordered_global_symbols, s);        
     }
     else
@@ -1813,7 +1813,7 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
                     push_local_symbol(st->decl_stmt.decl->name, t);
                 }
                 
-                st->decl_stmt.decl->type = t;
+                st->decl_stmt.decl->resolved_type = t;
             }
             else
             {

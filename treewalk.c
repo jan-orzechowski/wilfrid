@@ -956,8 +956,8 @@ void eval_statement(stmt *st, byte *opt_ret_value)
         {
             decl *dec = st->decl_stmt.decl;
             assert(dec);
-            assert(dec->type);
-            assert(compare_types(dec->variable.expr->resolved_type, dec->type));
+            assert(dec->resolved_type);
+            assert(compare_types(dec->variable.expr->resolved_type, dec->resolved_type));
             
             if (dec->kind == DECL_VARIABLE)
             {                
@@ -965,8 +965,8 @@ void eval_statement(stmt *st, byte *opt_ret_value)
                 
                 if (false == is_on_stack(new_val))
                 {
-                    byte *stack_val = push_identifier_on_stack(dec->name, dec->type);
-                    copy_vm_val(stack_val, new_val, get_type_size(dec->type));
+                    byte *stack_val = push_identifier_on_stack(dec->name, dec->resolved_type);
+                    copy_vm_val(stack_val, new_val, get_type_size(dec->resolved_type));
                     new_val = stack_val;
                 }
 
@@ -974,7 +974,7 @@ void eval_statement(stmt *st, byte *opt_ret_value)
                 m->name = dec->name;
 
                 debug_vm_print(dec->pos, "declaration of %s, init value %s", 
-                    dec->name, debug_print_vm_value(new_val, dec->type));
+                    dec->name, debug_print_vm_value(new_val, dec->resolved_type));
             }
             else
             {
