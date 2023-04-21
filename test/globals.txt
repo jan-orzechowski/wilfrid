@@ -1,0 +1,47 @@
+extern fn printf(str: char*, variadic) : int
+extern fn assert(condition: bool)
+
+struct test_struct
+{
+    long_val: long,
+    int_val: int,    
+}
+
+let glob_var : int = 469
+
+let glob_struct : test_struct = { 1, 2 }
+
+fn main() 
+{
+    let i := glob_var + 1
+
+    assert(i - 1 == glob_var)
+
+    i += 10
+    glob_var += 11
+
+    assert(i == glob_var)
+
+    assert(glob_struct.long_val == 1 as long)
+    assert(glob_struct.int_val == 2)
+
+    glob_struct.int_val = 3
+
+    assert(glob_struct.int_val == 3)
+
+    let copy := glob_struct
+    copy.int_val = 4
+    assert(glob_struct.int_val == 3)
+
+    let alias := &glob_struct
+    alias.int_val = 4
+    assert(glob_struct.int_val == 4)
+
+    glob_struct.int_val = glob_var - 1
+    assert(glob_var == 480)
+    assert(glob_struct.int_val == 479)
+
+    glob_var = glob_struct.long_val as int + 1
+    assert(glob_var == 2)
+    assert(glob_struct.int_val == 479)
+}

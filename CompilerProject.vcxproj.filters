@@ -36,5 +36,6 @@
     <Text Include="test\treewalk.txt" />
     <Text Include="test\casts.txt" />
     <Text Include="test\structs.txt" />
+    <Text Include="test\globals.txt" />
   </ItemGroup>
 </Project>

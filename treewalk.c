@@ -14,6 +14,8 @@
     printf("\n");
 }
 
+size_t failed_asserts;
+
 #if DEBUG_BUILD
 hashmap debug_names_dict;
 char *debug_print_buffer;
@@ -163,26 +165,18 @@ void eval_function(symbol *function_sym, byte *ret_value);
 memory_arena *vm_global_memory;
 hashmap global_identifiers;
 
-byte *define_global_identifier(const char *name, byte* init_value, type *t)
+// const strings zrobić osobno
+byte *push_global_identifier(const char *name, byte* init_val, size_t val_size)
 {
-    fatal("unimplemented");
-
-    // to będzie trafione jeśli dwa razy występuje taki sam const string w kodzie źródłowym...
-    assert(0 == map_get(&global_identifiers, (void *)name));
-
-    vm_value_meta *header = (vm_value_meta *)push_size(vm_global_memory, get_type_size(t) + sizeof(vm_value_meta));
-    byte *result = (byte *)header + sizeof(vm_value_meta);
+    assert(null == map_get(&global_identifiers, (void *)name));
     
-    copy_vm_val(result, init_value, get_type_size(t));
-
-    // czy może jednak w osobnej strukturze, w jakiejś hashmapie?
-    header->name = name;
-    header->stack_ptr = result;
+    byte *result = push_size(vm_global_memory, val_size);
+    copy_vm_val(result, init_val, val_size);
 
     map_put(&global_identifiers, (void *)name, (void *)result);
 
 #if DEBUG_BUILD
-    map_put(&debug_names_dict, result, (void *)name);
+    map_put(&debug_names_dict, (void *)result, (void *)name);
 #endif
 
     return result;
@@ -198,6 +192,12 @@ byte vm_stack[MAX_VM_STACK_SIZE];
 byte *last_used_vm_stack_byte = vm_stack;
 vm_value_meta stack_metadata[MAX_VM_METADATA_COUNT];
 size_t vm_metadata_count = 0;
+
+bool is_on_stack(byte *ptr)
+{
+    bool result = (ptr >= (byte *)&vm_stack && ptr < (byte *)&vm_stack + MAX_VM_STACK_SIZE);
+    return result;
+}
 
 byte *enter_vm_stack_scope(void)
 {
@@ -268,32 +268,49 @@ byte *push_identifier_on_stack(const char *name, type *type)
     return result;
 }
 
-// tutaj trzeba będzie jeszcze uwzględnić zmienne globalne
-vm_value_meta *get_vm_variable(const char *name)
+byte *get_vm_variable(const char *name)
 {
     assert(name);
     assert_is_interned(name); 
 
-    if (vm_stack != last_used_vm_stack_byte)
+    byte *result = null;
+
+    // zastanowić się, czy chained hashmap nie byłoby szybsze 
+    // w większości wypadków nie będziemy tutaj trafiać - co może powodować sprawdzanie zbyt wielu wartości w słowniku
+    result = map_get(&global_identifiers, name);
+
+    if (result == null) 
     {
-        assert(vm_metadata_count != 0);
-        // pierwsza wartość to zawsze null ze względu na to jak działa define_identifier_on_stack
-        // ze względu na to, że w funkcji nazwa parametru może być taka sama 
-        // jak w zewnętrznym scope w którym została wezana
-        // - trzeba iść od tyłu
-        for (size_t index = vm_metadata_count - 1 ; index >= 0; index--)
+        if (vm_stack != last_used_vm_stack_byte)
         {
-            vm_value_meta *m = &stack_metadata[index];
-            assert(m->stack_ptr);
-            if (m->name == name)
+            assert(vm_metadata_count != 0);
+            // ze względu na to, że w funkcji nazwa parametru może być taka sama 
+            // jak w zewnętrznym scope w którym została wezana
+            // - trzeba iść od tyłu
+            for (int64_t index = vm_metadata_count - 1; index >= 0; index--)
             {
-                return m;
+                vm_value_meta *m = &stack_metadata[index];
+                assert(m->stack_ptr);
+                assert((byte *)m->stack_ptr <= last_used_vm_stack_byte);
+                if (m->name == name)
+                {
+                    result = m->stack_ptr;
+                    break;
+                }
             }
         }
     }
+    else
+    {
+        debug_breakpoint;
+    }
 
-    fatal("no variable with name '%s' on the stack", name);
-    return null;
+    if (result == null)
+    {
+        fatal("no variable with name '%s'", name);
+    }
+
+    return result;
 }
 
 vm_value_meta *get_metadata_by_ptr(byte *ptr)
@@ -643,12 +660,10 @@ byte *eval_expression(expr *exp)
         case EXPR_NAME:
         {
             assert_is_interned(exp->name);
-            vm_value_meta *m = get_vm_variable(exp->name);
-            assert(m);
-            assert(m->stack_ptr);
-            assert((byte*)m->stack_ptr <= last_used_vm_stack_byte);
-            result = m->stack_ptr;
-            
+
+            result = get_vm_variable(exp->name);            
+            assert(result);
+
             debug_vm_print(exp->pos, "read var '%s' from stack, value %s", 
                 exp->name, debug_print_vm_value(result, exp->resolved_type));
         }
@@ -747,7 +762,11 @@ byte *eval_expression(expr *exp)
                 assert(exp->call.args[0]->resolved_type);
                 byte *val = eval_expression(exp->call.args[0]);
                 bool passed = is_non_zero(val, get_type_size(exp->call.args[0]->resolved_type));
-                assert(passed);   
+                printf("--------------------------- ASSERT: %s\n", passed ? "PASSED" : "FAILED");
+                if (false == passed)
+                {
+                    failed_asserts++;
+                }
             }
             else
             {
@@ -942,13 +961,20 @@ void eval_statement(stmt *st, byte *opt_ret_value)
             
             if (dec->kind == DECL_VARIABLE)
             {                
-                byte *new_value = eval_expression(dec->variable.expr);
+                byte *new_val = eval_expression(dec->variable.expr);
+                
+                if (false == is_on_stack(new_val))
+                {
+                    byte *stack_val = push_identifier_on_stack(dec->name, dec->type);
+                    copy_vm_val(stack_val, new_val, get_type_size(dec->type));
+                    new_val = stack_val;
+                }
 
-                vm_value_meta *m = get_metadata_by_ptr(new_value);
+                vm_value_meta *m = get_metadata_by_ptr(new_val);
                 m->name = dec->name;
 
                 debug_vm_print(dec->pos, "declaration of %s, init value %s", 
-                    dec->name, debug_print_vm_value(new_value, dec->type));
+                    dec->name, debug_print_vm_value(new_val, dec->type));
             }
             else
             {
@@ -1136,10 +1162,10 @@ void eval_statement(stmt *st, byte *opt_ret_value)
             if (st->assign.operation != TOKEN_ASSIGN)
             {
                 token_kind op = get_assignment_operation_token(st->assign.operation);
-                eval_binary_op(old_val, op, old_val, new_val, new_val_t);
+                eval_binary_op(new_val, op, old_val, new_val, new_val_t);
 
                 debug_vm_print(st->assign.assigned_var_expr->pos, "operation %s for assignment, result %s",
-                    get_token_kind_name(op), debug_print_vm_value(old_val, old_val_t));
+                    get_token_kind_name(op), debug_print_vm_value(new_val, new_val_t));
             }
 
             debug_vm_print(st->assign.assigned_var_expr->pos, "copied new value %s over old value %s", 
@@ -1180,14 +1206,21 @@ void eval_global_declarations(symbol **syms)
     for (size_t i = 0; i < buf_len(syms); i++)
     {
         symbol *sym = syms[i];
+        size_t size = get_type_size(sym->type);
         switch (sym->kind)
         {
             case SYMBOL_VARIABLE:
-            case SYMBOL_CONST:
             {
-                //size_t size = get_type_size(sym->type);
-                byte *global_val = define_global_identifier(sym->name, (byte *)sym->val, sym->type);
-                //assert(sizeof(sym->val) == sizeof(uintptr_t));
+                assert(sym->decl->kind == DECL_VARIABLE);
+                
+                byte *result = eval_expression(sym->decl->variable.expr);
+
+                push_global_identifier(sym->name, result, size);
+            }
+            break;
+            case SYMBOL_CONST:
+            {                
+                push_global_identifier(sym->name, (byte *)sym->val, size);
             }
             break;           
         }
@@ -1218,7 +1251,7 @@ void treewalk_interpreter_test(void)
 #endif
 
     decl **all_declarations = null;
-    parse_file("test/treewalk.txt", &all_declarations);
+    parse_file("test/globals.txt", &all_declarations);
     symbol **resolved = resolve(all_declarations, true);
     assert(all_declarations);
     assert(resolved);
@@ -1269,6 +1302,11 @@ void treewalk_interpreter_test(void)
     shorten_source_pos = false;
 
     printf("\n=== FINISHED INTERPRETER RUN ===\n\n");
+
+    if (failed_asserts > 0)
+    {
+        fatal("\nNumber of failed assertions: %d\n", failed_asserts);
+    }
 
     debug_breakpoint;
 }
