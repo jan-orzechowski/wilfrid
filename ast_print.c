@@ -173,7 +173,13 @@ void ast_print_expr(expr *e)
             for (size_t i = 0; i < e->compound.fields_count; i++)
             {
                 compound_literal_field *f = e->compound.fields[i];
-                if (f->field_name)
+                if (f->field_index > 0)
+                {
+                    ast_printf("(index %d ", f->field_index);
+                    ast_print_expr(f->expr);
+                    ast_printf(")");
+                }
+                else if (f->field_name)
                 {
                     ast_printf("(%s ", f->field_name);
                     ast_print_expr(f->expr);

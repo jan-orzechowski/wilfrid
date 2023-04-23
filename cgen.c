@@ -692,6 +692,16 @@ void gen_expr(expr *e)
             }
 
             gen_indent++;
+            if (e->compound.fields_count > 1)
+            {
+                gen_printf_newline("");
+            }
+
+            if (e->compound.fields_count == 0)
+            {
+                gen_printf("0");
+            }
+
             for (size_t i = 0; i < e->compound.fields_count; i++)
             {
                 if (i != 0)
@@ -710,7 +720,14 @@ void gen_expr(expr *e)
             }
             gen_indent--;
 
-            gen_printf_newline("}");
+            if (e->compound.fields_count > 1)
+            {
+                gen_printf_newline("}");
+            }
+            else
+            {
+                gen_printf("}");
+            }
         }
         break;
         case EXPR_STUB:

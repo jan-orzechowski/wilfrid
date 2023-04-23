@@ -387,3 +387,12 @@ TEST:(var-decl f 0.000123f):END
 CASE:let f := 0.000456 + 0.2 + 3542.123291 :END
 TEST:(var-decl f (+ (+ 0.000456f 0.200000f) 3542.123291f)):END
 
+CASE:fn f() 
+{
+    let arr : int[20] = { 1, 2, 3 = 4, 4 = 3, 5 }
+}:END
+TEST:(fn-decl f
+  (var-decl arr (array (type int) 20) (compound 1 2 (index 3 4) (index 4 3) 5))
+):END
+
+

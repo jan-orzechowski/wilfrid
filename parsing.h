@@ -132,6 +132,7 @@ typedef struct field_expr
 typedef struct compound_literal_field
 {
     expr *expr;
+    int64_t field_index;
     const char *field_name;
 } compound_literal_field;
 

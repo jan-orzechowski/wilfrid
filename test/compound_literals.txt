@@ -1,4 +1,8 @@
-﻿struct external_struct
+﻿extern fn printf(str: char*, variadic) : int
+extern fn assert(condition: bool)
+
+/*
+struct external_struct
 {
     percentage: float
 }
@@ -40,10 +44,95 @@ union other_union_test
     val_bool : bool
 }
 
+struct test_union
+{
+    is_a_version: bool,	
+    fields: union // czy potrzebna jest nazwa?
+    {
+        a_version : struct
+        {
+            val_1 : int,
+            val_2 : int,
+        }, 
+        b_version : struct
+        {
+            val_f : float // czy nazwy mogą się powtarzać?
+        },
+    },
+}
+*/
+
+struct simple_struct 
+{
+    int_val: int,
+    long_val: long,
+    uint_val: uint
+}
+
+fn check_simple_struct(s: simple_struct, int_val: int, long_val: long, uint_val: uint)
+{
+    let result := (s.int_val == s.int_val 
+        && s.long_val == long_val 
+        && s.uint_val == uint_val)
+    assert(result)
+}
+
+fn check_array_is_zeroed(arr: int[20], starting_index: int)
+{
+    assert(starting_index < 20)
+    for (let i := 0, i < 20, i++)
+    {
+        assert(arr[i] == 0)
+    }
+}
+
 fn main() 
 {
-    let a : test_union = { is_a_version: true, a_fields: { 1, 2 } }
-    let b : test_union = { is_a_version: false, b_version: { 3.0 } }
+    // structs
+
+    let a : simple_struct = {}
+    check_simple_struct(a, 0, 0 as long, 0 as uint)
+
+    let b : simple_struct = { 0 }
+    check_simple_struct(b, 0, 0 as long, 0 as uint)
+    
+    let c := { 0 } as simple_struct
+    check_simple_struct(c, 0, 0 as long, 0 as uint)
+    
+    let d : simple_struct = { 1, 2 as long, 3 as uint }
+    check_simple_struct(d, 1, 2 as long, 3 as uint)
+    
+    let e : simple_struct = { 0, 3 as long }
+    check_simple_struct(e, 0, 3 as long, 0 as uint)
+
+    // arrays
+
+    let arr_a : int[20] = {}
+    check_array_is_zeroed(arr_a, 0)
+
+    let arr_b : int[20] = { 0, 0, 0, 0 }
+    check_array_is_zeroed(arr_b, 0)
+     
+    let arr_c : int[20] = { 1, 2, 3, 4 }
+    assert(arr_c[0] == 1)
+    assert(arr_c[3] == 4)
+    check_array_is_zeroed(arr_b, 4)
+    
+    let arr_d : int[20] = { 1 = 1, 2 = 2, 3 = 3, 5 = 6 }
+    assert(arr_d[0] == 0)
+    assert(arr_d[1] == 1)
+    assert(arr_d[2] == 2)
+    assert(arr_d[3] == 3)
+    assert(arr_d[4] == 0)
+    assert(arr_d[5] == 6)
+    check_array_is_zeroed(arr_b, 6)
+
+    let arr_e : long[5] = { 10 as long }
+    assert(arr_e[0] == 10 as long)
+
+/*
+    let a : test_union = { is_a_version = true, a_fields = { 1, 2 } }
+    let b : test_union = { is_a_version = false, b_version = { 3.0 } }
 
     a.a_version = { 4, 5 }
 
@@ -55,4 +144,6 @@ fn main()
     {
         { 13 }, { 11 }, { 6.7 }
     }
+*/
+
 }

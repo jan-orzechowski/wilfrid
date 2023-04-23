@@ -358,6 +358,7 @@ expr *parse_compound_literal(void)
             if (val)
             {
                 field = push_struct(arena, compound_literal_field);
+                field->field_index = -1;
                 if (val->kind == EXPR_NAME)
                 {                
                     if (match_token_kind(TOKEN_ASSIGN))
@@ -367,6 +368,18 @@ expr *parse_compound_literal(void)
                     }
                     else
                     {
+                        field->expr = val;
+                    }
+                }
+                else if (val->kind == EXPR_INT)
+                {
+                    if (match_token_kind(TOKEN_ASSIGN))
+                    {
+                        field->field_index = val->integer_value;
+                        field->expr = parse_expr();
+                    }
+                    else
+                    {                        
                         field->expr = val;
                     }
                 }

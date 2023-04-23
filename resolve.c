@@ -65,8 +65,10 @@ void error_in_resolving(const char *error_text, source_pos pos)
 
 const char *pretty_print_type_name(type *ty, bool plural);
 
-#define on_invalid_type_return(t) if (!(t) || (t->kind == TYPE_NONE)) { return null; }
-#define on_invalid_expr_return(e) if (!(e) || !((e)->type) || ((e)->type->kind == TYPE_NONE)) { return null; }
+#define on_invalid_type_return(t) if (!(t) || (t->kind == TYPE_NONE)) { return resolved_expr_invalid; }
+#define on_invalid_expr_return(e) if (!(e) || !((e)->type) || ((e)->type->kind == TYPE_NONE)) { return resolved_expr_invalid; }
+
+#define check_resolved_expr(e) (!(e) || !((e)->type) || ((e)->type->kind == TYPE_NONE))
 
 size_t get_field_offset(type *aggregate, char *field_name)
 {
@@ -104,6 +106,13 @@ type *get_field_type(type *aggregate, char *field_name)
     return null;
 }
 
+type *get_field_type_by_index(type *aggregate, size_t field_index)
+{
+    assert(aggregate->kind == TYPE_STRUCT || aggregate->kind == TYPE_UNION);
+    assert(field_index < aggregate->aggregate.fields_count);
+    return aggregate->aggregate.fields[field_index]->type;
+}
+
 size_t get_field_offset_by_index(type *aggr_type, size_t field_index)
 {
     assert(aggr_type);
@@ -112,6 +121,16 @@ size_t get_field_offset_by_index(type *aggr_type, size_t field_index)
     assert(field_index < aggr_type->aggregate.fields_count);
     type_aggregate_field *f = aggr_type->aggregate.fields[field_index];
     return f->offset;
+}
+
+size_t get_array_index_offset(type *arr_type, size_t element_index)
+{
+    assert(arr_type);
+    assert(arr_type->kind == TYPE_ARRAY);
+
+    assert(element_index < arr_type->array.size);
+    size_t result = get_type_size(arr_type->array.base_type) * element_index;
+    return result;
 }
 
 bool compare_types(type *a, type *b)
@@ -721,6 +740,7 @@ type *resolve_typespec(typespec *t)
             case TYPESPEC_FUNCTION:
             {
                 //result = resolve_typespec(t->function.ret_type);
+                fatal("unimplemented");
             }
             break;
             invalid_default_case;
@@ -914,20 +934,46 @@ resolved_expr *resolve_expr_binary(expr *expr)
     return result;
 }
 
+bool check_compound_expr_field(resolved_expr *init_expr, type *expected_type, size_t init_expr_position, source_pos pos)
+{    
+    if (init_expr->type == null || init_expr->type->kind == TYPE_NONE)
+    {
+        error_in_resolving(
+            xprintf("Could not resolve type in compound literal at position %d",
+                (init_expr_position + 1)),
+            pos);
+        return false;
+    }
+
+    if (false == can_perform_cast(init_expr->type, expected_type, true))
+    {
+        error_in_resolving(
+            xprintf(
+                "Compound literal field type mismatch. Expected type %s at position %d, got %s",
+                pretty_print_type_name(expected_type, false),
+                (init_expr_position + 1),
+                pretty_print_type_name(init_expr->type, false)),
+            pos);
+        return false;
+    }
+
+    return true;
+}
+
 resolved_expr *resolve_compound_expr(expr *e, type *expected_type, bool ignore_expected_type_mismatch)
 {
-    resolved_expr *result = null;
-
     assert(e->kind == EXPR_COMPOUND_LITERAL);
-
+    
     if (expected_type && expected_type->kind == TYPE_NONE)
     {
         return resolved_expr_invalid;
     }
 
-    if (e->compound.type == 0 && (expected_type == 0))
+    if (e->compound.type == null && expected_type == null)
     {
-        error_in_resolving("Implicitly typed compound literal in context without expected type", e->pos);
+        error_in_resolving(
+"Implicitly typed compound literal is in a context without an expected type. \
+Please provide a type either as a cast or in the variable declaration", e->pos);
         return resolved_expr_invalid;
     }
 
@@ -954,58 +1000,109 @@ resolved_expr *resolve_compound_expr(expr *e, type *expected_type, bool ignore_e
     }
     
     complete_type(t);
-    
-    if (t->kind != TYPE_STRUCT 
-        && t->kind != TYPE_UNION 
-        && t->kind != TYPE_ARRAY)
+    resolved_expr *result = get_resolved_rvalue_expr(t);
+
+    if (false == (t->kind == TYPE_STRUCT || t->kind == TYPE_UNION || t->kind == TYPE_ARRAY))
     {
-        error_in_resolving(
-            xprintf("Compound literals can only be used with struct and array types, got %s instead",
-                pretty_print_type_name(t, false)),
-            e->pos);
+        error_in_resolving(xprintf(
+            "Compound literals can only be used with struct and array types, got %s instead",
+            pretty_print_type_name(t, false)), e->pos);
         return resolved_expr_invalid;
     }
 
-    for (size_t i = 0; i < e->compound.fields_count; i++)
+    if (t->kind == TYPE_STRUCT || t->kind == TYPE_UNION)
     {
-        compound_literal_field *field = e->compound.fields[i];
-        resolved_expr *field_expr = resolve_expr(field->expr);
-    }
+        if (e->compound.fields_count > t->aggregate.fields_count)
+        {
+            error_in_resolving(xprintf(
+                "Provided more fields in a compound literal (%d) than is in the initialized struct/union type (%d)",
+                e->compound.fields_count, t->aggregate.fields_count), e->pos);
+            return result;
+        }
 
-    if (t->kind == TYPE_STRUCT || t->kind == TYPE_UNION || t->kind == TYPE_ARRAY)
-    {
-        bool is_array = (t->kind == TYPE_ARRAY);
+        bool name_provided = false;
 
-        size_t index = 0;
         for (size_t i = 0; i < e->compound.fields_count; i++)
         {
             compound_literal_field *field = e->compound.fields[i];
-            type *expected_type = is_array ? t->array.base_type : t->aggregate.fields[index]->type;
-            resolved_expr *init_expr = resolve_expected_expr(field->expr, expected_type, is_array);
-            if (init_expr->type == null || init_expr->type->kind == TYPE_NONE)
+            type *aggr_field_type = null;
+            assert(field->field_index == -1);
+            if (field->field_name)
             {
-                error_in_resolving(
-                    xprintf("Could not resolve type in compound literal at position %d", 
-                        (i + 1)), 
-                    field->expr->pos);
-                return null;
+                aggr_field_type = get_field_type(t, field->field_name);
+                name_provided = true;
+            }
+            else
+            {                
+                aggr_field_type = get_field_type_by_index(t, i);
+                if (name_provided)
+                {
+                    error_in_resolving(
+                        "In a struct/union compound literal, either all of the fields must be named, or none", e->pos);
+                    return result;
+                }
             }
 
-            if (false == can_perform_cast(init_expr->type, expected_type, true))
-            {                
-                error_in_resolving(
-                    xprintf(
-                        "Compound literal field type mismatch. Expected type %s at position %d, got %s", 
-                        pretty_print_type_name(expected_type, false), 
-                        (i + 1), 
-                        pretty_print_type_name(init_expr->type, false)),
-                    field->expr->pos);
-                return resolved_expr_invalid;                
+            resolved_expr *init_expr = resolve_expected_expr(field->expr, expected_type, false);
+            if (check_resolved_expr(init_expr))
+            {
+                if (false == check_compound_expr_field(init_expr, expected_type, i, field->expr->pos))
+                {
+                    return result;
+                }
             }
         }
     }
-    
-    result = get_resolved_rvalue_expr(t);
+    else if (t->kind == TYPE_ARRAY)
+    {
+        if (e->compound.fields_count > t->array.size)
+        {
+            error_in_resolving(xprintf(
+                "Provided more values in a compound literal (%d) than is in the initialized array type (%d)",
+                e->compound.fields_count, t->array.size), e->pos);
+            return result;
+        }
+
+        type *expected_type = t->array.base_type;
+        bool index_provided = false;
+
+        for (size_t i = 0; i < e->compound.fields_count; i++)
+        {
+            compound_literal_field *field = e->compound.fields[i];
+            assert(field->field_name == null);
+            if (field->field_index >= 0)
+            {
+                index_provided = true;
+                if (field->field_index > t->array.size)
+                {
+                    error_in_resolving(xprintf(
+                        "Index specified in the array compound literal (%d) is out of the array bounds (%d)",
+                        field->field_index, t->array.size), e->pos);
+                    return result;
+                }
+            }
+            else
+            {
+                assert(field->field_index == -1);
+                if (index_provided)
+                {
+                    error_in_resolving(
+                        "In an array compound literal, either each element must have specified index, or none", e->pos);
+                    return result;
+                }
+            }
+            
+            resolved_expr *init_expr = resolve_expected_expr(field->expr, expected_type, false);
+            if (check_resolved_expr(init_expr))
+            {
+                if (false == check_compound_expr_field(init_expr, expected_type, i, field->expr->pos))
+                {
+                    return result;
+                }
+            }
+        }
+    }
+        
     return result;
 }
 
@@ -1467,7 +1564,7 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
             {
                 error_in_resolving("Index must be an integer", e->pos);
             }
-
+            
             on_invalid_expr_return(operand_expr);
 
             if (operand_expr->type->kind == TYPE_NONE)
