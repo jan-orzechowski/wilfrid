@@ -53,8 +53,17 @@ bool expect_token_kind(token_kind kind)
     bool result = match_token_kind(kind);
     if (false == result)
     {
-        parsing_error(xprintf("Expected %s token, got %s", 
-            get_token_kind_name(kind), get_token_kind_name(tok.kind)));
+        if (tok.kind == TOKEN_KEYWORD)
+        {
+            parsing_error(xprintf("Expected '%s' token, got '%s' keyword",
+                get_token_kind_name(kind), tok.name));
+        }
+        else
+        {
+            parsing_error(xprintf("Expected '%s' token, got '%s'",
+                get_token_kind_name(kind), get_token_kind_name(tok.kind)));
+        }
+      
     }
     return result;
 }
@@ -807,7 +816,7 @@ expr *parse_expr(void)
     return result;
 }
 
-decl *parse_declaration(void);
+decl *parse_declaration(bool error_on_no_declaration);
 stmt_block parse_statement_block(void);
 
 stmt *parse_simple_statement(void)
@@ -993,7 +1002,7 @@ stmt *parse_statement(void)
         else if (keyword == let_keyword
             || keyword == const_keyword)
         {
-            decl *d = parse_declaration();
+            decl *d = parse_declaration(true);
             s = push_struct(arena, stmt);
             s->decl_stmt.decl = d;
             s->kind = STMT_DECL;
@@ -1112,7 +1121,7 @@ stmt *parse_statement(void)
     }
     else if (is_token_kind(TOKEN_NAME))
     {        
-        decl *d = parse_declaration();
+        decl *d = parse_declaration(false);
         if (d)
         {
             s = push_struct(arena, stmt);
@@ -1384,7 +1393,7 @@ void parse_enum(enum_decl *decl)
     }
 }
 
-decl *parse_declaration(void)
+decl *parse_declaration(bool error_on_no_declaration)
 {
     decl *declaration = null;
     source_pos pos = tok.pos;
@@ -1548,7 +1557,21 @@ decl *parse_declaration(void)
         }
         else
         {
-            parsing_error(xprintf("Unknown keyword: %s", decl_keyword));
+            parsing_error(xprintf("Unknown keyword: '%s'. Expected a declaration", decl_keyword));
+        }
+    }
+    else
+    {
+        if (error_on_no_declaration)
+        {
+            if (is_token_kind(TOKEN_NAME))
+            {
+                parsing_error(xprintf("Unknown keyword: '%s'. Expected a declaration", tok.name));
+            }
+            else
+            {
+                parsing_error(xprintf("Unexpected token: '%s'. Expected a declaration", get_token_kind_name(tok.kind)));
+            }
         }
     }
     return declaration;
@@ -1566,8 +1589,17 @@ void lex_and_parse(char *source, char *filename, decl*** declarations)
         {
             next_token();
         }
+        
+        if (attempts == 1)
+        {
+            // raportujemy jeden błąd - i nie raportujemy za pierwszym nieudanym sparsowaniem
+            dec = parse_declaration(true);
+        }
+        else
+        {
+            dec = parse_declaration(false);
+        }
 
-        dec = parse_declaration();
         if (dec)
         {
             attempts = 0;

@@ -621,11 +621,11 @@ void complete_type(type *t)
     {
         if (d->kind == DECL_STRUCT)
         {
-            error_in_resolving("Struct must have at least one field declared", d->pos);
+            error_in_resolving("Structs must have at least one field declared", d->pos);
         }
         else
         {
-            error_in_resolving("Union must have at least one field declared", d->pos);
+            error_in_resolving("Unions must have at least one field declared", d->pos);
         }
         return;
     }
@@ -939,7 +939,7 @@ resolved_expr *resolve_compound_expr(expr *e, type *expected_type, bool ignore_e
         {
             if (false == ignore_expected_type_mismatch)
             {
-                error_in_resolving("Compound literal has different type than expected", e->pos);
+                error_in_resolving("Compound literal has a different type than expected", e->pos);
                 return resolved_expr_invalid;
             }
             else
@@ -1190,7 +1190,14 @@ resolved_expr *resolve_call_expr(expr *e)
     resolved_expr *fn_expr = resolve_expr(e->call.function_expr);
     if (fn_expr == null || fn_expr->type->kind != TYPE_FUNCTION)
     {
-        error_in_resolving("Could not resolve function call", e->pos);
+        if (e->call.function_expr->name)
+        {
+            error_in_resolving(xprintf("Could not resolve function call to '%s'", e->call.function_expr->name), e->pos);
+        }
+        else
+        {
+            error_in_resolving("Could not resolve function call", e->pos);
+        }
         return resolved_expr_invalid;
     }
 
