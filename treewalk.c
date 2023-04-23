@@ -144,6 +144,28 @@ char *_debug_print_vm_value(byte *val, type *typ)
         break;
 
         case TYPE_ARRAY:
+        {
+            char *temp = null;
+            buf_printf(temp, "[");            
+            size_t array_size = get_type_size(typ->array.base_type) * typ->array.size;
+            for (size_t offset = 0; offset < array_size; offset++)
+            {
+                byte b = *(val + offset);
+                buf_printf(temp, "%d", b);
+                if (offset < array_size - 1)
+                {
+                    buf_printf(temp, ",");
+                }
+            }
+            buf_printf(temp, "]");
+
+            snprintf(debug_print_buffer, debug_print_buffer_size, "%s, bytes: %s",
+                pretty_print_type_name(typ, false), temp);
+
+            buf_free(temp);
+        }
+        break;
+
         case TYPE_LIST:
         case TYPE_FUNCTION:
 
@@ -811,23 +833,42 @@ byte *eval_expression(expr *exp)
         break;
         case EXPR_FIELD:
         {
-            byte *val = eval_expression(exp->field.expr);
-
+            byte *aggr = eval_expression(exp->field.expr);
             type *aggr_type = exp->field.expr->resolved_type;
             while (aggr_type->kind == TYPE_POINTER)
             {
-                debug_vm_print(exp->pos, "auto deref ptr %s", debug_print_vm_value(val, aggr_type));
+                debug_vm_print(exp->pos, "auto deref ptr %s", debug_print_vm_value(aggr, aggr_type));
                 aggr_type = aggr_type->pointer.base_type;                
-                (uintptr_t)val = *(uintptr_t *)val;
+                (uintptr_t)aggr = *(uintptr_t *)aggr;
             }
 
             size_t field_offset = get_field_offset(aggr_type, exp->field.field_name);
-            result = val + field_offset;
+            result = aggr + field_offset;
         }
         break;
         case EXPR_INDEX:
         {
-            fatal("unimplemented");
+            byte *arr = eval_expression(exp->index.array_expr);
+            type *arr_type = exp->index.array_expr->resolved_type;
+
+            byte *ind = eval_expression(exp->index.index_expr);
+            type *ind_type = exp->index.index_expr->resolved_type;
+            size_t element_index = 0;
+            if (get_type_size(ind_type) == 8)
+            {
+                element_index = *(uint64_t *)ind;
+            }
+            else if (get_type_size(ind_type) == 4)
+            {
+                element_index = *(uint32_t *)ind;
+            }
+            else
+            {
+                fatal("this shouldn't happen");
+            }
+
+            size_t index_offset = get_array_index_offset(arr_type, element_index);
+            result = arr + index_offset;
         }
         break;
         case EXPR_NEW:
@@ -855,27 +896,49 @@ byte *eval_expression(expr *exp)
         break;
         case EXPR_COMPOUND_LITERAL:
         {
-            type *aggr_type = exp->resolved_type;
-            assert(aggr_type->kind == TYPE_STRUCT || aggr_type->kind == TYPE_UNION);
-            
-            for (size_t i = 0; i < exp->compound.fields_count; i++)
+            type *typ = exp->resolved_type;
+            if (typ->kind == TYPE_ARRAY)
             {
-                compound_literal_field *f = exp->compound.fields[i];
-                byte *f_val = eval_expression(f->expr);
-                f->expr->resolved_type;
+                for (size_t i = 0; i < exp->compound.fields_count; i++)
+                {
+                    compound_literal_field *f = exp->compound.fields[i];
+                    byte *f_val = eval_expression(f->expr);
 
-                size_t offset = 0;
-                if (f->field_name)
-                {
-                    offset = get_field_offset(aggr_type, f->field_name);
+                    size_t offset = 0;
+                    if (f->field_index >= 0)
+                    {
+                        offset = get_array_index_offset(typ, f->field_index);
+                    }
+                    else
+                    {
+                        assert(f->field_index == -1);
+                        offset = get_array_index_offset(typ, i);
+                    }
+
+                    copy_vm_val(result + offset, f_val, get_type_size(f->expr->resolved_type));
                 }
-                else
+            }
+            else
+            {
+                assert(typ->kind == TYPE_STRUCT || typ->kind == TYPE_UNION);
+                for (size_t i = 0; i < exp->compound.fields_count; i++)
                 {
-                    offset = get_field_offset_by_index(aggr_type, i);
+                    compound_literal_field *f = exp->compound.fields[i];
+                    byte *f_val = eval_expression(f->expr);
+
+                    size_t offset = 0;
+                    if (f->field_name)
+                    {
+                        offset = get_field_offset(typ, f->field_name);
+                    }
+                    else
+                    {
+                        offset = get_field_offset_by_index(typ, i);
+                    }
+
+                    copy_vm_val(result + offset, f_val, get_type_size(f->expr->resolved_type));
                 }
-                
-                copy_vm_val(result + offset, f_val, get_type_size(f->expr->resolved_type));                               
-            }            
+            }                   
         }
         break;
         case EXPR_STUB:
@@ -1253,7 +1316,7 @@ void treewalk_interpreter_test(void)
 #endif
 
     decl **all_declarations = null;
-    parse_file("test/sizeof.txt", &all_declarations);
+    parse_file("test/compound_literals.txt", &all_declarations);
     symbol **resolved = resolve(all_declarations, true);
     assert(all_declarations);
     assert(resolved);
