@@ -130,6 +130,9 @@ fn main()
     let arr_e : long[5] = { 10 as long }
     assert(arr_e[0] == 10 as long)
 
+    let arr_f : long*[5] = { &arr_e[0], &arr_e[1] }
+    let arr_g : long*[5] = { 2 = &arr_e[0], 4 = &arr_e[1] }
+
 /*
     let a : test_union = { is_a_version = true, a_fields = { 1, 2 } }
     let b : test_union = { is_a_version = false, b_version = { 3.0 } }

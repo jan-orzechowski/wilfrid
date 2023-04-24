@@ -17,9 +17,13 @@ void _gen_printf_newline()
     gen_pos.line++;
 }
 
-const char *parenthesize(const char *str, bool parenthesize)
+const char *parenthesize(const char *str, char *first_char)
 {
-    const char *result = parenthesize ? xprintf("(%s)", str) : str;
+    const char *result = str;
+    if (first_char && *first_char != '[')
+    {
+        result = xprintf("(%s)", str);
+    }   
     return result;
 }
 
@@ -102,8 +106,16 @@ const char *get_c_type_name(type *t)
     return null;
 }
 
-char *type_to_cdecl(type *type, const char *name)
+// przy deklaracjach potrzebujemy nazwy zmiennej, przy castach nie
+char *type_to_cdecl(type *type, char *name)
 {
+    char *result = null;
+
+    if (name == null)
+    {
+        name = "";
+    }
+
     switch (type->kind)
     {
         case TYPE_VOID:
@@ -117,27 +129,28 @@ char *type_to_cdecl(type *type, const char *name)
         case TYPE_STRUCT:
         case TYPE_UNION:
         {
-            return xprintf("%s%s%s", get_c_type_name(type), name ? " " : "", name ? name : "");
+            result = xprintf("%s%s%s", get_c_type_name(type), name ? " " : "", name ? name : "");
         }
         break;
         case TYPE_POINTER:
         {
-            return type_to_cdecl(type->pointer.base_type, parenthesize(xprintf("*%s", name), name));
+            assert(type->pointer.base_type);
+            result = type_to_cdecl(type->pointer.base_type, parenthesize(xprintf("*%s", name), name));
         }
         break;
         case TYPE_ARRAY:
         {
-            return type_to_cdecl(type->array.base_type, parenthesize(xprintf("%s[%llu]", name, type->array.size), name));
+            assert(type->array.base_type);
+            result = type_to_cdecl(type->array.base_type, parenthesize(xprintf("%s[%llu]", name, type->array.size), name));
         }
         break;
         case TYPE_LIST:
         {
-            return xprintf("___list_hdr___ %s", parenthesize(xprintf("*%s", name), name));
+            result = xprintf("___list_hdr___ %s", parenthesize(xprintf("*%s", name), name));
         }
         break;
         case TYPE_FUNCTION:
         {
-            char *result = null;
             buf_printf(result, "%s(", xprintf("*%s", name));
             if (type->function.param_count == 0 
                 && type->function.receiver_type == null)
@@ -159,16 +172,22 @@ char *type_to_cdecl(type *type, const char *name)
                 }
             }
             buf_printf(result, ")");
-            return type_to_cdecl(type->function.return_type, result);
+            result = type_to_cdecl(type->function.return_type, result);
         }
         break;
         invalid_default_case;       
     }
-    return null;
+
+    return result;
 }
 
-char *typespec_to_cdecl(typespec *t, const char *name)
+char *typespec_to_cdecl(typespec *t, char *name)
 {
+    if (name == null)
+    {
+        name = "";
+    }
+
     char *result = null;
     switch (t->kind)
     {
@@ -197,7 +216,7 @@ char *typespec_to_cdecl(typespec *t, const char *name)
         break;
         case TYPESPEC_ARRAY:
         {
-            const char *wrapped_name = parenthesize(xprintf("%s[%s]", name, gen_expr_str(t->array.size_expr)), *name);
+            const char *wrapped_name = parenthesize(xprintf("%s[%s]", name, gen_expr_str(t->array.size_expr)), name);
             result = typespec_to_cdecl(t->array.base_type, wrapped_name);
         }
         break;
@@ -675,22 +694,15 @@ void gen_expr(expr *e)
         break;
         case EXPR_SIZEOF:
         {
-            gen_printf("sizeof(%s)", typespec_to_cdecl(e->cast.type, null));            
+            gen_printf("sizeof(%s)", typespec_to_cdecl(e->cast.type, ""));            
         }
         break;        
         case EXPR_COMPOUND_LITERAL:
         {
-            if (e->compound.type)
-            {
-                char *decl = typespec_to_cdecl(e->compound.type, null);
-                gen_printf("(%s){", decl);
-            }
-            else
-            {
-                char *decl = type_to_cdecl(e->resolved_type, null);
-                gen_printf("(%s){", decl);
-            }
-
+            assert(e->resolved_type);
+            char *decl = type_to_cdecl(e->resolved_type, null);
+            gen_printf("(%s){", decl);
+            
             gen_indent++;
             if (e->compound.fields_count > 1)
             {
@@ -713,10 +725,14 @@ void gen_expr(expr *e)
                 compound_literal_field *field = e->compound.fields[i];
                 if (field->field_name)
                 {
-                    gen_printf(".%s = ", field->field_name);                
+                    gen_printf(".%s = ", field->field_name);
+                }
+                else if (field->field_index >= 0)
+                {
+                    gen_printf("[%d] = ", field->field_index);
                 }
 
-                gen_expr(field->expr);                
+                gen_expr(field->expr);
             }
             gen_indent--;
 
