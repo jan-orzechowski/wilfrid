@@ -118,6 +118,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard_C>stdc11</LanguageStandard_C>
       <AdditionalOptions>-DDEBUG_BUILD /we4470 /we4477 /we4129 /we4024 /we4022 /we4013 /we4133 /we4047 /we4087 /we4020 /we4715 /we4716 /we4098 /we4312 /we4473 /we4067 /we4002 /we4706 /W4 /Tc %(AdditionalOptions)</AdditionalOptions>
+      <CompileAs>CompileAsC</CompileAs>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
