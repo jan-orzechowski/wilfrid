@@ -62,8 +62,7 @@ bool expect_token_kind(token_kind kind)
         {
             parsing_error(xprintf("Expected '%s' token, got '%s'",
                 get_token_kind_name(kind), get_token_kind_name(tok.kind)));
-        }
-      
+        }  
     }
     return result;
 }
@@ -643,7 +642,7 @@ expr *parse_unary_expr(void)
         }
         else if (match_token_kind(TOKEN_MUL)) // pointer dereference
         {
-            e = push_unary_expr(pos, TOKEN_MUL, parse_base_expr());
+            e = push_unary_expr(pos, TOKEN_MUL, parse_unary_expr());
         }
         else if (match_token_kind(TOKEN_BITWISE_AND)) // address of
         {
