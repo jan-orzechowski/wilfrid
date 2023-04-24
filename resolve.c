@@ -1500,10 +1500,19 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
         }
         break;
         case EXPR_TERNARY:
-        {
-            // w sumie czemu nie?
-            error_in_resolving("Ternary expressions not allowed as constants", e->pos);
-            return resolved_expr_invalid;
+        {            
+            resolved_expr *cond = resolve_expr(e->ternary.condition);
+            resolved_expr *left = resolve_expr(e->ternary.if_false);
+            resolved_expr *right = resolve_expr(e->ternary.if_true);
+
+            if (false == compare_types(left->type, right->type))
+            {
+                error_in_resolving(xprintf(
+                    "Both alternatives in a ternary expressions should have the same type. Now the types are %s and %s",
+                    pretty_print_type_name(left->type, false), pretty_print_type_name(right->type, false)), e->pos);
+            }
+         
+            result = get_resolved_rvalue_expr(left->type);
         }
         break;
         case EXPR_SIZEOF:
