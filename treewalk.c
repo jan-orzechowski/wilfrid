@@ -70,7 +70,9 @@ bool is_non_zero(byte *val, size_t size)
 vm_value_meta *get_metadata_by_ptr(byte *ptr);
 
 char *_debug_print_vm_value(byte *val, type *typ)
-{     
+{    
+    assert(typ);
+
     // jeśli używamy tylko jednego bufora, nie możemy użyć dwa razy debug_print_vm_value w jednej wiadomości...
 
     //if (debug_print_buffer == null)
@@ -698,22 +700,29 @@ byte *eval_expression(expr *exp)
             
             if (exp->unary.operator == TOKEN_MUL) // pointer dereference
             {       
-                assert(exp->resolved_type->kind == TYPE_POINTER);
-                assert(exp->resolved_type->pointer.base_type);
+                assert(exp->unary.operand->resolved_type->kind == TYPE_POINTER);
+                assert(exp->unary.operand->resolved_type->pointer.base_type);
 
-                debug_vm_print(exp->pos, "deref ptr %s", debug_print_vm_value(operand, exp->resolved_type->pointer.base_type));
+                debug_vm_print(exp->pos, "deref ptr %s", 
+                    debug_print_vm_value(operand, exp->unary.operand->resolved_type->pointer.base_type));
 
                 result = (byte *)*(uintptr_t *)operand;
                 
-                debug_vm_print(exp->pos, "result is val %s", debug_print_vm_value(result, exp->resolved_type));
+                debug_vm_print(exp->pos, "result is val %s", 
+                    debug_print_vm_value(result, exp->resolved_type));
             }
             else if (exp->unary.operator == TOKEN_BITWISE_AND) // address of
             {
-                debug_vm_print(exp->pos, "address of val %s", debug_print_vm_value(operand, exp->resolved_type->pointer.base_type));
+                assert(exp->resolved_type->kind == TYPE_POINTER);
+                assert(exp->resolved_type->pointer.base_type);
+
+                debug_vm_print(exp->pos, "address of val %s",
+                    debug_print_vm_value(operand, exp->unary.operand->resolved_type));
 
                 copy_vm_val(result, (byte *)&operand, sizeof(byte *));
 
-                debug_vm_print(exp->pos, "result is ptr %s", debug_print_vm_value(result, exp->resolved_type));
+                debug_vm_print(exp->pos, "result is ptr %s", 
+                    debug_print_vm_value(result, exp->resolved_type));
             }
             else if (exp->unary.operator == TOKEN_INC || exp->unary.operator == TOKEN_DEC)
             {
