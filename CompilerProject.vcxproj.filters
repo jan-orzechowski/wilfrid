@@ -38,5 +38,6 @@
     <Text Include="test\structs.txt" />
     <Text Include="test\globals.txt" />
     <Text Include="test\sizeof.txt" />
+    <Text Include="test\enum.txt" />
   </ItemGroup>
 </Project>

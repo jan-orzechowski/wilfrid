@@ -1,0 +1,60 @@
+﻿extern fn printf(str: char*, variadic) : int
+extern fn assert(condition: bool)
+
+enum element_kind
+{
+    A,
+    B,
+    C
+}
+
+struct element
+{
+    kind: element_kind,
+    value: int
+}
+
+enum all_ones
+{
+    first = 1,
+    second = 1,
+    third = 1,
+}
+
+fn main()
+{
+    let test := 1
+
+    let data : element[15] = 
+    { 
+        1 =  { element_kind.A, 1  },   
+        3 =  { element_kind.B, 3  },   
+        5 =  { element_kind.B, 5  },   
+        7 =  { element_kind.B, 7  },   
+        9 =  { element_kind.A, 9  },   
+        10 = { element_kind.A, 10 },   
+        12 = { element_kind.B, 12 },   
+    }
+
+    for (let i := 0, i < 15, i++)
+    {
+        let el := &data[i]
+        if (el.kind == element_kind.A)
+        {
+            el.kind = element_kind.C
+            el.value *= 10
+            //printf("result of multiplication: %d", data[i].value)
+        }
+    }
+
+    assert(data[1].kind == element_kind.C)
+    
+    // to trzeba jeszcze poprawić
+    //assert(data[2].kind == 0 as element_kind)
+    assert(data[3].kind == element_kind.B)
+    
+    assert(data[0].value == 0)
+    assert(data[10].value == 100)
+    assert(data[7].value == 7)
+    assert((data[3].value - 1) == element_kind.C as int)
+}

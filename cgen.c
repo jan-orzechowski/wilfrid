@@ -193,9 +193,17 @@ char *typespec_to_cdecl(typespec *t, char *name)
     {
         case TYPESPEC_NAME:
         {
-            // środkowe s to spacja, jeśli zostało podane name
-            result = xprintf("%s%s%s", t->name, name ? " " : "", name ? name : "");
-            debug_breakpoint;
+            // hack - można się zastanowić czy w ogóle potrzebujemy typespec na poziomie C gen
+            symbol *sym = get_symbol(t->name);
+            assert(sym && sym->type);
+            if (sym->type->kind == TYPE_ENUM)
+            {
+                result = xprintf("%s%s%s", "long", name ? " " : "", name ? name : "");
+            }
+            else
+            {
+                result = xprintf("%s%s%s", t->name, name ? " " : "", name ? name : "");
+            }
         }
         break;
         case TYPESPEC_POINTER:
@@ -257,7 +265,7 @@ void gen_aggregate(decl *decl)
     {
         aggregate_field item = decl->aggregate.fields[i];
         gen_line_hint(item.pos);
-        gen_printf_newline("%s;", typespec_to_cdecl(item.type, item.name));        
+        gen_printf_newline("%s;", typespec_to_cdecl(item.type, item.name));                
     }
     gen_indent--;
     gen_printf_newline("};");
@@ -667,16 +675,48 @@ void gen_expr(expr *e)
         break;
         case EXPR_FIELD:
         {
-            gen_expr(e->field.expr);
-            assert(e->field.expr->resolved_type);
-            if (e->field.expr->resolved_type->kind == TYPE_POINTER)
+            if (e->field.expr->resolved_type->kind == TYPE_ENUM)
             {
-                gen_printf("->%s", e->field.field_name);
-                debug_breakpoint;
+                type_enum en = e->field.expr->resolved_type->enumeration;
+                assert(en.values.count > 0);
+                int64_t val = *(int64_t *)map_get(&en.values, e->field.field_name);
+                gen_printf("%lld", val);
+                
+#if DEBUG_BUILD
+                assert(e->field.expr->resolved_type->symbol->kind == SYMBOL_TYPE);
+                assert(e->field.expr->resolved_type->symbol->decl->kind == DECL_ENUM);
+                
+                bool found = false;
+                decl *d = e->field.expr->resolved_type->symbol->decl;
+                for (size_t i = 0; i < d->enum_decl.values_count; i++)
+                {
+                    enum_value v = d->enum_decl.values[i];
+                    if (v.name == e->field.field_name)
+                    {
+                        assert(v.value == val);
+                        found = true;
+                        break;
+                    }
+                }
+                if (false == found)
+                {
+                    fatal("enum value not found");
+                }
+#endif 
             }
             else
             {
-                gen_printf(".%s", e->field.field_name);
+                gen_expr(e->field.expr);
+                assert(e->field.expr->resolved_type);
+                if (e->field.expr->resolved_type->kind == TYPE_POINTER)
+                {
+                    gen_printf("->%s", e->field.field_name);
+                    debug_breakpoint;
+                }
+                else
+                {
+                    gen_printf(".%s", e->field.field_name);
+                }
             }
         }
         break;
@@ -750,8 +790,7 @@ void gen_expr(expr *e)
         {
             gen_expr_stub(e);
         }
-        break;
-        case EXPR_NONE:
+        break;        
         case EXPR_NEW: 
         {
             if (e->new.type->kind == TYPESPEC_LIST)
@@ -786,6 +825,7 @@ void gen_expr(expr *e)
             }
         } 
         break;
+        case EXPR_NONE:
         invalid_default_case;
     }
 }
@@ -975,10 +1015,8 @@ void gen_symbol_decl(symbol *sym)
         break;
         case DECL_ENUM:
         {
-            gen_printf_newline("enum { %s = ", sym->name);
-            gen_expr(decl->const_decl.expr);
-            gen_printf(" };");
-            break;
+            // deklaracja enuma nie jest zachowana na poziomie kodu C
+            // wartości enuma zostaję wkompilowane jako liczby            
         }      
         break;
         default:
@@ -1295,6 +1333,12 @@ const char *pretty_print_type_name(type *ty, bool plural)
             result = plural
                 ? xprintf("pointers to %s", pretty_print_type_name(ty->pointer.base_type, false))
                 : xprintf("pointer to %s", pretty_print_type_name(ty->pointer.base_type, false));
+        }
+        break;
+        case TYPE_ENUM:
+        {
+            assert(ty->symbol);
+            result = xprintf("enumeration %s", ty->symbol->name);
         }
         break;
         case TYPE_FUNCTION:

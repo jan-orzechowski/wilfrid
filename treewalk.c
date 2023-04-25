@@ -87,6 +87,7 @@ char *_debug_print_vm_value(byte *val, type *typ)
             snprintf(debug_print_buffer, debug_print_buffer_size, "%i", *(int32_t*)val);
         }
         break;
+        case TYPE_ENUM:
         case TYPE_LONG:
         {
             snprintf(debug_print_buffer, debug_print_buffer_size, "%lld", *(int64_t*)val);
@@ -371,7 +372,8 @@ void eval_unary_op(byte *dest, token_kind operation, byte *operand, type *operan
     {
         *(uint32_t *)dest = (uint32_t)eval_ulong_unary_op(operation, *(uint32_t *)operand);
     }
-    else if (operand_type == type_long)
+    else if (operand_type == type_long 
+        || operand_type->kind == TYPE_ENUM)
     {
         *(int64_t *)dest = eval_long_unary_op(operation, *(int64_t *)operand);
     }
@@ -396,25 +398,26 @@ void eval_binary_op(byte *dest, token_kind op, byte *left, byte *right, type *op
     assert(right);
     assert(operands_type);
 
-    if (operands_type== type_int)
+    if (operands_type == type_int)
     {
         *(int32_t *)dest = (int32_t)eval_long_binary_op(op, *(int32_t *)left, *(int32_t *)right);
     }
-    else if (operands_type== type_uint 
-        || operands_type== type_bool 
-        || operands_type== type_char)
+    else if (operands_type == type_uint 
+        || operands_type == type_bool 
+        || operands_type == type_char)
     {
         *(uint32_t *)dest = (uint32_t)eval_ulong_binary_op(op, *(uint32_t *)left, *(uint32_t *)right);
     }
-    else if (operands_type== type_long)
+    else if (operands_type == type_long 
+        || operands_type->kind == TYPE_ENUM)
     {
         *(int64_t *)dest = eval_long_binary_op(op, *(int64_t *)left, *(int64_t *)right);
     }
-    else if (operands_type== type_ulong)
+    else if (operands_type == type_ulong)
     {
         *(uint64_t *)dest = eval_ulong_binary_op(op, *(uint64_t *)left, *(uint64_t *)right);
     }
-    else if (operands_type== type_float)
+    else if (operands_type == type_float)
     {
         *(float *)dest = eval_float_binary_op(op, *(float *)left, *(float *)right);
     }
@@ -469,6 +472,7 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
             }
         } 
         break;
+        case TYPE_ENUM:
         case TYPE_LONG:
         {
             if (old_type == type_int)
@@ -748,16 +752,19 @@ byte *eval_expression(expr *exp)
             type *left_t = exp->binary.left->resolved_type;
             assert(left_t);
             type *right_t = exp->binary.right->resolved_type;
-            assert(right_t);
+            assert(right_t);            
             assert(compare_types(left_t, right_t));
-
+            
             size_t left_size = get_type_size(left_t);
             size_t right_size = get_type_size(right_t);
             
             eval_binary_op(result, exp->binary.operator, left, right, left_t);
 
-            debug_vm_print(exp->pos, "operation %s, result %s", 
-                get_token_kind_name(exp->binary.operator), debug_print_vm_value(result, exp->resolved_type));
+            debug_vm_print(exp->pos, "operation %s on %s and %s, result %s", 
+                get_token_kind_name(exp->binary.operator), 
+                debug_print_vm_value(left, left_t),
+                debug_print_vm_value(right, right_t),
+                debug_print_vm_value(result, exp->resolved_type));
         }
         break;
         case EXPR_TERNARY:
@@ -842,17 +849,33 @@ byte *eval_expression(expr *exp)
         break;
         case EXPR_FIELD:
         {
-            byte *aggr = eval_expression(exp->field.expr);
-            type *aggr_type = exp->field.expr->resolved_type;
-            while (aggr_type->kind == TYPE_POINTER)
+            assert(exp->field.expr->resolved_type);
+            if (exp->field.expr->resolved_type->kind == TYPE_ENUM)
             {
-                debug_vm_print(exp->pos, "auto deref ptr %s", debug_print_vm_value(aggr, aggr_type));
-                aggr_type = aggr_type->pointer.base_type;                
-                (uintptr_t)aggr = *(uintptr_t *)aggr;
+                type *enum_type = exp->field.expr->resolved_type;
+                char *key = exp->field.field_name;
+                void *val_ptr = map_get(&enum_type->enumeration.values, key);
+                assert(val_ptr);
+                int64_t val = *(int64_t *)val_ptr;
+                
+                // tu jest zduplikowany result, po to, żeby można było nadpisać type jako long
+                result = push_identifier_on_stack(null, type_long);
+                copy_vm_val(result, (byte *)&val, sizeof(int64_t));
             }
+            else
+            {
+                byte *aggr = eval_expression(exp->field.expr);
+                type *aggr_type = exp->field.expr->resolved_type;
+                while (aggr_type->kind == TYPE_POINTER)
+                {
+                    debug_vm_print(exp->pos, "auto deref ptr %s", debug_print_vm_value(aggr, aggr_type));
+                    aggr_type = aggr_type->pointer.base_type;
+                    (uintptr_t)aggr = *(uintptr_t *)aggr;
+                }
 
-            size_t field_offset = get_field_offset(aggr_type, exp->field.field_name);
-            result = aggr + field_offset;
+                size_t field_offset = get_field_offset(aggr_type, exp->field.field_name);
+                result = aggr + field_offset;
+            }
         }
         break;
         case EXPR_INDEX:
@@ -1036,13 +1059,13 @@ void eval_statement(stmt *st, byte *opt_ret_value)
             if (dec->kind == DECL_VARIABLE)
             {                
                 byte *new_val = eval_expression(dec->variable.expr);
-                
-                if (false == is_on_stack(new_val))
-                {
+                                
+                //if (false == is_on_stack(new_val))
+                //{
                     byte *stack_val = push_identifier_on_stack(dec->name, dec->resolved_type);
                     copy_vm_val(stack_val, new_val, get_type_size(dec->resolved_type));
                     new_val = stack_val;
-                }
+                //}
 
                 vm_value_meta *m = get_metadata_by_ptr(new_val);
                 m->name = dec->name;
@@ -1325,7 +1348,7 @@ void treewalk_interpreter_test(void)
 #endif
 
     decl **all_declarations = null;
-    parse_file("test/compound_literals.txt", &all_declarations);
+    parse_file("test/enum.txt", &all_declarations);
     symbol **resolved = resolve(all_declarations, true);
     assert(all_declarations);
     assert(resolved);

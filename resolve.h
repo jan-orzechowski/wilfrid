@@ -29,7 +29,8 @@ typedef enum type_kind
     TYPE_ARRAY,
     TYPE_LIST,
     TYPE_POINTER,
-    TYPE_FUNCTION
+    TYPE_FUNCTION,
+    TYPE_ENUM
 } type_kind;
 
 typedef struct type_array
@@ -71,6 +72,11 @@ typedef struct type_aggregate
     size_t fields_count;
 } type_aggregate;
 
+typedef struct type_enum
+{
+    hashmap values;
+} type_enum;
+
 struct type
 {
     type_kind kind;
@@ -84,6 +90,7 @@ struct type
         type_pointer pointer;
         type_function function;
         type_aggregate aggregate;
+        type_enum enumeration;
     };
 };
 

@@ -142,6 +142,13 @@ bool compare_types(type *a, type *b)
     {
         return true;
     }
+    
+    if ((a == type_long && b->kind == TYPE_ENUM)
+        || (b == type_long && a->kind == TYPE_ENUM))
+    {
+        debug_breakpoint;
+        return true;
+    }
 
     if (a->kind != b->kind)
     {
@@ -191,20 +198,16 @@ bool can_perform_cast(type *from_type, type *to_type, bool allow_integer_convers
         return true;
     }
 
-    if (from_type == type_ulong)
+    if ((from_type == type_ulong && to_type->kind == TYPE_POINTER)
+        || (to_type == type_ulong && from_type->kind == TYPE_POINTER))
     {
-        if (to_type->kind == TYPE_POINTER)
-        {
-            return true;
-        }
+        return true;
     }
 
-    if (to_type == type_ulong)
+    if ((from_type == type_long && to_type->kind == TYPE_ENUM)
+        || (to_type == type_long && from_type->kind == TYPE_ENUM))
     {
-        if (from_type->kind == TYPE_POINTER)
-        {
-            return true;
-        }
+        return true;
     }
 
     return false;
@@ -357,7 +360,15 @@ void push_local_symbol(const char *name, type *type)
     };
 }
 
-void get_complete_aggregate_type(type *type, type_aggregate_field **fields, size_t fields_count, bool is_union)
+void complete_enum_type(type *type, hashmap values_map)
+{
+    assert(type->kind == TYPE_COMPLETING);
+    type->kind = TYPE_ENUM;
+    type->size = 8;
+    type->enumeration.values = values_map;
+}
+
+void complete_aggregate_type(type *type, type_aggregate_field **fields, size_t fields_count, bool is_union)
 {
     assert(type->kind == TYPE_COMPLETING);
     type->kind = is_union ? TYPE_UNION : TYPE_STRUCT;
@@ -528,7 +539,7 @@ symbol *get_symbol_from_decl(decl *d)
     assert(kind != SYMBOL_NONE);
 
     symbol *sym = get_new_symbol(kind, d->name, d);
-    if (d->kind == DECL_STRUCT || d->kind == DECL_UNION)
+    if (kind == SYMBOL_TYPE)
     {
         sym->state = SYMBOL_RESOLVED;
         sym->type = get_incomplete_type(sym);
@@ -620,43 +631,89 @@ void complete_type(type *t)
     decl *d = t->symbol->decl;
 
     // pozostałe typy są kompletne od razu
-    assert(d->kind == DECL_STRUCT || d->kind == DECL_UNION);
-    
-    // idziemy po kolei po polach
-    type_aggregate_field **fields = null;
-    for (size_t i = 0; i < d->aggregate.fields_count; i++)
-    {
-        aggregate_field field = d->aggregate.fields[i];
-        type *field_type = resolve_typespec(field.type);
-        complete_type(field_type); // wszystkie muszą być completed, ponieważ musimy znać ich rozmiar
+    assert(d->kind == DECL_STRUCT || d->kind == DECL_UNION || d->kind == DECL_ENUM);
 
-        type_aggregate_field *type_field = xcalloc(sizeof(type_aggregate_field));
-        type_field->name = field.name;
-        type_field->type = field_type;
-        buf_push(fields, type_field);
-    }
-
-    if (buf_len(fields) == 0)
+    if (d->kind == DECL_ENUM)
     {
-        if (d->kind == DECL_STRUCT)
+        hashmap values = {0};
+        map_grow(&values, 4);
+
+        int64_t largest_value = 0;
+        for (size_t i = 0; i < d->enum_decl.values_count; i++)
         {
-            error_in_resolving("Structs must have at least one field declared", d->pos);
+            enum_value *val = &d->enum_decl.values[i];
+            if (val->value_set && val->value > largest_value)
+            {
+                largest_value = val->value_set;
+            }
         }
-        else
-        {
-            error_in_resolving("Unions must have at least one field declared", d->pos);
-        }
-        return;
-    }
 
-    if (d->kind == DECL_STRUCT)
-    {
-        get_complete_aggregate_type(t, fields, buf_len(fields), false);
+        for (size_t i = 0; i < d->enum_decl.values_count; i++)
+        {
+            enum_value *val = &d->enum_decl.values[i];
+            if (false == val->value_set)
+            {
+                if (largest_value >= INT64_MAX - 1)
+                {
+                    error_in_resolving(xprintf(
+                        "Max long integer value reached in the %s enumeration. Please set enumeration values to smaller integers.",
+                        d->name), d->pos);
+                }
+                else
+                {
+                    val->value = largest_value++;
+                }
+            }
+        }
+        
+        for (size_t i = 0; i < d->enum_decl.values_count; i++)
+        {
+            enum_value *val = &d->enum_decl.values[i];            
+            assert_is_interned(val->name);
+            void *val_ptr = push_size(arena, sizeof(int64_t));
+            *(int64_t *)val_ptr = val->value;
+            map_put(&values, val->name, val_ptr);
+        }
+
+        complete_enum_type(t, values);
     }
     else
     {
-        assert(d->kind == DECL_UNION);
-        get_complete_aggregate_type(t, fields, buf_len(fields), true);
+        type_aggregate_field **fields = null;
+        for (size_t i = 0; i < d->aggregate.fields_count; i++)
+        {
+            aggregate_field field = d->aggregate.fields[i];
+            type *field_type = resolve_typespec(field.type);
+            complete_type(field_type); // wszystkie muszą być completed, ponieważ musimy znać ich rozmiar
+
+            type_aggregate_field *type_field = xcalloc(sizeof(type_aggregate_field));
+            type_field->name = field.name;
+            type_field->type = field_type;
+            buf_push(fields, type_field);
+        }
+
+        if (buf_len(fields) == 0)
+        {
+            if (d->kind == DECL_STRUCT)
+            {
+                error_in_resolving("Structs must have at least one field declared", d->pos);
+            }
+            else
+            {
+                error_in_resolving("Unions must have at least one field declared", d->pos);
+            }
+            return;
+        }
+
+        if (d->kind == DECL_STRUCT)
+        {
+            complete_aggregate_type(t, fields, buf_len(fields), false);
+        }
+        else
+        {
+            assert(d->kind == DECL_UNION);
+            complete_aggregate_type(t, fields, buf_len(fields), true);
+        }
     }
 
     buf_push(ordered_global_symbols, t->symbol);
@@ -1526,36 +1583,68 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
         break;
         case EXPR_FIELD:
         {           
-            resolved_expr *aggregate_expr = resolve_expr(e->field.expr);
-            type *t = aggregate_expr->type;
-
-            // zawsze uzyskujemy dostęp za pomocą x.y, nawet gdy x jest wskaźnikiem do wskaźnika itd.
-            while (t->kind == TYPE_POINTER)
-            {
-                t = t->pointer.base_type;
-            }
-
+            resolved_expr *resolved_expr = resolve_expr(e->field.expr);            
+            on_invalid_expr_return(resolved_expr);            
+            type *t = resolved_expr->type;                    
             const char *field_name = e->field.field_name;
-            complete_type(t);
 
-            type *found = 0;
-            for (size_t i = 0; i < t->aggregate.fields_count; i++)
+            /*if (false == (t->kind == TYPE_STRUCT
+                || t->kind == TYPE_UNION
+                || t->kind == TYPE_ENUM))
             {
-                type_aggregate_field *f = t->aggregate.fields[i];
-                if (field_name == f->name)
+                error_in_resolving(xprintf(
+                    "Only structs, unions and enums can have values accessed by a dot; tried to access %s",
+                    pretty_print_type_name(resolved_expr->type, false)), e->pos);
+                return resolved_expr_invalid;
+            }*/
+            
+            if (t->kind == TYPE_ENUM)
+            {
+                complete_type(t);
+
+                void *val_ptr = map_get(&t->enumeration.values, field_name);
+                if (val_ptr == null)
                 {
-                    found = f->type;
-                    break;
+                    error_in_resolving(xprintf("No enum value of name: %s", field_name), e->pos);
+                    return resolved_expr_invalid;
+                }
+                else
+                {
+                    result = get_resolved_rvalue_expr(type_long);
                 }                
             }
-
-            if (found == null)
+            else
             {                
-                error_in_resolving(xprintf("No field of name: %s", field_name), e->pos);
-                return resolved_expr_invalid;
-            }
+                // zawsze uzyskujemy dostęp za pomocą x.y, nawet gdy x jest wskaźnikiem do wskaźnika itd.
+                while (t->kind == TYPE_POINTER)
+                {
+                    t = t->pointer.base_type;
+                }
+               
+                assert(t->kind == TYPE_STRUCT || t->kind == TYPE_UNION);
+                complete_type(t);
 
-            result = get_resolved_lvalue_expr(found);
+                type *found = 0;
+                for (size_t i = 0; i < t->aggregate.fields_count; i++)
+                {
+                    type_aggregate_field *f = t->aggregate.fields[i];
+                    if (field_name == f->name)
+                    {
+                        found = f->type;
+                        break;
+                    }
+                }
+
+                if (found)
+                {
+                    result = get_resolved_lvalue_expr(found);
+                }
+                else
+                {
+                    error_in_resolving(xprintf("No field of name: %s", field_name), e->pos);
+                    return resolved_expr_invalid;
+                }
+            }
         }
         break;
         case EXPR_INDEX:
@@ -1564,14 +1653,17 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
             if (operand_expr->type->kind != TYPE_LIST
                 && pointer_decay(operand_expr)->type->kind != TYPE_POINTER)
             {
-                error_in_resolving("Can only index arrays or pointers", e->pos);
+                error_in_resolving(xprintf(
+                    "Only arrays and pointers can be accessed by index; tried to access %s",
+                    pretty_print_type_name(operand_expr->type, false)), e->pos);
+                return resolved_expr_invalid;
             }
             
             resolved_expr *index_expr = resolve_expr(e->index.index_expr);
 
             if (false == is_integer_type(index_expr->type))
             {
-                error_in_resolving("Index must be an integer", e->pos);
+                error_in_resolving("Index to an array/pointer must be an integer", e->pos);
             }
             
             on_invalid_expr_return(operand_expr);
@@ -1772,7 +1864,7 @@ void resolve_symbol(symbol *s)
             debug_breakpoint;
         }
         break;
-        case SYMBOL_TYPE:
+        case SYMBOL_TYPE: // to obejmuje też enums...
         {       
             // nie musimy nic robić - unions i structs są resolved od razu
         }
@@ -2082,10 +2174,12 @@ void complete_symbol(symbol *sym)
     {
         return;
     }
+
     if (sym->kind == SYMBOL_TYPE)
     {
         complete_type(sym->type);
     }
+    
     else if (sym->kind == SYMBOL_FUNCTION)
     {
         // można to też wziąć z type

@@ -150,6 +150,7 @@
     <Text Include="interpreter\hashmap.txt" />
     <Text Include="interpreter\keywords.txt" />
     <Text Include="interpreter\tokens.txt" />
+    <Text Include="test\enum.txt" />
     <Text Include="test\globals.txt" />
     <Text Include="test\sizeof.txt" />
     <Text Include="test\structs.txt" />

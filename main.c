@@ -124,7 +124,7 @@ int main(int arg_count, char **args)
 #if DEBUG_BUILD 
     options.print_ast = true;
 #if 1
-    buf_push(options.sources, "test");
+    buf_push(options.sources, "test/enum.txt");
 #else
     //options.test_mode = true;
     //bytecode_gen_test();
