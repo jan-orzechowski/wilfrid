@@ -1273,7 +1273,87 @@ void eval_statement(stmt *st, byte *opt_ret_value)
         break;
         case STMT_SWITCH:
         {
-            fatal("unimplemented");
+            debug_vm_print(st->pos, "SWITCH - start");
+
+            type *cond_type = st->switch_stmt.var_expr->resolved_type;
+            assert(cond_type);
+
+            size_t cond_var_size = get_type_size(cond_type);
+            byte *cond_var = eval_expression(st->switch_stmt.var_expr);
+            int64_t cond_var_value = *(int64_t *)cond_var;
+
+            debug_vm_print(st->pos, "SWITCH - condition evaluated as: %s", debug_print_vm_value(cond_var, cond_type));
+
+            if (cond_var_value == 1)
+            {
+                debug_breakpoint;
+            }
+
+            int64_t case_index_to_eval = -1;
+            for (size_t i = 0; i < st->switch_stmt.cases_num; i++)
+            {
+                switch_case *c = st->switch_stmt.cases[i];
+                if (c->is_default)
+                {
+                    case_index_to_eval = i;
+                    break;
+                }
+                
+                for (size_t j = 0; j < c->cond_exprs_num; j++)
+                {
+                    int64_t val = c->cond_exprs_vals[j];                                        
+                    if (val == cond_var_value)
+                    {
+                        case_index_to_eval = i;
+                        break;
+                    }                    
+                }
+
+                if (case_index_to_eval != -1)
+                {
+                    break;
+                }
+            }
+
+            while (case_index_to_eval != -1)
+            {
+                switch_case *c = st->switch_stmt.cases[case_index_to_eval];                
+                eval_statement_block(c->stmts, opt_ret_value);
+                
+                if (return_func)
+                {
+                    debug_vm_print(st->pos, "SWITCH - return");
+                    break;
+                }
+
+                if (break_loop)
+                {
+                    debug_vm_print(st->pos, "SWITCH - break");
+                    // wewnątrz switch case traktujemy to jako przerwanie pętli - chyba inaczej niż w c...
+                    //break_loop = false;
+                    break;
+                }
+
+                // co z continue?
+                
+                if (c->fallthrough)
+                {
+                    if (case_index_to_eval + 1 < st->switch_stmt.cases_num)
+                    {
+                        case_index_to_eval++;
+                    }
+                    else
+                    {
+                        case_index_to_eval = -1;
+                    }
+                }
+                else
+                {
+                    case_index_to_eval = -1;
+                }
+            }
+
+            debug_vm_print(st->pos, "SWITCH - end");
         }
         break;
         case STMT_EXPR:
@@ -1348,7 +1428,7 @@ void treewalk_interpreter_test(void)
 #endif
 
     decl **all_declarations = null;
-    parse_file("test/enum.txt", &all_declarations);
+    parse_file("test/switch.txt", &all_declarations);
     symbol **resolved = resolve(all_declarations, true);
     assert(all_declarations);
     assert(resolved);

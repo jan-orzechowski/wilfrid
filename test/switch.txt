@@ -1,0 +1,72 @@
+﻿extern fn printf(str: char*, variadic) : int
+extern fn assert(condition: bool)
+
+enum element_kind
+{
+    A,
+    B,
+    C,
+    D,
+    STOP
+}
+
+struct element
+{
+    kind: element_kind,
+    value: long
+}
+
+fn main()
+{
+    let data : element[15] = 
+    { 
+        1 =  { element_kind.A,    1  },
+        3 =  { element_kind.B,    3  },
+        5 =  { element_kind.B,    5  },
+        7 =  { element_kind.B,    7  },
+        9 =  { element_kind.A,    9  },
+        10 = { element_kind.A,    10 },
+        11 = { element_kind.D,    11 },        
+        12 = { element_kind.B,    12 },
+        13 = { element_kind.STOP, 13 },
+        14 = { element_kind.A,    14 },
+    }
+
+    for (let i := 0, i < 15, i++)
+    {
+        let el := &data[i]
+        switch (el.kind)
+        {
+            case element_kind.A:
+            {
+                el.value = el.value * 10 as long
+            }
+            break
+            case element_kind.B:
+            case element_kind.C:
+            {
+                el.value = el.value * 2 as long
+            }
+            break
+            case element_kind.STOP:
+            {
+                break // odnosi się do for - do zastanowienia
+            }
+            default:
+            {
+                el.value = 0 as long
+            }
+        }    
+    }
+
+    assert(data[1].value == (1 * 10))
+    assert(data[3].value == (3 * 2))
+    assert(data[5].value == (5 * 2))
+    assert(data[7].value == (7 * 2))
+    assert(data[9].value == (9 * 10))
+    assert(data[10].value == (10 * 10))
+    assert(data[11].value == 0 as long)
+    assert(data[12].value == (12 * 2))
+    assert(data[13].value == 13 as long)
+    assert(data[14].value == 14 as long)
+}

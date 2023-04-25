@@ -272,20 +272,22 @@ typedef struct assign_stmt
     expr *value_expr;
 } assign_stmt;
 
-typedef struct switch_case
+typedef struct switch_case switch_case;
+struct switch_case
 {
     expr **cond_exprs;
+    int64_t *cond_exprs_vals;
     size_t cond_exprs_num;
     stmt_block stmts;
-    bool is_default;
-    bool fallthrough;
-} switch_case;
+    char is_default;
+    char fallthrough;
+};
 
 typedef struct switch_stmt
 {
     expr *var_expr;
     switch_case **cases;
-    size_t cases_num;    
+    size_t cases_num;  
 } switch_stmt;
 
 typedef struct delete_stmt

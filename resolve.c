@@ -1583,21 +1583,13 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
         break;
         case EXPR_FIELD:
         {           
-            resolved_expr *resolved_expr = resolve_expr(e->field.expr);            
+            resolved_expr *resolved_expr = resolve_expr(e->field.expr);
+
             on_invalid_expr_return(resolved_expr);            
-            type *t = resolved_expr->type;                    
+            
+            type *t = resolved_expr->type;
             const char *field_name = e->field.field_name;
 
-            /*if (false == (t->kind == TYPE_STRUCT
-                || t->kind == TYPE_UNION
-                || t->kind == TYPE_ENUM))
-            {
-                error_in_resolving(xprintf(
-                    "Only structs, unions and enums can have values accessed by a dot; tried to access %s",
-                    pretty_print_type_name(resolved_expr->type, false)), e->pos);
-                return resolved_expr_invalid;
-            }*/
-            
             if (t->kind == TYPE_ENUM)
             {
                 complete_type(t);
@@ -1605,13 +1597,14 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
                 void *val_ptr = map_get(&t->enumeration.values, field_name);
                 if (val_ptr == null)
                 {
-                    error_in_resolving(xprintf("No enum value of name: %s", field_name), e->pos);
+                    error_in_resolving(xprintf("Enum %s has no value '%s'", t->symbol->name, field_name), e->pos);
                     return resolved_expr_invalid;
                 }
                 else
                 {
-                    result = get_resolved_rvalue_expr(type_long);
-                }                
+                    int64_t val = *(int64_t *)val_ptr;
+                    result = get_resolved_const_expr(val);
+                }
             }
             else
             {                
@@ -1621,7 +1614,14 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
                     t = t->pointer.base_type;
                 }
                
-                assert(t->kind == TYPE_STRUCT || t->kind == TYPE_UNION);
+                if (false == (t->kind == TYPE_STRUCT || t->kind == TYPE_UNION))
+                {
+                    error_in_resolving(xprintf(
+                        "Only structs, unions and enums can have values accessed by a dot; tried to access %s",
+                        pretty_print_type_name(t, false)), e->pos);
+                    return resolved_expr_invalid;
+                }
+
                 complete_type(t);
 
                 type *found = 0;
@@ -2086,23 +2086,40 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
         }
         break;
         case STMT_SWITCH:
-        {            
-            resolve_expr(st->switch_stmt.var_expr);
+        {
+            resolved_expr *cond_expr = resolve_expr(st->switch_stmt.var_expr);
 
-            if (st->switch_stmt.var_expr->kind != EXPR_NAME)
+            if (false == can_perform_cast(cond_expr->type, type_long, true))
             {
-                error_in_resolving("only names allowed in switch condition expression", st->pos);
-                return;
+                error_in_resolving(xprintf(
+                    "Condition expression in a switch statement should be an integer or an enumeration. Specified expression was %s",
+                    pretty_print_type_name(cond_expr->type, false)), st->pos);
             }
 
             for (size_t i = 0; i < st->switch_stmt.cases_num; i++)
             {
-                switch_case *cas = st->switch_stmt.cases[i];               
+                switch_case *cas = st->switch_stmt.cases[i];
+                int64_t *values = null;
                 for (size_t k = 0; k < cas->cond_exprs_num; k++)
                 {
-                    expr *cond = cas->cond_exprs[k];
-                    assert(cond->kind == EXPR_INT);
+                    resolved_expr* case_expr = resolve_expr(cas->cond_exprs[k]);
+                    if (false == case_expr->is_const)
+                    {
+                        error_in_resolving("Case expression in a switch statement should be a constant value", st->pos);
+                    }
+
+                    if (false == can_perform_cast(case_expr->type, type_long, true))
+                    {
+                        error_in_resolving(xprintf(
+                            "Case expression in a switch statement should be an integer or an enumeration. Specified expression was %s",
+                            pretty_print_type_name(case_expr->type, false)), st->pos);
+                    }
+
+                    buf_push(values, case_expr->val);
                 }
+                assert(buf_len(values) == cas->cond_exprs_num);
+                cas->cond_exprs_vals = copy_buf_to_arena(arena, values);
+                buf_free(values);
 
                 resolve_stmt_block(cas->stmts, opt_ret_type);
             }

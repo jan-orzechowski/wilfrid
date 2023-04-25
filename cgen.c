@@ -474,14 +474,15 @@ void gen_stmt(stmt *stmt)
                 for (size_t j = 0; j < switch_case->cond_exprs_num; j++)
                 {
                     gen_printf_newline("case ");
-                    gen_expr(switch_case->cond_exprs[j]);
+                    gen_printf("%lld", switch_case->cond_exprs_vals[j]);
                     gen_printf(":");
-
                 }
+
                 if (switch_case->is_default)
                 {
                     gen_printf_newline("default:");
                 }
+
                 gen_printf(" ");
 
                 gen_stmt_block(switch_case->stmts);
