@@ -192,15 +192,15 @@ hashmap global_identifiers;
 // const strings zrobić osobno
 byte *push_global_identifier(const char *name, byte* init_val, size_t val_size)
 {
-    assert(null == map_get(&global_identifiers, (void *)name));
+    assert(null == map_get(&global_identifiers, name));
     
     byte *result = push_size(vm_global_memory, val_size);
     copy_vm_val(result, init_val, val_size);
 
-    map_put(&global_identifiers, (void *)name, (void *)result);
+    map_put(&global_identifiers, name, result);
 
 #if DEBUG_BUILD
-    map_put(&debug_names_dict, (void *)result, (void *)name);
+    map_put(&debug_names_dict, result, name);
 #endif
 
     return result;

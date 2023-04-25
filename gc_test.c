@@ -129,7 +129,7 @@ void scan_for_pointers(uintptr_t memory_block_begin, size_t byte_count)
                 continue;
             }
             
-            uintptr_t obj_ptr = (uintptr_t)map_get_from_chain(gc_allocations, (void*)potential_managed_ptr);
+            uintptr_t obj_ptr = (uintptr_t)map_get_from_chain(gc_allocations, potential_managed_ptr);
             if (obj_ptr)
             {               
                 allocation_header *hdr = get_hdr_ptr(obj_ptr);

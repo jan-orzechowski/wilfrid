@@ -5,12 +5,12 @@ void map_test(void)
 
     for (size_t i = 1; i < N; i++)
     {
-        map_put(&map, (void *)i, (void *)(i + 1));
+        map_put(&map, i, (i + 1));
     }
 
     for (size_t i = 1; i < N; i++)
     {
-        void *val = map_get(&map, (void *)i);
+        void *val = map_get(&map, i);
         assert(val == (void *)(i + 1));
     }
 

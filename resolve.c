@@ -305,7 +305,7 @@ symbol *get_symbol(const char *name)
         }
     }
 
-    void *global_symbol = map_get(&global_symbols, (void*)name);
+    void *global_symbol = map_get(&global_symbols, name);
     if (global_symbol)
     {
         return global_symbol;
@@ -543,7 +543,7 @@ symbol *push_installed_symbol(const char *name, type *type)
     symbol *sym = get_new_symbol(SYMBOL_TYPE, interned, null);
     sym->state = SYMBOL_RESOLVED;
     sym->type = type;
-    map_put(&global_symbols, (void*)interned, sym);
+    map_put(&global_symbols, interned, sym);
     buf_push(global_symbols_list, sym);
     return sym;
 }

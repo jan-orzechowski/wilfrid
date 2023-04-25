@@ -31,7 +31,10 @@ typedef struct hashmap
     size_t capacity;
 } hashmap;
 
-void *map_get(hashmap *map, void *key)
+#define map_put(map, key, val) _map_put((map), (void *)(key), (void *)(val))
+#define map_get(map, key) _map_get((map), (void *)(key))
+
+void *_map_get(hashmap *map, void *key)
 {
     assert(map->capacity != 0);
     if (map->count == 0)
@@ -59,7 +62,7 @@ void *map_get(hashmap *map, void *key)
     return null;
 }
 
-void map_put(hashmap *map, void *key, void *val);
+void _map_put(hashmap *map, void *key, void *val);
 
 void map_grow(hashmap *map, size_t new_capacity)
 {
@@ -82,7 +85,7 @@ void map_grow(hashmap *map, size_t new_capacity)
     *map = new_map;
 }
 
-void map_put(hashmap *map, void *key, void *val)
+void _map_put(hashmap *map, void *key, void *val)
 {
     assert(key);
     assert(val);
