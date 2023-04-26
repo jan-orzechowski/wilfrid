@@ -971,17 +971,16 @@ resolved_expr *resolve_expr_binary(expr *expr)
         }
         break;
     };
-
-    if (left->is_const && right->is_const)
-    {   
-        int64_t const_value = eval_long_binary_op(expr->binary.operator, left->val, right->val);
-        result = get_resolved_const_expr(const_value);
-    }
-    else 
+    
     if (expr->binary.operator >= TOKEN_FIRST_CMP_OPERATOR
         && expr->binary.operator <= TOKEN_LAST_CMP_OPERATOR)
     {
         result = get_resolved_rvalue_expr(type_bool);
+    }
+    else if (left->is_const && right->is_const)
+    {
+        int64_t const_value = eval_long_binary_op(expr->binary.operator, left->val, right->val);
+        result = get_resolved_const_expr(const_value);
     }
     else
     {
