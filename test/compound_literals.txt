@@ -19,47 +19,6 @@ struct struct_within_struct
     },
     external_struct
 }
-
-struct union_test
-{
-    is_a_version: bool,	
-    fields: union // czy potrzebna jest nazwa?
-    {
-        a_version : struct
-        {
-            val_1 : int,
-            val_2 : int,
-        }, 
-        b_version : struct
-        {
-            val_f : float // czy nazwy mogą się powtarzać?
-        },
-    },
-}
-
-union other_union_test
-{
-    val_int : int,
-    val_float : float,
-    val_bool : bool
-}
-
-struct test_union
-{
-    is_a_version: bool,	
-    fields: union // czy potrzebna jest nazwa?
-    {
-        a_version : struct
-        {
-            val_1 : int,
-            val_2 : int,
-        }, 
-        b_version : struct
-        {
-            val_f : float // czy nazwy mogą się powtarzać?
-        },
-    },
-}
 */
 
 struct simple_struct 

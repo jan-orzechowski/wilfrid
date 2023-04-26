@@ -1,0 +1,65 @@
+﻿extern fn printf(str: char*, variadic) : int
+extern fn assert(condition: bool)
+
+/*
+struct union_test
+{
+    is_a_version: bool,	
+    fields: union // czy potrzebna jest nazwa?
+    {
+        a_version : struct
+        {
+            val_1 : int,
+            val_2 : int,
+        }, 
+        b_version : struct
+        {
+            val_2 : float
+        },
+    },
+}
+*/
+
+/*
+struct test_union
+{
+    is_a_version: bool,	
+    fields: union // czy potrzebna jest nazwa?
+    {
+        a_version : struct
+        {
+            val_1 : int,
+            val_2 : int,
+        }, 
+        b_version : struct
+        {
+            val_f : float // czy nazwy mogą się powtarzać?
+        },
+    },
+}
+*/
+
+union basic_union_test
+{
+    val_int : int,
+    val_float1 : float,
+    val_bool : bool,
+    val_float2 : float
+    val_long: long
+}
+
+fn main()
+{
+    let x : basic_union_test = {}
+    
+    x.val_bool = true
+    assert(x.val_int == 1)
+
+    x.val_float1 = 2.05
+    assert(x.val_float2 == 2.05)
+
+    x.val_float2 = 0.0
+    assert(x.val_bool == false)
+
+    assert(size_of_type(basic_union_test) == size_of(x.val_long))
+}

@@ -389,8 +389,19 @@ void complete_aggregate_type(type *type, type_aggregate_field **fields, size_t f
             return;
         }
         
-        field->offset = type->size;
-        type->size += get_type_size(field->type);
+        if (is_union)
+        {
+            field->offset = 0;
+            if (type->size < get_type_size(field->type))
+            {
+                type->size = get_type_size(field->type);
+            }
+        }
+        else
+        {
+            field->offset = type->size;
+            type->size += get_type_size(field->type);
+        }
         
         //type->size = get_type_size(field->type) + align_up(type->size, get_type_align(field->type));
         //type->align = max(type->align, get_type_align(field->type));

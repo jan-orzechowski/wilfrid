@@ -40,5 +40,6 @@
     <Text Include="test\size_of.txt" />
     <Text Include="test\switch.txt" />
     <Text Include="test\enum.txt" />
+    <Text Include="test\unions.txt" />
   </ItemGroup>
 </Project>
