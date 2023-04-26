@@ -1,0 +1,52 @@
+﻿extern fn printf(str: char*, variadic) : int
+extern fn assert(condition: bool)
+
+struct test_struct
+{
+    val_long: long,
+    val_int: int,
+    val_bool: bool,
+}
+
+union test_union
+{
+    val_int : int,
+    val_float : float
+    val_long: long
+}
+
+fn main()
+{
+    let x := new test_struct
+    let y := new test_struct
+
+    assert(x.val_int == y.val_int)
+
+    x.val_int = 6
+    y.val_int = 6
+    
+    assert(x.val_int == y.val_int)
+
+    delete x
+    delete y
+
+    x.val_int = 6
+
+    let z := new int[20]
+
+    for (let i := 0, i < 20, i++)
+    {
+        (*z)[i] = i
+    }
+
+    for (let i := 0, i < 20, i++)
+    {
+        assert((*z)[i] == i)
+    }
+
+    delete z
+
+    // do wprowadzenia - także w C
+    //assert(x == null)
+    //assert(y == null)
+}

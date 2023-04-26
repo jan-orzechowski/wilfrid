@@ -1148,9 +1148,13 @@ stmt *parse_statement(void)
         {
             parsing_error("False/true can be used only as an expression");
         }
+        else if (keyword == new_keyword || keyword == auto_keyword)
+        {
+            parsing_error("New/auto are allowed only in expressions. Did you mean to write 'let'?");
+        }
         else
         {
-            parsing_error(xprintf("Keyword %s not allowed in statement", keyword));
+            parsing_error(xprintf("Keyword '%s' is not allowed at the beginning of a statement", keyword));
         }
     }
     else if (is_token_kind(TOKEN_NAME))

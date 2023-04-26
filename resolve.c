@@ -1545,20 +1545,28 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
         case EXPR_NEW:
         {
             type *t = resolve_typespec(e->new.type);
+            on_invalid_type_return(t);
+
+            e->new.resolved_type = t;
             if (t->kind != TYPE_LIST)
             {
                 t = get_pointer_type(t);
             }
+
             result = get_resolved_lvalue_expr(t);
         }
         break;
         case EXPR_AUTO:
         {
-            type *t = resolve_typespec(e->auto_new.type);
+            type *t = resolve_typespec(e->auto_new.type);            
+            on_invalid_type_return(t);
+
+            e->auto_new.resolved_type = t;
             if (t->kind != TYPE_LIST)
             {
                 t = get_pointer_type(t);
             }
+            
             result = get_resolved_rvalue_expr(t);
         }
         break;

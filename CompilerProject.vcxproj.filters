@@ -41,5 +41,6 @@
     <Text Include="test\switch.txt" />
     <Text Include="test\enum.txt" />
     <Text Include="test\unions.txt" />
+    <Text Include="test\new_and_delete.txt" />
   </ItemGroup>
 </Project>

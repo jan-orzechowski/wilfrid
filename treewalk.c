@@ -907,6 +907,7 @@ byte *eval_expression(expr *exp)
             {
                 byte *aggr = eval_expression(exp->field.expr);
                 type *aggr_type = exp->field.expr->resolved_type;
+                
                 while (aggr_type->kind == TYPE_POINTER)
                 {
                     debug_vm_print(exp->pos, "auto deref ptr %s", debug_print_vm_value(aggr, aggr_type));
@@ -914,8 +915,15 @@ byte *eval_expression(expr *exp)
                     (uintptr_t)aggr = *(uintptr_t *)aggr;
                 }
 
+                assert(aggr);
                 size_t field_offset = get_field_offset(aggr_type, exp->field.field_name);
                 result = aggr + field_offset;
+
+                debug_vm_print(exp->pos, "accessing field %s of %s at address %p plus offset %d",
+                    exp->field.field_name,
+                    pretty_print_type_name(exp->field.expr->resolved_type, false),
+                    (void *)aggr,
+                    field_offset);
             }
         }
         break;
@@ -946,12 +954,30 @@ byte *eval_expression(expr *exp)
         break;
         case EXPR_NEW:
         {
-            fatal("unimplemented");
+            assert(exp->new.resolved_type);
+            size_t size = get_type_size(exp->new.resolved_type);
+            uintptr_t ptr = (uintptr_t)xcalloc(size);
+            copy_vm_val(result, (byte *)&ptr, sizeof(uintptr_t));
+
+            debug_vm_print(exp->pos, "allocation at %p, type %s, size %lld", 
+                (void *)ptr,
+                pretty_print_type_name(exp->new.resolved_type, false),
+                size);
         }
         break;
         case EXPR_AUTO:
         {
-            fatal("unimplemented");
+            fatal("unimplemented - trzeba dodac GC");
+
+            assert(exp->auto_new.resolved_type);
+            size_t size = get_type_size(exp->auto_new.resolved_type);
+            uintptr_t ptr = (uintptr_t)xcalloc(size);
+            copy_vm_val(result, (byte *)&ptr, sizeof(uintptr_t));
+
+            debug_vm_print(exp->pos, "GC allocation at %p, type %s, size %lld",
+                (void *)ptr,
+                pretty_print_type_name(exp->auto_new.resolved_type, false),
+                size);
         }
         break;
         case EXPR_SIZE_OF_TYPE:
@@ -1419,7 +1445,12 @@ void eval_statement(stmt *st, byte *opt_ret_value)
         break;
         case STMT_DELETE:
         {
-            fatal("unimplemented");
+            byte *obj = eval_expression(st->delete.expr);
+            uintptr_t ptr = *(uintptr_t *)obj;
+
+            debug_vm_print(st->pos, "free allocation at: %p", (void *)ptr);
+            
+            free((void *)ptr);
         }
         break;
         invalid_default_case;
@@ -1476,7 +1507,7 @@ void treewalk_interpreter_test(void)
 #endif
 
     decl **all_declarations = null;
-    parse_file("test/unions.txt", &all_declarations);
+    parse_file("test/new_and_delete.txt", &all_declarations);
     symbol **resolved = resolve(all_declarations, true);
     assert(all_declarations);
     assert(resolved);

@@ -165,6 +165,7 @@
     <Text Include="test\parsing_tests.txt" />
     <Text Include="test\testcode.txt" />
     <Text Include="test\switch.txt" />
+    <Text Include="test\new_and_delete.txt" />
     <Text Include="test\treewalk.txt" />
     <Text Include="test\unions.txt" />
     <Text Include="test\error_examples.txt" />

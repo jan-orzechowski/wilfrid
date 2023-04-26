@@ -147,11 +147,13 @@ typedef struct compound_literal_expr
 typedef struct new_expr
 {
     typespec *type;
+    type *resolved_type;
 } new_expr;
 
 typedef struct auto_expr
 {
     typespec *type;
+    type *resolved_type;
 } auto_expr;
 
 typedef struct size_of_type_expr
