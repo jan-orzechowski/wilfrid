@@ -971,9 +971,8 @@ resolved_expr *resolve_expr_binary(expr *expr)
         }
         break;
     };
-    
-    if (expr->binary.operator >= TOKEN_FIRST_CMP_OPERATOR
-        && expr->binary.operator <= TOKEN_LAST_CMP_OPERATOR)
+        
+    if (is_comparison_operation(expr->binary.operator))
     {
         result = get_resolved_rvalue_expr(type_bool);
     }
@@ -1377,6 +1376,13 @@ resolved_expr *resolve_call_expr(expr *e)
                 expr *arg_expr = e->call.args[i];
                 type *expected_param_type = candidate->type->function.param_types[i];
                 resolved_expr *resolved_arg_expr = resolve_expected_expr(arg_expr, expected_param_type, true);
+
+                if (resolved_arg_expr->type == null || resolved_arg_expr->type->kind == TYPE_NONE)
+                {
+                    error_in_resolving("Not all arguments to a function call could be resolved", e->pos);
+                    return resolved_expr_invalid;
+                }
+
                 if (false == compare_types(resolved_arg_expr->type, expected_param_type))
                 {
                     goto candidate_check_next;

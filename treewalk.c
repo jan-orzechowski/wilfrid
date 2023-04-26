@@ -276,7 +276,7 @@ byte *push_identifier_on_stack(const char *name, type *type)
         last_used_vm_stack_byte++;
         copy_vm_val(last_used_vm_stack_byte, null, size);
         result = last_used_vm_stack_byte;
-        last_used_vm_stack_byte += size /*- 1*/;
+        last_used_vm_stack_byte += (size - 1);
 
         stack_metadata[vm_metadata_count] = (vm_value_meta){
             .name = name,
@@ -424,6 +424,43 @@ void eval_binary_op(byte *dest, token_kind op, byte *left, byte *right, type *op
     else
     {
         fatal("unsupported type");
+    }
+}
+
+void eval_binary_op_with_bool_casting(token_kind op, byte* dest, byte* left, byte* right, type* operands_type)
+{
+    assert(dest);
+    assert(left);
+    assert(right);
+    assert(operands_type);
+
+    // bool i inny typ, np. ulong mogą się różnić rozmiarem
+    if (is_comparison_operation(op))
+    {
+        byte *temp = push_identifier_on_stack(null, operands_type);
+        eval_binary_op(temp, op, left, right, operands_type);
+        uint64_t bool_result = 0;
+
+        switch (operands_type->kind)
+        {
+            case TYPE_FLOAT:
+            {
+                bool_result = (*(float *)temp != 0.0f ? 1 : 0);
+            }
+            break;
+            default:
+            {
+                bool_result = (*temp != 0 ? 1 : 0);
+            }
+            break;
+        }
+
+        assert(get_type_size(operands_type) >= get_type_size(type_bool));
+        copy_vm_val(dest, (byte *)&bool_result, get_type_size(type_bool));
+    }
+    else
+    {
+        eval_binary_op(dest, op, left, right, operands_type);
     }
 }
 
@@ -701,14 +738,15 @@ byte *eval_expression(expr *exp)
             assert(exp->unary.operand->resolved_type);
 
             byte *operand = eval_expression(exp->unary.operand);       
-            
+            type *operand_t = exp->unary.operand->resolved_type;
+
             if (exp->unary.operator == TOKEN_MUL) // pointer dereference
             {       
-                assert(exp->unary.operand->resolved_type->kind == TYPE_POINTER);
-                assert(exp->unary.operand->resolved_type->pointer.base_type);
+                assert(operand_t->kind == TYPE_POINTER);
+                assert(operand_t->pointer.base_type);
 
                 debug_vm_print(exp->pos, "deref ptr %s", 
-                    debug_print_vm_value(operand, exp->unary.operand->resolved_type->pointer.base_type));
+                    debug_print_vm_value(operand, operand_t->pointer.base_type));
 
                 result = (byte *)*(uintptr_t *)operand;
                 
@@ -721,7 +759,7 @@ byte *eval_expression(expr *exp)
                 assert(exp->resolved_type->pointer.base_type);
 
                 debug_vm_print(exp->pos, "address of val %s",
-                    debug_print_vm_value(operand, exp->unary.operand->resolved_type));
+                    debug_print_vm_value(operand, operand_t));
 
                 copy_vm_val(result, (byte *)&operand, sizeof(byte *));
 
@@ -731,17 +769,19 @@ byte *eval_expression(expr *exp)
             else if (exp->unary.operator == TOKEN_INC || exp->unary.operator == TOKEN_DEC)
             {
                 // te operatory zmieniają wartość, do której się odnosiły               
-                eval_unary_op(operand, exp->unary.operator, operand, exp->unary.operand->resolved_type);
+                eval_unary_op(operand, exp->unary.operator, operand, operand_t);
 
                 copy_vm_val(result, operand, get_type_size(exp->resolved_type));
             }
             else
             {
-                eval_unary_op(result, exp->unary.operator, operand, exp->unary.operand->resolved_type);
+                eval_unary_op(result, exp->unary.operator, operand, operand_t);
             }
 
-            debug_vm_print(exp->pos, "operation %s, result %s", 
-                get_token_kind_name(exp->unary.operator), debug_print_vm_value(result, exp->resolved_type));
+            debug_vm_print(exp->pos, "operation %s pn %s, result %s", 
+                get_token_kind_name(exp->unary.operator), 
+                debug_print_vm_value(operand, operand_t),
+                debug_print_vm_value(result, exp->resolved_type));
         }
         break;
         case EXPR_BINARY:
@@ -757,8 +797,9 @@ byte *eval_expression(expr *exp)
             
             size_t left_size = get_type_size(left_t);
             size_t right_size = get_type_size(right_t);
-            
-            eval_binary_op(result, exp->binary.operator, left, right, left_t);
+            assert(left_size == right_size);
+
+            eval_binary_op_with_bool_casting(exp->binary.operator, result, left, right, left_t);
 
             debug_vm_print(exp->pos, "operation %s on %s and %s, result %s", 
                 get_token_kind_name(exp->binary.operator), 
@@ -1435,7 +1476,7 @@ void treewalk_interpreter_test(void)
 #endif
 
     decl **all_declarations = null;
-    parse_file("test/switch.txt", &all_declarations);
+    parse_file("test/casts.txt", &all_declarations);
     symbol **resolved = resolve(all_declarations, true);
     assert(all_declarations);
     assert(resolved);

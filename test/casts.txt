@@ -1,3 +1,6 @@
+extern fn printf(str: char*, variadic) : int
+extern fn assert(condition: bool)
+
 fn main ()
 {
     let x : float = 1.0
@@ -9,9 +12,17 @@ fn main ()
     let r : ulong = 124100531
 
     let sum_qr = q + r
+    assert(sum_qr == 0)
+    
     let sum_zp = z + p
+    assert(sum_zp == -1)
+    
     let divide_xy = x / y
+    assert(divide_xy >= 0.49 && divide_xy <= 0.5)
+    
     let divide_zy = z as float / y
+    assert(divide_zy <= -1.9 && divide_zy >= -2.0)
 
     let sum_all = x + y + z as float + p as float
+    assert(sum_all == 2.007)
 }
