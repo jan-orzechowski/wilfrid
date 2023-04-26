@@ -913,10 +913,17 @@ byte *eval_expression(expr *exp)
             fatal("unimplemented");
         }
         break;
-        case EXPR_SIZEOF:
+        case EXPR_SIZE_OF_TYPE:
         {
-            size_t size = get_type_size(exp->size_of.resolved_type);
-            assert(get_type_size(exp->resolved_type) == sizeof(size_t));
+            assert(exp->size_of_type.resolved_type);
+            size_t size = get_type_size(exp->size_of_type.resolved_type);
+            copy_vm_val(result, (byte *)&size, sizeof(size_t));
+        }
+        break;
+        case EXPR_SIZE_OF:
+        {
+            assert(exp->size_of.expr->resolved_type);
+            size_t size = get_type_size(exp->size_of.expr->resolved_type);
             copy_vm_val(result, (byte *)&size, sizeof(size_t));
         }
         break;

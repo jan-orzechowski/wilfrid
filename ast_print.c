@@ -65,10 +65,17 @@ void ast_print_expr(expr *e)
             ast_printf("\'%s\'", e->string_value);
         }
         break;
-        case EXPR_SIZEOF:
+        case EXPR_SIZE_OF:
         {
-            ast_printf("(sizeof ");
-            ast_print_typespec(e->size_of.type);
+            ast_printf("(size-of ");
+            ast_print_expr(e->size_of.expr);
+            ast_printf(")");
+        }
+        break;
+        case EXPR_SIZE_OF_TYPE:
+        {
+            ast_printf("(size-of-type ");
+            ast_print_typespec(e->size_of_type.type);
             ast_printf(")");
         }
         break;

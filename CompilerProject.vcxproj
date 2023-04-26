@@ -152,7 +152,7 @@
     <Text Include="interpreter\tokens.txt" />
     <Text Include="test\enum.txt" />
     <Text Include="test\globals.txt" />
-    <Text Include="test\sizeof.txt" />
+    <Text Include="test\size_of.txt" />
     <Text Include="test\structs.txt" />
     <Text Include="test\casts.txt" />
     <Text Include="test\compound_literals.txt" />

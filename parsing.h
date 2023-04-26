@@ -77,7 +77,8 @@ typedef enum expr_kind
     EXPR_INDEX,
     EXPR_NEW,
     EXPR_AUTO,
-    EXPR_SIZEOF,
+    EXPR_SIZE_OF,
+    EXPR_SIZE_OF_TYPE,
     EXPR_CAST,
     EXPR_COMPOUND_LITERAL,
 
@@ -153,11 +154,16 @@ typedef struct auto_expr
     typespec *type;
 } auto_expr;
 
-typedef struct sizeof_expr
+typedef struct size_of_type_expr
 {
     typespec *type;
     type *resolved_type;
-} sizeof_expr;
+} size_of_type_expr;
+
+typedef struct size_of_expr
+{
+    expr *expr;
+} size_of_expr;
 
 typedef struct cast_expr
 {
@@ -204,7 +210,8 @@ struct expr
         compound_literal_expr compound;
         new_expr new;
         auto_expr auto_new; // dlaczego MSVC skarży się na użycie 'auto' w C?
-        sizeof_expr size_of;
+        size_of_expr size_of;
+        size_of_type_expr size_of_type;
         cast_expr cast;
         stub_expr stub;
     };

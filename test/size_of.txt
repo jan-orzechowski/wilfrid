@@ -1,0 +1,23 @@
+extern fn printf(str: char*, variadic) : int
+extern fn assert(condition: bool)
+
+struct test_struct
+{
+    long_val: long,
+    int_val: int,    
+}
+
+fn main() 
+{
+    let size1 := size_of_type(test_struct)
+    assert(size1 == 12 as long)
+
+    let size2 := size_of_type(long)
+    assert(size2 == 8 as long)
+
+    let size3 := size_of(test.int_val)
+    assert(size3 == 4 as long)
+
+    let test : test_struct = {}
+    assert(size_of(test.int_val) == size_of(test.int_val))
+}

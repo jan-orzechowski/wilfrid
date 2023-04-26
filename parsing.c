@@ -136,11 +136,20 @@ expr *push_auto_expr(source_pos pos, typespec *t)
     return result;
 }
 
-expr *push_sizeof_expr(source_pos pos, typespec *t)
+expr *push_size_of_expr(source_pos pos, expr *e)
 {
     expr *result = push_struct(arena, expr);
-    result->kind = EXPR_SIZEOF;
-    result->size_of.type = t;
+    result->kind = EXPR_SIZE_OF;
+    result->size_of.expr = e;
+    result->pos = pos;
+    return result;
+}
+
+expr *push_size_of_type_expr(source_pos pos, typespec *t)
+{
+    expr *result = push_struct(arena, expr);
+    result->kind = EXPR_SIZE_OF_TYPE;
+    result->size_of_type.type = t;
     result->pos = pos;
     return result;
 }
@@ -467,21 +476,34 @@ expr *parse_base_expr(void)
             typespec *t = parse_typespec();
             result = push_auto_expr(pos, t);
         }      
-        else if (keyword == sizeof_keyword)
+        else if (keyword == size_of_type_keyword)
         {
             next_token();
             expect_token_kind(TOKEN_LEFT_PAREN);
-            
             typespec *t = parse_typespec();
             if (t)
             {
-                result = push_sizeof_expr(pos, t);
+                result = push_size_of_type_expr(pos, t);
             }
             else
             {
-                parsing_error("Expected a type in the sizeof expression");
+                parsing_error("Expected a type in the size_of_type expression");
+            }           
+            expect_token_kind(TOKEN_RIGHT_PAREN);
+        }
+        else if (keyword == size_of_keyword)
+        {
+            next_token();
+            expect_token_kind(TOKEN_LEFT_PAREN);
+            expr *e = parse_expr();
+            if (e)
+            {
+                result = push_size_of_expr(pos, e);
             }
-           
+            else
+            {
+                parsing_error("Expected an expression in the size_of_type expression");
+            }
             expect_token_kind(TOKEN_RIGHT_PAREN);
         }
         else if (keyword == null_keyword)

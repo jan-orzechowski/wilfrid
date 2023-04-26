@@ -1571,12 +1571,28 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
             result = get_resolved_rvalue_expr(left->type);
         }
         break;
-        case EXPR_SIZEOF:
+        case EXPR_SIZE_OF_TYPE:
         {
-            type *t = resolve_typespec(e->size_of.type);
+            type *t = resolve_typespec(e->size_of_type.type);
+            
+            on_invalid_type_return(t);
+
             complete_type(t);
-            e->size_of.resolved_type = t;
+            
+            e->size_of_type.resolved_type = t;
             int64_t size = get_type_size(t);
+            result = get_resolved_const_expr(size);
+        }
+        break;
+        case EXPR_SIZE_OF:
+        {
+            resolved_expr *expr = resolve_expr(e->size_of.expr);
+
+            on_invalid_expr_return(expr);
+
+            on_invalid_type_return(expr->type)
+
+            int64_t size = get_type_size(expr->type);
             result = get_resolved_const_expr(size);
         }
         break;
