@@ -99,21 +99,21 @@ float eval_float_binary_op(token_kind op, float left, float right)
         case TOKEN_ADD:         return left + right;
         case TOKEN_SUB:         return left - right;
         case TOKEN_MUL:         return left * right;
-        case TOKEN_DIV:         return (right != 0) ? left / right : 0;
-        case TOKEN_MOD:         fatal("illegal op"); return 0;
-        case TOKEN_BITWISE_AND: fatal("illegal op"); return 0;
-        case TOKEN_BITWISE_OR:  fatal("illegal op"); return 0;
-        case TOKEN_LEFT_SHIFT:  fatal("illegal op"); return 0;
-        case TOKEN_RIGHT_SHIFT: fatal("illegal op"); return 0;
-        case TOKEN_XOR:         fatal("illegal op"); return 0;
-        case TOKEN_EQ:          return left == right;
-        case TOKEN_NEQ:         return left != right;
-        case TOKEN_LT:          return left < right;
-        case TOKEN_LEQ:         return left <= right;
-        case TOKEN_GT:          return left > right;
-        case TOKEN_GEQ:         return left >= right;
-        case TOKEN_AND:         return left && right;
-        case TOKEN_OR:          return left || right;
-        default: fatal("operation not implemented"); return 0;
+        case TOKEN_DIV:         return (right != 0.0f) ? left / right : 0.0f;
+        case TOKEN_MOD:         fatal("illegal op"); return 0.0f;
+        case TOKEN_BITWISE_AND: fatal("illegal op"); return 0.0f;
+        case TOKEN_BITWISE_OR:  fatal("illegal op"); return 0.0f;
+        case TOKEN_LEFT_SHIFT:  fatal("illegal op"); return 0.0f;
+        case TOKEN_RIGHT_SHIFT: fatal("illegal op"); return 0.0f;
+        case TOKEN_XOR:         fatal("illegal op"); return 0.0f;
+        case TOKEN_EQ:          return (left == right) ? 1.0f : 0.0f;
+        case TOKEN_NEQ:         return (left != right) ? 1.0f : 0.0f;
+        case TOKEN_LT:          return (left < right)  ? 1.0f : 0.0f;
+        case TOKEN_LEQ:         return (left <= right) ? 1.0f : 0.0f;
+        case TOKEN_GT:          return (left > right)  ? 1.0f : 0.0f;
+        case TOKEN_GEQ:         return (left >= right) ? 1.0f : 0.0f;
+        case TOKEN_AND:         return (left && right) ? 1.0f : 0.0f;
+        case TOKEN_OR:          return (left || right) ? 1.0f : 0.0f;
+        default: fatal("operation not implemented"); return 0.0f;
     }
 }
