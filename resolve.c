@@ -579,27 +579,20 @@ void push_symbol_from_decl(decl *d)
         return;
     }
 
-    // nie zezwalamy na podwójne nazwy
-    if (false == check_if_symbol_name_unused(sym->name, d->pos))
-    {
-        return;
-    }
-    
     if (sym->kind == SYMBOL_FUNCTION)
     {
         sym->mangled_name = get_function_mangled_name(sym->decl);
-        // jeśli mamy podwójne nazwy, zachodzi overloading...
         symbol *overload = map_get(&global_symbols, sym->name);
         if (overload)
         {
             if (overload->kind != SYMBOL_FUNCTION)
             {
                 // być może to można zmienić
+                // czy na pewno struct/union jest tu jedyną opcją? a const?
                 error_in_resolving("Structs and functions cannot share names", d->pos);
                 return;
             }
 
-            // dodajemy na koniec łańcucha
             symbol *prev = null;
             do
             {
@@ -614,8 +607,15 @@ void push_symbol_from_decl(decl *d)
             }
             while (overload);
 
-            // jeśli nie znaleźliśmy
             prev->next_overload = sym;
+            return;
+        }
+    }
+    else
+    {
+        // tylko funkcje mogą być przeciążone
+        if (false == check_if_symbol_name_unused(sym->name, d->pos))
+        {
             return;
         }
     }
