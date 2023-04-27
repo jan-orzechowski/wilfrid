@@ -263,16 +263,27 @@ bool lex_next_token(void)
         case '\'':
         {
             stream++;
-            tok.kind = TOKEN_CHAR;
 
+            tok.kind = TOKEN_CHAR;
+            
             char *begin = stream;            
             while (*stream && *stream != '\'' && *stream != '\n')
             {
                 stream++;
-            }            
+            }
+            
             char *end = stream;
 
-            if (end - begin > 2 && *begin != '\0')
+            if (*stream && *stream == '\'')
+            {
+                stream++;
+            }
+            else
+            {
+                error("Character literal without matching ' sign", tok.pos, 1);
+            }
+            
+            if (end - begin > 2 && *begin != '\\')
             {
                 error("Character literals can only be one character long", tok.pos, 1);
             }
