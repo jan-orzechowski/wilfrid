@@ -1654,6 +1654,8 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
                     t = t->pointer.base_type;
                 }
                
+                complete_type(t);
+
                 if (false == (t->kind == TYPE_STRUCT || t->kind == TYPE_UNION))
                 {
                     error_in_resolving(xprintf(
@@ -1661,8 +1663,6 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
                         pretty_print_type_name(t, false)), e->pos);
                     return resolved_expr_invalid;
                 }
-
-                complete_type(t);
 
                 type *found = 0;
                 for (size_t i = 0; i < t->aggregate.fields_count; i++)
