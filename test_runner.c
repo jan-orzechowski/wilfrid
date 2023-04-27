@@ -60,10 +60,13 @@ void test_file_parsing_test(string_ref source, bool print_results)
     {
         char *case_str = test_parse_case(&stream, stream_end, "CASE:", ":END");
         char *test_str = test_parse_case(&stream, stream_end, "TEST:", ":END");
+
         if (case_str)
         {
             case_counter++;
             buf_printf(output, "\nParsing test case %d:\n", case_counter);
+            buf_printf(output, "%s\n", case_str);
+
             if (test_str)
             {                
                 bool passed = true;
@@ -131,7 +134,7 @@ void test_file_parsing_test(string_ref source, bool print_results)
 
 void test_parsing_single_case(void)
 {
-    char *test = "let x := xcalloc(new_capacity * sizeof(void*))";
+    char *test = "let x := xcalloc(new_capacity * size_of_type(void*))";
 
     printf("\nParsing test case 0:\n%s\n", test);
     

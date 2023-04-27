@@ -154,19 +154,19 @@ CASE:fn f(val: int) { if (val) { } else {
 
 {}
 
-} }":END
+} }:END
 TEST:(fn-decl f (val (type int))
   (if val
   )
 ):END
 
-CASE:fn f() { return sizeof(int) } }:END
+CASE:fn f() { return size_of_type(int) }:END
 TEST:(fn-decl f
-  (return (sizeof (type int)))
+  (return (size-of-type (type int)))
 ):END
 
-CASE:let x := sizeof(int[16]*[12]) + sizeof(int***):END
-TEST:(var-decl x (+ (sizeof (array (pointer (array (type int) 16)) 12)) (sizeof (pointer (pointer (pointer (type int))))))):END
+CASE:let x := size_of_type(int[16]*[12]) + size_of_type(int***):END
+TEST:(var-decl x (+ (size-of-type (array (pointer (array (type int) 16)) 12)) (size-of-type (pointer (pointer (pointer (type int))))))):END
 
 CASE:fn f() { while (x > y) { x = x + 1 } }:END
 TEST:(fn-decl f
@@ -367,7 +367,7 @@ TEST:(var-decl x ((new (type memory)) 1000)):END
 CASE:let x = auto memory(100):END
 TEST:(var-decl x ((auto (type memory)) 100)):END
 
-CASE:fn push_node(n: node *) { *last_node = *n } } :END
+CASE:fn push_node(n: node *) { *last_node = *n } :END
 TEST:(fn-decl push_node (n (pointer (type node)))
   (= (pointer-dereference last_node) (pointer-dereference n))
 ):END
@@ -394,5 +394,4 @@ CASE:fn f()
 TEST:(fn-decl f
   (var-decl arr (array (type int) 20) (compound 1 2 (index 3 4) (index 4 3) 5))
 ):END
-
 
