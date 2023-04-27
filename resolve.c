@@ -1267,7 +1267,10 @@ resolved_expr *resolve_special_case_constructors(expr *e)
         return null;
     }
     
-    type *return_type = resolve_expr(e->call.function_expr)->type;
+    resolved_expr *fn_expr = resolve_expr(e->call.function_expr);
+    on_invalid_expr_return(fn_expr);
+
+    type *return_type = fn_expr->type;
     if (e->call.args_num == 0)
     {
         plug_stub_expr(e, STUB_EXPR_CONSTRUCTOR);
@@ -1351,9 +1354,10 @@ resolved_expr *resolve_call_expr(expr *e)
 
     symbol *matching = null;
     resolved_expr *fn_expr = resolve_expr(e->call.function_expr);
+    
     if (fn_expr == null || fn_expr->type->kind != TYPE_FUNCTION)
     {
-        if (e->call.function_expr->name)
+        if (e->call.function_expr->kind == EXPR_NAME && e->call.function_expr->name)
         {
             error_in_resolving(xprintf("Could not resolve function call to '%s'", e->call.function_expr->name), e->pos);
         }
