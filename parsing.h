@@ -28,7 +28,6 @@ typedef struct typespec_array
 typedef struct typespec_list
 {
     typespec *base_type;
-    expr *size_expr;
 } typespec_list;
 
 typedef struct typespec_pointer
