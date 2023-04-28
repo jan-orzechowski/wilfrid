@@ -17,6 +17,7 @@ void ast_print_newline(void)
 void ast_print_decl(decl *d);
 void ast_print_stmt_block(stmt_block block);
 void ast_print_typespec(typespec *t);
+char *get_stub_expr_name(stub_expr_kind kind);
 
 void ast_print_token_kind(token_kind kind)
 {
@@ -243,6 +244,20 @@ void ast_print_expr(expr *e)
         case EXPR_NULL:
         {
             ast_printf("null");
+        }
+        break;
+        case EXPR_STUB:
+        {
+            if (e->stub.original_expr)
+            {
+                ast_printf("(%s (", get_stub_expr_name(e->stub.kind));
+                ast_print_expr(e->stub.original_expr);
+                ast_printf(")");
+            }
+            else
+            {
+                ast_printf("(expr-stub %d)", e->stub.kind);
+            }
         }
         break;
         default:
@@ -674,4 +689,22 @@ char *get_decl_ast(decl *d)
     buf_free(ast_buf);
     ast_print_decl(d);
     return ast_buf;
+}
+
+char *get_stub_expr_name(stub_expr_kind kind)
+{
+    switch (kind)
+    {
+        case STUB_EXPR_NONE: return "stub-expr-none";
+        case STUB_EXPR_LIST_FREE: return "stub-expr-list-free";
+        case STUB_EXPR_LIST_REMOVE_AT: return "stub-expr-list-remove-at";
+        case STUB_EXPR_LIST_LENGTH: return "stub-expr-list-length";
+        case STUB_EXPR_LIST_CAPACITY: return "stub-expr-list-capacity";
+        case STUB_EXPR_LIST_ADD: return "stub-expr-list-add";
+        case STUB_EXPR_LIST_NEW: return "stub-expr-list-new";
+        case STUB_EXPR_LIST_AUTO: return "stub-expr-list-auto";
+        case STUB_EXPR_LIST_INDEX: return "stub-expr-list-index";
+        case STUB_EXPR_CONSTRUCTOR: return "stub-expr-constructor";
+        default: return xprintf("stub-expr unknown:%d", kind);
+    }
 }
