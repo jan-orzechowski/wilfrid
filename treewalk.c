@@ -1475,8 +1475,8 @@ void eval_global_declarations(symbol **syms)
             }
             break;
             case SYMBOL_CONST:
-            {                
-                push_global_identifier(sym->name, (byte *)sym->val, size);
+            {
+                push_global_identifier(sym->name, (byte *)&sym->val, size);
             }
             break;           
         }
