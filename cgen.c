@@ -129,7 +129,7 @@ char *type_to_cdecl(type *type, char *name)
         case TYPE_STRUCT:
         case TYPE_UNION:
         {
-            result = xprintf("%s%s%s", get_c_type_name(type), name ? " " : "", name ? name : "");
+            result = xprintf("%s%s%s", get_c_type_name(type), *name ? " " : "", *name ? name : "");
         }
         break;
         case TYPE_POINTER:
@@ -198,11 +198,11 @@ char *typespec_to_cdecl(typespec *t, char *name)
             assert(sym && sym->type);
             if (sym->type->kind == TYPE_ENUM)
             {
-                result = xprintf("%s%s%s", "long", name ? " " : "", name ? name : "");
+                result = xprintf("%s%s%s", "long", *name ? " " : "", *name ? name : "");
             }
             else
             {
-                result = xprintf("%s%s%s", t->name, name ? " " : "", name ? name : "");
+                result = xprintf("%s%s%s", t->name, *name ? " " : "", *name ? name : "");
             }
         }
         break;
