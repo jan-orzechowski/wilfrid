@@ -294,17 +294,23 @@ void gen_simple_stmt(stmt *stmt)
         break;
         case STMT_DECL:
         {
+            decl *dec = stmt->decl_stmt.decl;
             switch (stmt->decl_stmt.decl->kind)
             {
                 case DECL_VARIABLE:
                 {
-                    if (stmt->decl_stmt.decl->variable.type == 0)
+                    if (dec->variable.type == null)
                     {
-                        if (stmt->decl_stmt.decl->variable.expr->resolved_type)
+                        type *typ = dec->variable.expr->resolved_type;
+                        if (typ == null && dec->variable.expr->kind == EXPR_STUB)
                         {
-                            char *decl_str = type_to_cdecl(
-                                stmt->decl_stmt.decl->variable.expr->resolved_type,
-                                stmt->decl_stmt.decl->name);
+                            assert(dec->variable.expr->stub.original_expr);
+                            typ = dec->variable.expr->stub.original_expr->resolved_type;
+                        }
+
+                        if (typ)
+                        {
+                            char *decl_str = type_to_cdecl(typ, dec->name);
                             gen_printf(decl_str);
                             debug_breakpoint;                        
                         }
@@ -360,18 +366,10 @@ void gen_simple_stmt(stmt *stmt)
         break;
         case STMT_DELETE:
         {
-            if (stmt->delete.expr->resolved_type->kind == TYPE_LIST)
-            {
-                gen_printf("___list_free___(");
-                gen_expr(stmt->delete.expr);
-                gen_printf(")");
-            }
-            else
-            {
-                gen_printf("___free___(");
-                gen_expr(stmt->delete.expr);
-                gen_printf(")");
-            }
+            assert(stmt->delete.expr->resolved_type->kind != TYPE_LIST);
+            gen_printf("___free___(");
+            gen_expr(stmt->delete.expr);
+            gen_printf(")");            
         }
         break;
         invalid_default_case;
@@ -505,21 +503,23 @@ void gen_stmt(stmt *stmt)
     }
 }
 
-void gen_expr_stub(expr *e)
+void gen_expr_stub(expr *exp)
 {
-    assert(e->kind == EXPR_STUB);
-    assert(e->stub.original_expr);
+    assert(exp->kind == EXPR_STUB);
+    assert(exp->stub.original_expr);
 
+    expr *orig_exp = exp->stub.original_expr;
     expr *receiver = null;
-    if (e->stub.original_expr->kind == EXPR_CALL)
+    
+    if (orig_exp->kind == EXPR_CALL)
     {
-        assert(e->stub.original_expr->call.method_receiver);
-        receiver = e->stub.original_expr->call.method_receiver;
+        assert(orig_exp->call.method_receiver);
+        receiver = orig_exp->call.method_receiver;
         assert(receiver->resolved_type);
         assert(receiver->resolved_type->kind == TYPE_LIST);
     }
 
-    switch (e->stub.kind)
+    switch (exp->stub.kind)
     {
         case STUB_EXPR_LIST_CAPACITY:
         {               
@@ -547,14 +547,41 @@ void gen_expr_stub(expr *e)
             gen_printf(")");
         }
         break;
+        case STUB_EXPR_LIST_NEW:
+        {
+            assert(orig_exp->kind == EXPR_NEW);
+            assert(orig_exp->resolved_type);
+            assert(orig_exp->resolved_type->list.base_type);
+            char *type_str = type_to_cdecl(orig_exp->resolved_type->list.base_type, null);
+            gen_printf("___list_initialize___(8, sizeof(%s), 0)", type_str);
+        }
+        break;
+        case STUB_EXPR_LIST_AUTO:
+        {
+            assert(orig_exp->kind == EXPR_AUTO);
+            assert(orig_exp->resolved_type);
+            assert(orig_exp->resolved_type->list.base_type);
+            char *type_str = type_to_cdecl(orig_exp->resolved_type->list.base_type, null);
+            gen_printf("___list_initialize___(8, sizeof(%s), 1)", type_str);
+        }
+        break;
+        case STUB_EXPR_LIST_INDEX:
+        {
+            assert(orig_exp->kind == EXPR_INDEX);
+            gen_expr(orig_exp->index.array_expr);
+            gen_printf("->buffer[");
+            gen_expr(orig_exp->index.index_expr);
+            gen_printf("]");
+        }
+        break;
         case STUB_EXPR_LIST_ADD:
         {
-            assert(e->stub.original_expr->call.args_num == 1);
+            assert(orig_exp->call.args_num == 1);
             gen_printf("___list_add___(");
             gen_expr(receiver);
-            gen_printf(",(");
-            gen_expr(e->stub.original_expr->call.args[0]);
-            gen_printf("),");
+            gen_printf(", (");
+            gen_expr(orig_exp->call.args[0]);
+            gen_printf("), ");
             assert(receiver->resolved_type->kind == TYPE_LIST);
             type *base_type = receiver->resolved_type->list.base_type;
             char *type_str = type_to_cdecl(base_type, null);
@@ -563,9 +590,9 @@ void gen_expr_stub(expr *e)
         break;
         case STUB_EXPR_CONSTRUCTOR:
         {
-            assert(e->stub.original_expr->kind == EXPR_CALL);
-            assert(e->stub.original_expr->call.resolved_function);
-            gen_expr(e->stub.original_expr);
+            assert(orig_exp->kind == EXPR_CALL);
+            assert(orig_exp->call.resolved_function);
+            gen_expr(orig_exp);
         }
         break;
         invalid_default_case;
@@ -723,11 +750,7 @@ void gen_expr(expr *e)
         break;
         case EXPR_INDEX:
         {
-            gen_expr(e->index.array_expr);
-            if (e->index.array_expr->resolved_type->kind == TYPE_LIST)
-            {
-                gen_printf("->buffer");
-            }
+            assert(e->index.array_expr->resolved_type->kind != TYPE_LIST)
             gen_printf("[");
             gen_expr(e->index.index_expr);
             gen_printf("]");
@@ -801,36 +824,16 @@ void gen_expr(expr *e)
         break;        
         case EXPR_NEW: 
         {
-            if (e->new.type->kind == TYPESPEC_LIST)
-            {
-                assert(e->resolved_type);
-                assert(e->resolved_type->list.base_type);
-
-                char *type_str = type_to_cdecl(e->resolved_type->list.base_type, null);
-                gen_printf("___list_initialize___(8, sizeof(%s), 0)", type_str);
-            }
-            else
-            {
-                char *type_str = typespec_to_cdecl(e->new.type, null);
-                gen_printf("(%s*)___alloc___(sizeof(%s))", type_str, type_str);
-            }
+            assert(e->new.type->kind != TYPESPEC_LIST);
+            char *type_str = typespec_to_cdecl(e->new.type, null);
+            gen_printf("(%s*)___alloc___(sizeof(%s))", type_str, type_str);
         }
         break;
         case EXPR_AUTO: 
         {
-            if (e->new.type->kind == TYPESPEC_LIST)
-            {
-                assert(e->resolved_type);
-                assert(e->resolved_type->list.base_type);
-
-                char *type_str = type_to_cdecl(e->resolved_type->list.base_type, null);
-                gen_printf("___list_initialize___(8, sizeof(%s), 1)", type_str);
-            }
-            else
-            {
-                char *type_str = typespec_to_cdecl(e->new.type, null);
-                gen_printf("(%s*)___managed_alloc___(sizeof(%s))", type_str, type_str);
-            }
+            assert(e->new.type->kind != TYPESPEC_LIST)
+            char *type_str = typespec_to_cdecl(e->new.type, null);
+            gen_printf("(%s*)___managed_alloc___(sizeof(%s))", type_str, type_str);
         } 
         break;
         case EXPR_NONE:

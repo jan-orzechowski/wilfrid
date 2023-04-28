@@ -1453,6 +1453,8 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
         return resolved_expr_invalid;
     }
 
+    stub_expr_kind stub_kind = STUB_EXPR_NONE;
+
     resolved_expr *result = resolved_expr_invalid;
     switch (e->kind)
     {
@@ -1556,6 +1558,10 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
             {
                 t = get_pointer_type(t);
             }
+            else
+            {
+                stub_kind = STUB_EXPR_LIST_NEW;
+            }
 
             result = get_resolved_lvalue_expr(t);
         }
@@ -1569,6 +1575,10 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
             if (t->kind != TYPE_LIST)
             {
                 t = get_pointer_type(t);
+            }
+            else
+            {
+                stub_kind = STUB_EXPR_LIST_AUTO;
             }
             
             result = get_resolved_rvalue_expr(t);
@@ -1718,6 +1728,8 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
             }
 
             result = get_resolved_lvalue_expr(operand_expr->type->pointer.base_type);
+
+            stub_kind = STUB_EXPR_LIST_INDEX;
         }
         break;
         case EXPR_COMPOUND_LITERAL:
@@ -1743,6 +1755,11 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
     {
         assert(e->resolved_type == null || e->resolved_type == result->type);
         e->resolved_type = result->type;
+    }
+
+    if (stub_kind != STUB_EXPR_NONE)
+    {
+        plug_stub_expr(e, stub_kind);
     }
 
     return result;
