@@ -444,9 +444,6 @@ void fuzzy_test(void)
     }
 }
 
-#include "common_include.c"
-#pragma pack(pop)
-
 void common_includes_test(void)
 {
     ___list_hdr___ *int_list = ___list_initialize___(4, sizeof(int), 0);

@@ -15,7 +15,8 @@
 #include "resolve.c"
 #include "cgen.c"
 
-void run_all_tests(void);
+#include "common_include.c"
+#include "test_runner.c"
 
 void parse_file(char *filename, decl ***declarations_list)
 {
@@ -153,5 +154,3 @@ int main(int arg_count, char **args)
 
     return 1;
 }
-
-#include "test_runner.c"

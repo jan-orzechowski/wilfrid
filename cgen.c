@@ -1071,9 +1071,15 @@ void gen_entry_point(symbol **resolved)
 
 void gen_common_includes(void)
 {
-    char *test_file = "common_include.c";
-    string_ref file_buf = read_file(test_file);
+    gen_printf("#pragma pack(push, 1)");
+    
+    char *common_include_file = "common_include.c";
+    string_ref file_buf = read_file(common_include_file);
     gen_printf(file_buf.str);
+
+    gen_printf(
+"#undef offsetof\n\
+#undef NULL\n");
 
 #if 0
     gen_printf(

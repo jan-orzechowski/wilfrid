@@ -1,4 +1,4 @@
-﻿#pragma pack(push, 1)
+﻿
 
 //#include <stddef.h>
 #include <stdlib.h> // calloc, realloc
@@ -202,5 +202,3 @@ void *reallocate(void *ptr, size_t num_bytes)
 #define ulong unsigned long
 #define uint unsigned int
 
-#undef offsetof
-#undef NULL
