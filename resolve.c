@@ -426,7 +426,7 @@ type *get_list_type(type *element)
 {
     complete_type(element);
     type *t = get_new_type(TYPE_LIST);
-    t->size = get_type_size(element);
+    t->size = POINTER_SIZE;
     //t->align = get_type_align(element);
     t->list.base_type = element;
     return t;

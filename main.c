@@ -124,10 +124,11 @@ int main(int arg_count, char **args)
 
 #if DEBUG_BUILD 
     options.print_ast = true;
-#if 1
-    buf_push(options.sources, "test/enum.txt");
+#if 0
+    buf_push(options.sources, "test/dynamic_lists.txt");
+#elif 0
+    options.test_mode = true;
 #else
-    //options.test_mode = true;
     //bytecode_gen_test();
     treewalk_interpreter_test();
 #endif

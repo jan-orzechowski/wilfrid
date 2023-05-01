@@ -69,6 +69,14 @@ bool is_non_zero(byte *val, size_t size)
 
 vm_value_meta *get_metadata_by_ptr(byte *ptr);
 
+typedef ___list_hdr___ vm_list_header;
+//{
+//    bool is_managed;
+//    size_t length;
+//    size_t capacity;
+//    byte *buffer;
+//} vm_list_header;
+
 char *_debug_print_vm_value(byte *val, type *typ)
 {    
     assert(typ);
@@ -168,8 +176,41 @@ char *_debug_print_vm_value(byte *val, type *typ)
             buf_free(temp);
         }
         break;
-
         case TYPE_LIST:
+        {            
+            vm_list_header *hdr = *(vm_list_header **)val;
+            if (hdr == null)
+            {
+                snprintf(debug_print_buffer, debug_print_buffer_size, "%s, uninitialized",
+                    pretty_print_type_name(typ, false));
+            }
+            else
+            {
+                char *temp = null;
+                buf_printf(temp, "dynamic (len: %d, cap: %d) [", hdr->length, hdr->capacity);
+                
+                size_t list_size = get_type_size(typ->list.base_type) * hdr->length;
+                byte *buffer = (byte *)hdr->buffer;
+
+                for (size_t offset = 0; offset < list_size; offset++)
+                {
+                    byte b = *(buffer + offset);
+                    buf_printf(temp, "%d", b);
+                    if (offset < list_size - 1)
+                    {
+                        buf_printf(temp, ",");
+                    }
+                }
+                buf_printf(temp, "]");
+
+                snprintf(debug_print_buffer, debug_print_buffer_size, "%s, bytes: %s",
+                    pretty_print_type_name(typ, false), temp);
+
+                buf_free(temp);
+            }
+        }
+        break;
+
         case TYPE_FUNCTION:
 
         default:
@@ -668,6 +709,8 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
     }
 }
 
+byte *eval_stub_expression(byte *result, expr *exp);
+
 byte *eval_expression(expr *exp)
 {
     assert(exp);
@@ -1049,7 +1092,7 @@ byte *eval_expression(expr *exp)
         break;
         case EXPR_STUB:
         {
-            fatal("unimplemented");
+            result = eval_stub_expression(result, exp);
         }
         break;
 
@@ -1058,6 +1101,159 @@ byte *eval_expression(expr *exp)
     }
 
     assert(result);
+    return result;
+}
+
+byte *eval_stub_expression(byte *result, expr *exp)
+{
+    assert(exp->kind == EXPR_STUB);
+    assert(exp->resolved_type);
+
+    expr *orig_exp = exp->stub.original_expr;
+
+    switch (exp->stub.kind)
+    {
+        case STUB_EXPR_LIST_CAPACITY:
+        case STUB_EXPR_LIST_LENGTH:
+        {
+            assert(orig_exp->kind == EXPR_CALL);
+            assert(orig_exp->call.args_num == 0);
+            assert(orig_exp->call.method_receiver->resolved_type);
+
+            expr *list_expr = orig_exp->call.method_receiver;
+            byte *receiver = eval_expression(list_expr);
+            if (*(uintptr_t *)receiver == 0)
+            {
+                fatal("runtime error: list uninitialized");
+            }
+
+            vm_list_header *hdr = *(vm_list_header **)receiver;
+
+            bool get_len = (exp->stub.kind == STUB_EXPR_LIST_LENGTH);
+            size_t value = get_len ? ___get_list_capacity___(hdr) : ___get_list_length___(hdr);
+            
+            copy_vm_val(result, (byte *)&value, sizeof(size_t));
+        }
+        break;
+
+        case STUB_EXPR_LIST_FREE:
+        {
+            //gen_printf("___list_free___(");
+            //gen_expr(receiver);
+            //gen_printf(")");
+            fatal("unimplemented");
+        }
+        break;
+        case STUB_EXPR_LIST_REMOVE_AT:
+        {
+            // not implemented in cgen
+            fatal("unimplemented");
+        }
+        break;
+
+        case STUB_EXPR_LIST_NEW:
+        case STUB_EXPR_LIST_AUTO:
+        {            
+            assert(orig_exp->resolved_type);
+            assert(orig_exp->resolved_type->kind == TYPE_LIST);
+            assert(orig_exp->resolved_type->list.base_type);
+
+            bool managed = (exp->stub.kind == STUB_EXPR_LIST_AUTO);
+            size_t element_size = get_type_size(exp->resolved_type->list.base_type);
+
+            assert(managed || orig_exp->kind == EXPR_NEW);
+            assert(false == managed || orig_exp->kind == EXPR_AUTO);
+
+            ___list_hdr___ *ptr = ___list_initialize___(8, element_size, managed);            
+            copy_vm_val(result, (byte *)&ptr, sizeof(___list_hdr___ *));
+        }
+        break;
+
+        case STUB_EXPR_LIST_ADD:
+        {
+            assert(orig_exp->kind == EXPR_CALL);
+            assert(orig_exp->call.args_num == 1);
+            assert(orig_exp->call.method_receiver->resolved_type);
+            
+            expr *list_expr = orig_exp->call.method_receiver;
+            expr *arg_expr = orig_exp->call.args[0];
+
+            assert(list_expr->resolved_type);
+            assert(list_expr->resolved_type->kind == TYPE_LIST);            
+            assert(list_expr->resolved_type->list.base_type);
+
+            byte *receiver = eval_expression(list_expr);
+            byte *arg = eval_expression(arg_expr);
+
+            if (*(uintptr_t *)receiver == 0)
+            {
+                fatal("runtime error: list uninitialized");
+            }
+            
+            vm_list_header *hdr = *(vm_list_header **)receiver;
+            size_t elem_size = get_type_size(list_expr->resolved_type->list.base_type);
+            
+            ___list_fit___(hdr, 1, elem_size);
+            
+            byte *new_elem = (byte *)(hdr->buffer + (hdr->length * elem_size));
+            copy_vm_val(new_elem, arg, elem_size);
+            hdr->length++;
+            
+            debug_breakpoint;
+
+            // nie ma result, zwracany typ to type_void
+        }
+        break;
+        case STUB_EXPR_LIST_INDEX:
+        {
+            assert(orig_exp->kind == EXPR_INDEX);
+            assert(orig_exp->index.array_expr);
+            
+            byte *list_val = eval_expression(orig_exp->index.array_expr);          
+            type *list_typ = orig_exp->index.array_expr->resolved_type;
+            assert(list_typ);
+            assert(list_typ->kind == TYPE_LIST);
+            
+            byte *index_val = eval_expression(orig_exp->index.index_expr);
+            type *index_typ = orig_exp->index.index_expr->resolved_type;
+            assert(index_typ);
+
+            vm_list_header *hdr = *(vm_list_header **)list_val;
+            size_t index = *(size_t *)index_val;
+
+            size_t element_index = 0;
+            if (get_type_size(index_typ) == 8)
+            {
+                element_index = *(uint64_t *)index_val;
+            }
+            else if (get_type_size(index_typ) == 4)
+            {
+                element_index = *(uint32_t *)index_val;
+            }
+            else
+            {
+                fatal("this shouldn't happen");
+            }
+
+            size_t index_offset = get_type_size(list_typ->list.base_type) * element_index;
+            result = hdr->buffer + index_offset;
+
+            debug_breakpoint;
+        }
+        break;
+
+        case STUB_EXPR_CONSTRUCTOR:
+        {
+            //assert(e->stub.original_expr->kind == EXPR_CALL);
+            //assert(e->stub.original_expr->call.resolved_function);
+            //gen_expr(e->stub.original_expr);
+            fatal("unimplemented");
+        }
+        break;
+        case STUB_EXPR_NONE:
+        invalid_default_case;
+    }
+
     return result;
 }
 
@@ -1507,7 +1703,7 @@ void treewalk_interpreter_test(void)
 #endif
 
     decl **all_declarations = null;
-    parse_file("test/new_and_delete.txt", &all_declarations);
+    parse_file("test/dynamic_lists.txt", &all_declarations);
     symbol **resolved = resolve(all_declarations, true);
     assert(all_declarations);
     assert(resolved);
