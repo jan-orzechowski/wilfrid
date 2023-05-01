@@ -1172,12 +1172,13 @@ Please provide a type either as a cast or in the variable declaration", e->pos);
     return result;
 }
 
-void plug_stub_expr(expr *original_expr, stub_expr_kind kind)
+void plug_stub_expr(expr *original_expr, stub_expr_kind kind, type *resolved_type)
 {
     expr *new_expr = push_struct(arena, expr);
     new_expr->kind = EXPR_STUB;
     new_expr->pos = original_expr->pos;
     new_expr->stub.kind = kind;
+    new_expr->resolved_type = resolved_type;
     
     expr temp = *original_expr;
     (*original_expr) = *new_expr;
@@ -1201,6 +1202,8 @@ resolved_expr *resolve_special_case_methods(expr *e)
         if (e->call.method_receiver->resolved_type->kind == TYPE_LIST)
         {
             stub_expr_kind stub_kind = STUB_EXPR_NONE;
+            type *resolved_type = null;
+
             if (e->call.function_expr->name == str_intern("capacity"))
             {
                 if (e->call.args_num != 0)
@@ -1210,7 +1213,7 @@ resolved_expr *resolve_special_case_methods(expr *e)
                 }
                 
                 stub_kind = STUB_EXPR_LIST_CAPACITY;
-                result = get_resolved_rvalue_expr(type_int);
+                resolved_type = type_int;
             }            
             else if (e->call.function_expr->name == str_intern("length"))
             {
@@ -1221,7 +1224,7 @@ resolved_expr *resolve_special_case_methods(expr *e)
                 }
 
                 stub_kind = STUB_EXPR_LIST_LENGTH;
-                result = get_resolved_rvalue_expr(type_int);
+                resolved_type = type_int;
             }
             else if (e->call.function_expr->name == str_intern("add"))
             {
@@ -1246,13 +1249,15 @@ resolved_expr *resolve_special_case_methods(expr *e)
                 }
                 
                 stub_kind = STUB_EXPR_LIST_ADD;
-                result = get_resolved_rvalue_expr(type_void);
+                resolved_type = type_void;
             }
 
             if (stub_kind)
             {
-                plug_stub_expr(e, stub_kind);
+                plug_stub_expr(e, stub_kind, resolved_type);
             }
+
+            result = get_resolved_rvalue_expr(resolved_type);
         }
     }
 
@@ -1273,7 +1278,7 @@ resolved_expr *resolve_special_case_constructors(expr *e)
     type *return_type = fn_expr->type;
     if (e->call.args_num == 0)
     {
-        plug_stub_expr(e, STUB_EXPR_CONSTRUCTOR);
+        plug_stub_expr(e, STUB_EXPR_CONSTRUCTOR, return_type);
 
         resolved_expr *result = get_resolved_rvalue_expr(return_type);
         return result;
@@ -1759,7 +1764,7 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
 
     if (stub_kind != STUB_EXPR_NONE)
     {
-        plug_stub_expr(e, stub_kind);
+        plug_stub_expr(e, stub_kind, e->resolved_type);
     }
 
     return result;
