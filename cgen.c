@@ -751,6 +751,7 @@ void gen_expr(expr *e)
         case EXPR_INDEX:
         {
             assert(e->index.array_expr->resolved_type->kind != TYPE_LIST)
+            gen_expr(e->index.array_expr);
             gen_printf("[");
             gen_expr(e->index.index_expr);
             gen_printf("]");
