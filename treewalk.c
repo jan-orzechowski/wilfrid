@@ -1324,28 +1324,35 @@ void eval_statement(stmt *st, byte *opt_ret_value)
             decl *dec = st->decl_stmt.decl;
             assert(dec);
             assert(dec->resolved_type);
-            assert(compare_types(dec->variable.expr->resolved_type, dec->resolved_type));
-            
-            if (dec->kind == DECL_VARIABLE)
-            {                
+            assert(dec->kind == DECL_VARIABLE);
+
+            if (dec->variable.expr)
+            {
+                assert(compare_types(dec->variable.expr->resolved_type, dec->resolved_type));
+
                 byte *new_val = eval_expression(dec->variable.expr);
-                                
+
                 //if (false == is_on_stack(new_val))
                 //{
-                    byte *stack_val = push_identifier_on_stack(dec->name, dec->resolved_type);
-                    copy_vm_val(stack_val, new_val, get_type_size(dec->resolved_type));
-                    new_val = stack_val;
+                byte *stack_val = push_identifier_on_stack(dec->name, dec->resolved_type);
+                copy_vm_val(stack_val, new_val, get_type_size(dec->resolved_type));
+                new_val = stack_val;
                 //}
 
                 vm_value_meta *m = get_metadata_by_ptr(new_val);
                 m->name = dec->name;
 
-                debug_vm_print(dec->pos, "declaration of %s, init value %s", 
+                debug_vm_print(dec->pos, "declaration of %s, init value %s",
                     dec->name, debug_print_vm_value(new_val, dec->resolved_type));
             }
             else
             {
-                fatal("shouldn't be possible");
+                byte *stack_val = push_identifier_on_stack(dec->name, dec->resolved_type);
+
+                vm_value_meta *m = get_metadata_by_ptr(stack_val);
+                m->name = dec->name;
+
+                debug_vm_print(dec->pos, "declaration of %s, no init value", dec->name);
             }
         }
         break;
