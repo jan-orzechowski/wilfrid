@@ -640,9 +640,9 @@ void gen_expr(expr *e)
         break;
         case EXPR_UNARY:
         {
-            gen_printf("%s(", get_token_kind_name(e->unary.operator));
+            gen_printf("(%s(", get_token_kind_name(e->unary.operator));
             gen_expr(e->unary.operand);
-            gen_printf(")");
+            gen_printf("))");
         }
         break;
         case EXPR_BINARY:
@@ -734,17 +734,30 @@ void gen_expr(expr *e)
             }
             else
             {
-                gen_expr(e->field.expr);
                 assert(e->field.expr->resolved_type);
-                if (e->field.expr->resolved_type->kind == TYPE_POINTER)
+                type *base_type = e->field.expr->resolved_type;
+                type *orig_type = base_type;
+
+                if (orig_type->kind == TYPE_POINTER)
                 {
-                    gen_printf("->%s", e->field.field_name);
-                    debug_breakpoint;
+                    gen_printf("(");
                 }
-                else
+
+                // auto dereference
+                while (base_type->kind == TYPE_POINTER)
                 {
-                    gen_printf(".%s", e->field.field_name);
+                    base_type = base_type->pointer.base_type;
+                    gen_printf("*");
                 }
+                
+                gen_expr(e->field.expr);
+
+                if (orig_type->kind == TYPE_POINTER)
+                {
+                    gen_printf(")");
+                }
+
+                gen_printf(".%s", e->field.field_name);
             }
         }
         break;

@@ -1,0 +1,35 @@
+extern fn printf(str: char*, variadic) : int
+extern fn assert(condition: bool)
+
+struct test_struct
+{
+    val_long: long,
+    val_int: int,
+    val_bool: bool,
+}
+
+fn main()
+{
+    let a : test_struct = { 11 as long }
+    let b := &a
+    let c := &b
+
+    assert(a.val_long == 11 as long)
+
+    let ptr : test_struct*** 
+    ptr = &c 
+
+    assert(ptr.val_long == 11 as long)
+
+    b.val_long = 12 as long
+
+    assert(a.val_long == 12 as long)
+    assert(b.val_long == 12 as long)
+    assert(c.val_long == 12 as long)
+    assert(ptr.val_long == 12 as long)
+    
+    assert(a.val_long == 12 as long)
+    assert((*b).val_long == 12 as long)
+    assert((**c).val_long == 12 as long)
+    assert((***ptr).val_long == 12 as long)
+}

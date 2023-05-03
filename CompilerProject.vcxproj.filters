@@ -42,5 +42,6 @@
     <Text Include="test\enum.txt" />
     <Text Include="test\unions.txt" />
     <Text Include="test\new_and_delete.txt" />
+    <Text Include="test\auto_dereference.txt" />
   </ItemGroup>
 </Project>
