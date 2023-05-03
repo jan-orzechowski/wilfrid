@@ -68,7 +68,7 @@ const char *pretty_print_type_name(type *ty, bool plural);
 #define on_invalid_type_return(t) if (!(t) || (t->kind == TYPE_NONE)) { return resolved_expr_invalid; }
 #define on_invalid_expr_return(e) if (!(e) || !((e)->type) || ((e)->type->kind == TYPE_NONE)) { return resolved_expr_invalid; }
 
-#define check_resolved_expr(e) (!(e) || !((e)->type) || ((e)->type->kind == TYPE_NONE))
+#define check_resolved_expr(e) ((e) && (e)->type && (e)->type->kind != TYPE_NONE)
 
 size_t get_field_offset(type *aggregate, char *field_name)
 {
@@ -1002,7 +1002,7 @@ resolved_expr *resolve_expr_binary(expr *expr)
 
 bool check_compound_expr_field(resolved_expr *init_expr, type *expected_type, size_t init_expr_position, source_pos pos)
 {    
-    if (init_expr->type == null || init_expr->type->kind == TYPE_NONE)
+    if (false == check_resolved_expr(init_expr))
     {
         error_in_resolving(
             xprintf("Could not resolve type in compound literal at position %d",
@@ -1109,13 +1109,10 @@ Please provide a type either as a cast or in the variable declaration", e->pos);
                 }
             }
 
-            resolved_expr *init_expr = resolve_expected_expr(field->expr, expected_type, false);
-            if (check_resolved_expr(init_expr))
+            resolved_expr *init_expr = resolve_expected_expr(field->expr, aggr_field_type, false);
+            if (false == check_compound_expr_field(init_expr, aggr_field_type, i, field->expr->pos))
             {
-                if (false == check_compound_expr_field(init_expr, expected_type, i, field->expr->pos))
-                {
-                    return result;
-                }
+                return result;
             }
         }
     }
@@ -1159,13 +1156,10 @@ Please provide a type either as a cast or in the variable declaration", e->pos);
             }
             
             resolved_expr *init_expr = resolve_expected_expr(field->expr, expected_type, false);
-            if (check_resolved_expr(init_expr))
+            if (false == check_compound_expr_field(init_expr, expected_type, i, field->expr->pos))
             {
-                if (false == check_compound_expr_field(init_expr, expected_type, i, field->expr->pos))
-                {
-                    return result;
-                }
-            }
+                return result;
+            }            
         }
     }
         
