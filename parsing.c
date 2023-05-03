@@ -567,6 +567,13 @@ expr *parse_complex_expr(void)
 {
     source_pos pos = tok.pos;
     expr *result = parse_base_expr();
+
+    // żadne z poniższych nie ma sensu zaraz po compound literal
+    if (result && result->kind == EXPR_COMPOUND_LITERAL)
+    {
+        return result;
+    }
+
     while (is_token_kind(TOKEN_LEFT_PAREN) 
         || is_token_kind(TOKEN_LEFT_BRACKET) 
         || is_token_kind(TOKEN_DOT))

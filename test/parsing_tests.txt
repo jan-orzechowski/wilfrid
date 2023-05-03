@@ -395,3 +395,11 @@ TEST:(fn-decl f
   (var-decl arr (array (type int) 20) (compound 1 2 (index 3 4) (index 4 3) 5))
 ):END
 
+CASE:fn f(){
+  let x : test_struct[20] = { }
+  (*x)[1].val_int = 6
+}:END
+TEST:(fn-decl f
+  (var-decl x (array (type test_struct) 20) (compound ))
+  (= (access-field val_int (access-index 1 (pointer-dereference x))) 6)
+):END
