@@ -1116,8 +1116,8 @@ void c_gen(symbol **resolved_declarations, char *output_filename, char *output_e
         {
             print_errors_to_console();
         }
-        char *errors = print_errors();
-        write_file(output_error_log_filename, errors, buf_len(errors));
+        char *printed_errors = print_errors();
+        write_file(output_error_log_filename, printed_errors, buf_len(errors));
         return;
     }
 
