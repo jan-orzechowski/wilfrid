@@ -1391,9 +1391,9 @@ resolved_expr *resolve_call_expr(expr *e)
                 type *expected_param_type = candidate->type->function.param_types[i];
                 resolved_expr *resolved_arg_expr = resolve_expected_expr(arg_expr, expected_param_type, true);
 
-                if (resolved_arg_expr->type == null || resolved_arg_expr->type->kind == TYPE_NONE)
+                if (false == check_resolved_expr(resolved_arg_expr))
                 {
-                    error_in_resolving("Not all arguments to a function call could be resolved", e->pos);
+                    //error_in_resolving("Not all arguments to a function call could be resolved", e->pos);
                     return resolved_expr_invalid;
                 }
 
@@ -1803,9 +1803,9 @@ type *resolve_variable_decl(decl *d)
     if (d->variable.expr)
     {
         resolved_expr *expr = resolve_expected_expr(d->variable.expr, declared_type, false);
-        if (expr == null || expr->type->kind == TYPE_NONE)
+        if (false == check_resolved_expr(expr))
         {
-            error_in_resolving("Cannot resolve type in the variable declaration", d->pos);
+            //error_in_resolving("Cannot resolve type in the variable declaration", d->pos);
             return null;
         }
         
@@ -2119,9 +2119,9 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
             if (st->assign.value_expr)
             {                
                 resolved_expr *right = resolve_expected_expr(st->assign.value_expr, left->type, false);
-                if (right == null || right->type == TYPE_NONE)
+                if (false == check_resolved_expr(right))
                 {
-                    error_in_resolving("Cannot assign expression of an unknown type", st->assign.value_expr->pos);
+                    //error_in_resolving("Cannot assign expression of an unknown type", st->assign.value_expr->pos);
                     return;
                 }
 
@@ -2137,11 +2137,16 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
                     }
                     else if (false == can_perform_cast(right->type, left->type, true))
                     {
-                        error_in_resolving(
-                            xprintf("Types do not match in assignment. Trying to assign %s to %s",
-                                pretty_print_type_name(right->type, false), 
-                                pretty_print_type_name(left->type, false)),
-                            st->assign.assigned_var_expr->pos);
+                        // dajemy błąd tylko jeśli oba są resolved - w przeciwnym wypadku będzie już inny błąd
+                        // informujący dlaczego typy nie zostały rozstrzygnięte
+                        if (check_resolved_expr(right) && check_resolved_expr(left))
+                        {
+                            error_in_resolving(
+                                xprintf("Types do not match in assignment. Trying to assign %s to %s",
+                                    pretty_print_type_name(right->type, false),
+                                    pretty_print_type_name(left->type, false)),
+                                st->assign.assigned_var_expr->pos);
+                        }
                         return;
                     }
                 }
