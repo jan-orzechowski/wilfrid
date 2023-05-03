@@ -975,6 +975,16 @@ byte *eval_expression(expr *exp)
             byte *arr = eval_expression(exp->index.array_expr);
             type *arr_type = exp->index.array_expr->resolved_type;
 
+            // przypadek specjalny 
+            if (arr_type->kind == TYPE_POINTER
+                && (arr_type->pointer.base_type->kind == TYPE_ARRAY
+                    || arr_type->pointer.base_type->kind == TYPE_LIST))
+            {
+                debug_vm_print(exp->pos, "auto deref ptr %s", debug_print_vm_value(arr, arr_type));
+                arr_type = arr_type->pointer.base_type;
+                (uintptr_t)arr = *(uintptr_t *)arr;
+            }
+
             byte *ind = eval_expression(exp->index.index_expr);
             type *ind_type = exp->index.index_expr->resolved_type;
             size_t element_index = 0;
@@ -1710,7 +1720,7 @@ void treewalk_interpreter_test(void)
 #endif
 
     decl **all_declarations = null;
-    parse_file("test/dynamic_lists.txt", &all_declarations);
+    parse_file("test/arrays.txt", &all_declarations);
     symbol **resolved = resolve(all_declarations, true);
     assert(all_declarations);
     assert(resolved);

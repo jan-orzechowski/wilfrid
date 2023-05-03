@@ -216,7 +216,7 @@ char *typespec_to_cdecl(typespec *t, char *name)
             }
             else
             {
-                result = parenthesize(xprintf("%s*", 
+                result = parenthesize(xprintf("*%s", 
                     typespec_to_cdecl(t->pointer.base_type, null)
                 ), false);
             }            
@@ -224,8 +224,16 @@ char *typespec_to_cdecl(typespec *t, char *name)
         break;
         case TYPESPEC_ARRAY:
         {
-            const char *wrapped_name = parenthesize(xprintf("%s[%s]", name, gen_expr_str(t->array.size_expr)), name);
-            result = typespec_to_cdecl(t->array.base_type, wrapped_name);
+            char *size_str = gen_expr_str(t->array.size_expr);
+            if (*name)
+            {
+                const char* wrapped_name = parenthesize(xprintf("%s[%s]", name, size_str), name);
+                result = typespec_to_cdecl(t->array.base_type, wrapped_name);
+            }
+            else
+            {
+                result = typespec_to_cdecl(t->array.base_type, "");
+            }
         }
         break;
         case TYPESPEC_LIST:
@@ -763,8 +771,24 @@ void gen_expr(expr *e)
         break;
         case EXPR_INDEX:
         {
-            assert(e->index.array_expr->resolved_type->kind != TYPE_LIST)
-            gen_expr(e->index.array_expr);
+            type *t = e->index.array_expr->resolved_type;
+            assert(t);
+            assert(t->kind != TYPE_LIST)
+
+            // przypadek specjalny
+            if (t->kind == TYPE_POINTER
+                && (t->pointer.base_type->kind == TYPE_ARRAY
+                    || t->pointer.base_type->kind == TYPE_LIST))
+            {                
+                gen_printf("(*(");
+                gen_expr(e->index.array_expr);
+                gen_printf("))");
+            }
+            else
+            {
+                gen_expr(e->index.array_expr);                
+            }
+
             gen_printf("[");
             gen_expr(e->index.index_expr);
             gen_printf("]");

@@ -1,0 +1,41 @@
+﻿extern fn printf(str: char*, variadic) : int
+extern fn assert(condition: bool)
+
+struct test_struct
+{
+    val_long: long,
+    val_int: int,
+    val_bool: bool,
+}
+
+union test_union
+{
+    val_int : int,
+    val_float : float
+    val_long: long
+}
+
+fn main()
+{
+    let x := new test_struct[100]
+    let y := new test_struct[20]
+    let z : test_struct[20] = { }
+
+    // auto dereference test
+    (*x)[1].val_int = 6
+    y[1].val_int = 6
+
+    assert(x[1].val_int == y[1].val_int)
+
+    for (let i := 0, i < 100, i++)
+    {
+        x[i].val_int = i
+    }
+    
+    for (let i := 0, i < 100, i++)
+    {
+        assert(x[i].val_int == i)
+    }
+
+    
+}

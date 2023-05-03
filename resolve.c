@@ -817,7 +817,7 @@ type *resolve_typespec(typespec *t)
     return result;
 }
 
-resolved_expr *pointer_decay(resolved_expr *e)
+resolved_expr *array_to_pointer_decay(resolved_expr *e)
 {        
     if (e->type->kind == TYPE_ARRAY)
     {
@@ -842,7 +842,7 @@ resolved_expr *resolve_expr_unary(expr *expr)
     {
         case TOKEN_MUL:
         {
-            operand = pointer_decay(operand);
+            operand = array_to_pointer_decay(operand);
             if (type->kind != TYPE_POINTER)
             {
                 error_in_resolving("Cannot dereference non-pointer type", expr->pos);
@@ -1703,11 +1703,13 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
         case EXPR_INDEX:
         {
             resolved_expr *operand_expr = resolve_expr(e->index.array_expr);
-            if (operand_expr->type->kind != TYPE_LIST
-                && pointer_decay(operand_expr)->type->kind != TYPE_POINTER)
+
+            if (operand_expr->type->kind != TYPE_LIST 
+                && operand_expr->type->kind != TYPE_ARRAY
+                && operand_expr->type->kind != TYPE_POINTER)
             {
                 error_in_resolving(xprintf(
-                    "Only arrays and pointers can be accessed by index; tried to access %s",
+                    "Only arrays, lists, and pointers can be accessed by index; tried to access %s",
                     pretty_print_type_name(operand_expr->type, false)), e->pos);
                 return resolved_expr_invalid;
             }
@@ -1720,15 +1722,32 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
             }
             
             on_invalid_expr_return(operand_expr);
-
-            if (operand_expr->type->kind == TYPE_NONE)
+                        
+            // przypadek specjalny
+            type *t = operand_expr->type;
+            if (t->kind == TYPE_POINTER)
             {
-                return null;
+                if (t->pointer.base_type->kind == TYPE_ARRAY
+                    || t->pointer.base_type->kind == TYPE_LIST)
+                {
+                    t = t->pointer.base_type;
+                }
             }
 
-            result = get_resolved_lvalue_expr(operand_expr->type->pointer.base_type);
-
-            stub_kind = STUB_EXPR_LIST_INDEX;
+            if (t->kind == TYPE_LIST)
+            {
+                result = get_resolved_lvalue_expr(t->list.base_type);
+                stub_kind = STUB_EXPR_LIST_INDEX;
+            }
+            else if (t->kind == TYPE_ARRAY)
+            {
+                // tutaj ew. array to pointer decay
+                result = get_resolved_lvalue_expr(t->array.base_type);
+            } 
+            else
+            {
+                result = get_resolved_lvalue_expr(t->pointer.base_type);
+            }            
         }
         break;
         case EXPR_COMPOUND_LITERAL:
