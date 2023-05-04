@@ -151,7 +151,7 @@ char *type_to_cdecl(type *type, char *name)
         break;
         case TYPE_FUNCTION:
         {
-            buf_printf(result, "%s(", xprintf("*%s", name));
+            buf_printf(result, "%s(", parenthesize(xprintf("*%s", name), name));
             if (type->function.param_count == 0 
                 && type->function.receiver_type == null)
             {
@@ -208,10 +208,9 @@ char *typespec_to_cdecl(typespec *t, char *name)
         break;
         case TYPESPEC_POINTER:
         {
-            // false podane zamiast name tymczasowo
             if (name)
             {
-                const char *wrapped_name = parenthesize(xprintf("*%s", name), false);
+                const char *wrapped_name = parenthesize(xprintf("*%s", name), name); 
                 result = typespec_to_cdecl(t->pointer.base_type, wrapped_name);
             }
             else
@@ -1418,10 +1417,16 @@ const char *pretty_print_type_name(type *ty, bool plural)
         }
         break;
         case TYPE_FUNCTION:
+        {
+            assert(ty->symbol);
+            // tutaj można dopisać jeszcze przyjmowane argumenty i zwracaną wartość
+            result = xprintf("function %s", ty->symbol->name);
+        }
+        break;
         case TYPE_INCOMPLETE:
         default:
         {
-            fatal("unimplemented");
+            fatal("this shouldn't happen");
         }
         break;       
     }
