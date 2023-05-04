@@ -863,15 +863,36 @@ void gen_expr(expr *e)
         case EXPR_NEW: 
         {
             assert(e->new.type->kind != TYPESPEC_LIST);
-            char *type_str = typespec_to_cdecl(e->new.type, null);
-            gen_printf("(%s*)___alloc___(sizeof(%s))", type_str, type_str);
+            if (e->new.type->kind == TYPESPEC_ARRAY)
+            {
+                assert(e->new.type->array.size_expr);
+                char *type_str = typespec_to_cdecl(e->new.type, null);
+                gen_printf("___alloc___(sizeof(%s) * (", type_str);
+                gen_expr(e->new.type->array.size_expr);
+                gen_printf("))");
+            }
+            else
+            {
+                char *type_str = typespec_to_cdecl(e->new.type, null);
+                gen_printf("___alloc___(sizeof(%s))", type_str);
+            }
         }
         break;
         case EXPR_AUTO: 
         {
-            assert(e->new.type->kind != TYPESPEC_LIST)
-            char *type_str = typespec_to_cdecl(e->new.type, null);
-            gen_printf("(%s*)___managed_alloc___(sizeof(%s))", type_str, type_str);
+            if (e->new.type->kind == TYPESPEC_ARRAY)
+            {
+                assert(e->auto_new.type->array.size_expr);
+                char *type_str = typespec_to_cdecl(e->auto_new.type, null);
+                gen_printf("___managed_alloc___(sizeof(%s) * (", type_str);
+                gen_expr(e->auto_new.type->array.size_expr);
+                gen_printf("))");
+            }
+            else
+            {
+                char *type_str = typespec_to_cdecl(e->auto_new.type, null);
+                gen_printf("___managed_alloc___(sizeof(%s))", type_str);
+            }
         } 
         break;
         case EXPR_NONE:
