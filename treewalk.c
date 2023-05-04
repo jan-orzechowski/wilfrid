@@ -23,7 +23,7 @@ size_t debug_print_buffer_size = 100;
 #define save_debug_string(str) map_put(&debug_strings, str, str);
 #define debug_vm_print(...) _vm_debug_printf(__VA_ARGS__)
 #define debug_print_vm_value(val, typ) _debug_print_vm_value(val, typ)
-#elif
+#else
 #define save_debug_string
 #define debug_vm_print
 #define debug_print_vm_value
@@ -954,8 +954,8 @@ byte *eval_expression(expr *exp)
                 while (aggr_type->kind == TYPE_POINTER)
                 {
                     debug_vm_print(exp->pos, "auto deref ptr %s", debug_print_vm_value(aggr, aggr_type));
-                    aggr_type = aggr_type->pointer.base_type;
-                    (uintptr_t)aggr = *(uintptr_t *)aggr;
+                    aggr_type = aggr_type->pointer.base_type;                    
+                    aggr = (byte*)*(uintptr_t *)aggr;
                 }
 
                 assert(aggr);
@@ -982,7 +982,7 @@ byte *eval_expression(expr *exp)
             {
                 debug_vm_print(exp->pos, "auto deref ptr %s", debug_print_vm_value(arr, arr_type));
                 arr_type = arr_type->pointer.base_type;
-                (uintptr_t)arr = *(uintptr_t *)arr;
+                arr = (byte *)*(uintptr_t *)arr;
             }
 
             byte *ind = eval_expression(exp->index.index_expr);

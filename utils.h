@@ -9,6 +9,14 @@
 
 #define null 0
 
+#if !defined(max)
+#define max(a,b) ((a) > (b) ? (a) : (b))
+#endif 
+
+#if !defined(min)
+#define min(a,b) ((a) < (b) ? (a) : (b))
+#endif 
+
 #ifdef DEBUG_BUILD
 #define assert(condition) { if (!(condition)) { int _debug = 0; _debug = 1 / _debug; } }
 #define assert_is_interned(str) assert(str && str_intern((const char *)(str)) == (const char *)(str))
