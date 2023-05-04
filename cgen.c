@@ -319,7 +319,6 @@ void gen_simple_stmt(stmt *stmt)
                         {
                             char *decl_str = type_to_cdecl(typ, dec->name);
                             gen_printf(decl_str);
-                            debug_breakpoint;                        
                         }
                         else
                         {
@@ -937,20 +936,13 @@ void gen_func_decl(decl *d, const char *mangled_name)
 {
     assert(d->kind == DECL_FUNCTION);
 
-    if (d->function.return_type)
-    {
-        char *decl_str = typespec_to_cdecl(d->function.return_type, mangled_name);
-        gen_printf_newline("%s(", decl_str);
-    }
-    else
-    {
-        gen_printf_newline("void %s(", mangled_name);
-    }
-
+    char *result = null;
+    buf_printf(result, "%s(", mangled_name);
+ 
     if (d->function.params.param_count == 0
         && d->function.method_receiver == null)
     {
-        gen_printf("void");
+        buf_printf(result, "void");
     }
     else
     {
@@ -959,10 +951,10 @@ void gen_func_decl(decl *d, const char *mangled_name)
             char *decl_str = typespec_to_cdecl(
                 d->function.method_receiver->type, 
                 d->function.method_receiver->name);
-            gen_printf("%s", decl_str);
+            buf_printf(result, "%s", decl_str);
             if (d->function.params.param_count > 0)
             {
-                gen_printf(", ");
+                buf_printf(result, ", ");
             }
         }
 
@@ -971,14 +963,26 @@ void gen_func_decl(decl *d, const char *mangled_name)
             function_param param = d->function.params.params[i];
             if (i != 0)
             {
-                gen_printf(", ");
+                buf_printf(result, ", ");
             }
 
             char *decl_str = typespec_to_cdecl(param.type, param.name);
-            gen_printf("%s", decl_str);
+            buf_printf(result, "%s", decl_str);
         }
     }
-    gen_printf(")"); // bez średnika, bo potem może być ciało
+    buf_printf(result, ")"); // bez średnika, bo potem może być ciało
+
+    if (d->function.return_type)
+    {
+        char *decl_str = typespec_to_cdecl(d->function.return_type, result);
+        gen_printf_newline("%s", decl_str);
+    }
+    else
+    {
+        gen_printf_newline("void %s", result);
+    }
+
+    buf_free(result);
 }
 
 void gen_forward_decls(symbol **resolved)
@@ -1057,8 +1061,7 @@ void gen_symbol_decl(symbol *sym)
             }
             else
             {            
-                char *decl_str = type_to_cdecl(
-                    sym->type, sym->name);
+                char *decl_str = type_to_cdecl(sym->type, sym->name);
                 gen_printf_newline(decl_str);                
                 gen_printf(" = ");
                 gen_expr(decl->const_decl.expr);
