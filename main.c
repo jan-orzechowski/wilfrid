@@ -129,7 +129,6 @@ int main(int arg_count, char **args)
 #elif 0
     options.test_mode = true;
 #else
-    //bytecode_gen_test();
     treewalk_interpreter_test();
 #endif
 #endif
