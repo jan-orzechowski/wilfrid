@@ -9,7 +9,10 @@
 #include <stdbool.h>
 
 #define null 0
+
+#if !defined(offsetof)
 #define offsetof(s,m) ((size_t)&(((s*)0)->m))
+#endif
 
 #if !defined(assert)
 #define assert(condition) { if (!(condition)) { int x = 0; int y = 1 / x; } }

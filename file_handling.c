@@ -132,11 +132,12 @@ void path_copy(char *dest, size_t dest_array_size, const char *src)
 }
 
 string_ref read_file(char *filename)
-{
+{    
+    errno = 0;
     FILE *src = fopen(filename, "rb");
     if (src == null)
     {
-        // błąd
+        printf("File '%s' could not be opened: %s\n", filename, strerror(errno));
         return (string_ref) { 0 };
     }
 
@@ -171,10 +172,11 @@ string_ref read_file(char *filename)
 
 bool write_file(const char *path, const char *buf, size_t len)
 {
+    errno = 0;
     FILE *dst = fopen(path, "w");
     if (dst == null)
     {
-        // błąd
+        printf("File '%s' could not be saved: %s\n", path, strerror(errno));
         return false;
     }
 

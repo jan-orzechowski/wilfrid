@@ -110,7 +110,7 @@ char *_debug_print_vm_value(byte *val, type *typ)
         break;
         case TYPE_ULONG:
         {
-            snprintf(debug_print_buffer, debug_print_buffer_size, "%zu", *(uint64_t *)val);
+            snprintf(debug_print_buffer, debug_print_buffer_size, "%llu", *(uint64_t *)val);
         }
         break;
         case TYPE_POINTER:
