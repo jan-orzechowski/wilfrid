@@ -106,12 +106,12 @@ char *_debug_print_vm_value(byte *val, type *typ)
         case TYPE_CHAR:
         case TYPE_UINT:
         {
-            snprintf(debug_print_buffer, debug_print_buffer_size, "%d", *(uint32_t *)val);
+            snprintf(debug_print_buffer, debug_print_buffer_size, "%u", *(uint32_t *)val);
         }
         break;
         case TYPE_ULONG:
         {
-            snprintf(debug_print_buffer, debug_print_buffer_size, "%lld", *(uint64_t *)val);
+            snprintf(debug_print_buffer, debug_print_buffer_size, "%zu", *(uint64_t *)val);
         }
         break;
         case TYPE_POINTER:
@@ -139,7 +139,7 @@ char *_debug_print_vm_value(byte *val, type *typ)
             for (size_t offset = 0; offset < get_type_size(typ); offset++)
             {
                 byte b = *(val + offset);
-                buf_printf(temp, "%d", b);
+                buf_printf(temp, "%u", b);
                 if (offset < get_type_size(typ) - 1)
                 {
                     buf_printf(temp, ",");
@@ -162,7 +162,7 @@ char *_debug_print_vm_value(byte *val, type *typ)
             for (size_t offset = 0; offset < array_size; offset++)
             {
                 byte b = *(val + offset);
-                buf_printf(temp, "%d", b);
+                buf_printf(temp, "%u", b);
                 if (offset < array_size - 1)
                 {
                     buf_printf(temp, ",");
@@ -187,7 +187,7 @@ char *_debug_print_vm_value(byte *val, type *typ)
             else
             {
                 char *temp = null;
-                buf_printf(temp, "dynamic (len: %d, cap: %d) [", hdr->length, hdr->capacity);
+                buf_printf(temp, "dynamic (len: %zu, cap: %zu) [", hdr->length, hdr->capacity);
                 
                 size_t list_size = get_type_size(typ->list.base_type) * hdr->length;
                 byte *buffer = (byte *)hdr->buffer;
@@ -1012,7 +1012,7 @@ byte *eval_expression(expr *exp)
             uintptr_t ptr = (uintptr_t)xcalloc(size);
             copy_vm_val(result, (byte *)&ptr, sizeof(uintptr_t));
 
-            debug_vm_print(exp->pos, "allocation at %p, type %s, size %lld", 
+            debug_vm_print(exp->pos, "allocation at %p, type %s, size %zu", 
                 (void *)ptr,
                 pretty_print_type_name(exp->new.resolved_type, false),
                 size);
@@ -1027,7 +1027,7 @@ byte *eval_expression(expr *exp)
             uintptr_t ptr = (uintptr_t)xcalloc(size);
             copy_vm_val(result, (byte *)&ptr, sizeof(uintptr_t));
 
-            debug_vm_print(exp->pos, "GC allocation at %p, type %s, size %lld",
+            debug_vm_print(exp->pos, "GC allocation at %p, type %s, size %zu",
                 (void *)ptr,
                 pretty_print_type_name(exp->auto_new.resolved_type, false),
                 size);

@@ -62,11 +62,11 @@ void print_source_pos(char **buffer, source_pos pos)
 {
     if (shorten_source_pos)
     {
-        buf_printf(*buffer, "('%s':%04lld:%02lld)", pos.filename, pos.line, pos.character);
+        buf_printf(*buffer, "('%s':%04zu:%02zu)", pos.filename, pos.line, pos.character);
     }
     else
     {
-        buf_printf(*buffer, "(file '%s', line %lld, position %lld)", pos.filename, pos.line, pos.character);
+        buf_printf(*buffer, "(file '%s', line %zu, position %zu)", pos.filename, pos.line, pos.character);
     }
 }
 
@@ -76,7 +76,7 @@ char *print_errors(void)
     size_t errors_count = buf_len(errors);
     if (errors_count > 0)
     {
-        buf_printf(buffer, "\n%lld errors:\n", errors_count);
+        buf_printf(buffer, "\n%zu errors:\n", errors_count);
         for (size_t i = 0; i < errors_count; i++)
         {
             error_message msg = errors[i];

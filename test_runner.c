@@ -200,7 +200,7 @@ symbol **test_resolve_decls(char **decl_arr, size_t decl_arr_count, bool print_a
         }
         else
         {
-            printf("\nResolve test error: couldn't parse test case %lld\n", i);
+            printf("\nResolve test error: couldn't parse test case %zu\n", i);
         }
     }
 
@@ -360,7 +360,7 @@ void mangled_names_test(void)
         if (0 != strcmp(mangled_name, cmp_strs[i]))
         {
             error_counter++;
-            printf("\nError in name mangling, case %lld!\nExpected:\n%s\nGot:\n%s\n",
+            printf("\nError in name mangling, case %zu!\nExpected:\n%s\nGot:\n%s\n",
                 i - 2, cmp_strs[i], mangled_name);
         }
     }

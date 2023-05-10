@@ -611,7 +611,7 @@ void gen_expr(expr *e)
     {
         case EXPR_INT:
         {
-            gen_printf("%lld", e->integer_value);
+            gen_printf("%zu", e->integer_value);
         }
         break;
         case EXPR_FLOAT:
@@ -1243,7 +1243,7 @@ const char *get_typespec_mangled_name(typespec *typ)
             resolved_expr *e = resolve_expr(typ->array.size_expr);
             size_t arr_count = e->val;
 
-            buf_printf(result, xprintf("_%lld", arr_count));
+            buf_printf(result, xprintf("_%zu", arr_count));
             buf_printf(result, get_typespec_mangled_name(typ->array.base_type));
         }
         break;
