@@ -691,6 +691,12 @@ char *get_decl_ast(decl *d)
     return ast_buf;
 }
 
+void printf_decl_ast(decl *d)
+{
+    char *ast = get_decl_ast(d);
+    printf("\n%s\n", ast);
+}
+
 char *get_stub_expr_name(stub_expr_kind kind)
 {
     switch (kind)

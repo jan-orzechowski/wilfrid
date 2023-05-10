@@ -53,6 +53,7 @@ void parse_directory(char *path, decl ***declarations_list)
 void compile_sources(char **sources, bool print_ast)
 {
     decl **all_declarations = null;
+    symbol **resolved = null;
     for (size_t i = 0; i < buf_len(sources); i++)
     {
         char *filename = sources[i];
@@ -71,12 +72,34 @@ void compile_sources(char **sources, bool print_ast)
         printf("\nOUTPUT AST:\n");
         for (size_t i = 0; i < buf_len(all_declarations); i++)
         {
-            printf("\n%s\n", get_decl_ast(all_declarations[i]));
+            printf_decl_ast(all_declarations[i]);
         }        
     }
 
-    symbol **resolved = resolve(all_declarations, true);
-    c_gen(resolved, "test/testcode.c", "errors.log", false);
+    if (buf_len(errors) > 0)
+    {
+        if (true)
+        {
+            print_errors_to_console();
+        }
+        //char *printed_errors = print_errors();
+        //write_file(output_error_log_filename, printed_errors, buf_len(errors));
+        //buf_free(printed_errors);
+        return;       
+    }
+    else
+    {
+        resolved = resolve(all_declarations, true);
+        
+#if __EMSCRIPTEN__
+        run_interpreter(resolved);
+#else
+        c_gen(resolved, "test/testcode.c", "errors.log", false);
+        run_interpreter(resolved);
+#endif
+    }
+
+    buf_free(all_declarations);
 }
 
 typedef struct cmd_arguments
@@ -118,44 +141,103 @@ cmd_arguments parse_cmd_arguments(int arg_count, char **args)
     return result;
 }
 
-int main(int arg_count, char **args)
+void allocate_memory(void)
 {
     arena = allocate_memory_arena(kilobytes(50));
     string_arena = allocate_memory_arena(kilobytes(500));
     interns = xcalloc(sizeof(hashmap));
     map_grow(interns, 16);
-        
-    cmd_arguments options = parse_cmd_arguments(arg_count, args);
 
-#if DEBUG_BUILD 
+    map_grow(&global_symbols, 16);
+
+    vm_global_memory = allocate_memory_arena(kilobytes(5));
+    map_grow(&global_identifiers, 16);
+}
+
+void clear_memory(char ***sources)
+{
+    buf_free(all_tokens);
+
+    free_memory_arena(string_arena);
+    map_free(interns);
+    free(interns);
+    keywords_initialized = false;
+
+    free_memory_arena(arena);
+
+    // tablice wskaźników - same obiekty są zaalokowane na arenie
+    buf_free(global_symbols_list);
+    buf_free(ordered_global_symbols);
+    buf_free(cached_pointer_types);
+   
+    map_free(&global_symbols);
+
+    memset(local_symbols, 0, MAX_LOCAL_SYMBOLS);
+    last_local_symbol = local_symbols;
+
+    installed_types_initialized = false;
+
+    free_memory_arena(vm_global_memory);
+    map_free(&global_identifiers);
+
+    for (size_t i = 0; i < buf_len(global_xprintf_results); i++)
+    {
+        free(global_xprintf_results[i]);
+    }
+    buf_free(global_xprintf_results);
+
+    buf_free(errors);
+    buf_free(ast_buf);
+    buf_free(gen_buf);
+}
+
+#ifndef __EMSCRIPTEN__
+int main(int arg_count, char **args)
+{ 
+    cmd_arguments options = parse_cmd_arguments(arg_count, args);
     options.print_ast = true;
-#if 0
+#if 1
     buf_push(options.sources, "test/dynamic_lists.txt");
-#elif 0
+#elif 1
     options.test_mode = true;
 #else
     treewalk_interpreter_test();
 #endif
-#endif
 
-    if (options.help)
+    for (size_t i = 0; i < 1000; i++)
     {
-        // po prostu wyrzucamy tekst do konsoli z predefiniowanego pliku
-        printf("not implemented yet");
+        allocate_memory();
+
+        if (options.help)
+        {
+            // po prostu wyrzucamy tekst do konsoli z predefiniowanego pliku
+            printf("not implemented yet\n");
+        }
+        else if (options.test_mode)
+        {
+            run_all_tests();
+        }
+        else if (options.sources > 0)
+        {
+            compile_sources(options.sources, options.print_ast);
+            print_errors_to_console();
+        }
+        else
+        {
+            printf("No commands or source files provided.\n");
+        }
+
+        clear_memory(&options.sources);
+
+        debug_breakpoint;
     }
-    else if (options.test_mode)
-    {
-        run_all_tests();
-    }
-    else if (options.sources > 0)
-    {        
-        compile_sources(options.sources, options.print_ast);
-        print_errors_to_console();
-    }
-    else
-    {
-        printf("No commands or source files provided.");
-    }
+
+    buf_free(options.sources);
 
     return 1;
 }
+
+#else 
+
+
+#endif

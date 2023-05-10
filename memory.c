@@ -25,7 +25,7 @@ void *xcalloc(size_t num_bytes)
     void *ptr = calloc(num_bytes, sizeof(char));
     if (!ptr)
     {
-        perror("xmalloc failed");
+        perror("xcalloc failed");
         exit(1);
     }
     return ptr;

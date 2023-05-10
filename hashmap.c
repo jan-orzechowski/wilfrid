@@ -287,3 +287,21 @@ void map_add_to_chain(chained_hashmap *map, void *key, void *value)
         map->total_count++;
     }
 }
+
+void map_chain_free(chained_hashmap *map)
+{
+    for (size_t i = 0; i < map->capacity; i++)
+    {
+        hashmap_value *val = map->values[i];
+        while (val)
+        {
+            hashmap_value *temp = val->next;
+            free(val);
+            val = temp;
+        }
+    }
+    free(map->values);
+    map->total_count = 0;
+    map->used_capacity = 0;
+    map->capacity = 0;
+}

@@ -104,6 +104,6 @@ void buf_copy_test(void)
         }
     }
 
-    free(test);
+    free_memory_arena(test);
     buf_free(buffer);
 }

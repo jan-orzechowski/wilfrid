@@ -233,6 +233,7 @@ char *typespec_to_cdecl(typespec *t, char *name)
             {
                 result = typespec_to_cdecl(t->array.base_type, "");
             }
+            buf_free(size_str);
         }
         break;
         case TYPESPEC_LIST:
@@ -1153,6 +1154,8 @@ void gen_common_includes(void)
 #include <stdbool.h>"
 );
 #endif
+
+    free(file_buf.str);
 }
 
 void c_gen(symbol **resolved_declarations, char *output_filename, char *output_error_log_filename, bool print_to_console)
@@ -1165,6 +1168,7 @@ void c_gen(symbol **resolved_declarations, char *output_filename, char *output_e
         }
         char *printed_errors = print_errors();
         write_file(output_error_log_filename, printed_errors, buf_len(errors));
+        buf_free(printed_errors);
         return;
     }
 
@@ -1177,10 +1181,10 @@ void c_gen(symbol **resolved_declarations, char *output_filename, char *output_e
         gen_symbol_decl(resolved_declarations[i]);
     }
 
-    write_file(output_filename, gen_buf, buf_len(gen_buf));
+    write_file(output_filename, gen_buf, buf_len(gen_buf));    
 }
 
-const char *get_typespec_mangled_name(typespec *typ)
+char *get_typespec_mangled_name(typespec *typ)
 {
     assert(typ);
     char *result = null;
@@ -1244,20 +1248,26 @@ const char *get_typespec_mangled_name(typespec *typ)
             size_t arr_count = e->val;
 
             buf_printf(result, xprintf("_%zu", arr_count));
-            buf_printf(result, get_typespec_mangled_name(typ->array.base_type));
+            char *mangled = get_typespec_mangled_name(typ->array.base_type);
+            buf_printf(result, mangled);
+            buf_free(mangled);
         }
         break;
         case TYPESPEC_LIST:
         {
             // ___0l___type
             buf_printf(result, "0l");
-            buf_printf(result, get_typespec_mangled_name(typ->list.base_type));
+            char *mangled = get_typespec_mangled_name(typ->list.base_type);
+            buf_printf(result, mangled);
+            buf_free(mangled);
         }
         break;
         case TYPESPEC_POINTER:
         {
             buf_printf(result, "0p");
-            buf_printf(result, get_typespec_mangled_name(typ->pointer.base_type));
+            char *mangled = get_typespec_mangled_name(typ->pointer.base_type);
+            buf_printf(result, mangled);
+            buf_free(mangled);
         }
         break;
         case TYPESPEC_NONE:
@@ -1283,8 +1293,9 @@ const char *get_function_mangled_name(decl *dec)
     if (dec->function.method_receiver)
     {
         typespec *t = dec->function.method_receiver->type;
-        const char *mangled_rec = get_typespec_mangled_name(t);
+        char *mangled_rec = get_typespec_mangled_name(t);
         buf_printf(mangled, mangled_rec);
+        buf_free(mangled_rec);
     }
 
     buf_printf(mangled, "___");
@@ -1298,14 +1309,16 @@ const char *get_function_mangled_name(decl *dec)
             // więc możemy nie generować mangled name
             return null;
         }
-        const char *mangled_arg = get_typespec_mangled_name(t);
+        char *mangled_arg = get_typespec_mangled_name(t);
         buf_printf(mangled, mangled_arg);
+        buf_free(mangled_arg);
     }
 
     if (dec->function.return_type)
     {
-        const char *mangled_ret = get_typespec_mangled_name(dec->function.return_type);
+        char *mangled_ret = get_typespec_mangled_name(dec->function.return_type);
         buf_printf(mangled, mangled_ret);
+        buf_free(mangled_ret);
     }
     else
     {

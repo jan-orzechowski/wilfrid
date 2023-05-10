@@ -330,7 +330,7 @@ bool check_if_symbol_name_unused(const char *name, source_pos pos)
 
 type *get_new_type(type_kind kind)
 {
-    type *t = xcalloc(sizeof(type));
+    type *t = push_struct(arena, type);
     t->kind = kind;
     return t;
 }
@@ -406,8 +406,8 @@ void complete_aggregate_type(type *type, type_aggregate_field **fields, size_t f
         //type->size = get_type_size(field->type) + align_up(type->size, get_type_align(field->type));
         //type->align = max(type->align, get_type_align(field->type));
     }
-
-    type->aggregate.fields = xmempcy(fields, fields_count * sizeof(*fields));
+    
+    type->aggregate.fields = copy_buf_to_arena(arena, fields);
     type->aggregate.fields_count = fields_count;
 }
 
@@ -471,20 +471,20 @@ type *get_pointer_type(type *base_type)
     return type;
 }
 
-type *get_function_type(type **param_types, size_t param_types_count, type *return_type)
+type *get_function_type(type **param_types_buf, type *return_type)
 {
     type *type = get_new_type(TYPE_FUNCTION);
     type->size = POINTER_SIZE;
     //type->align = POINTER_ALIGN;
-    type->function.param_types = param_types;
-    type->function.param_count = param_types_count;
+    type->function.param_types = copy_buf_to_arena(arena, param_types_buf);
+    type->function.param_count = buf_len(param_types_buf);
     type->function.return_type = return_type;
     return type;
 }
 
 symbol *get_new_symbol(symbol_kind kind, const char *name, decl *decl)
 {
-    symbol *sym = xcalloc(sizeof(symbol));
+    symbol *sym = push_struct(arena, symbol);
     sym->kind = kind;
     sym->name = name;
     sym->decl = decl;
@@ -494,7 +494,7 @@ symbol *get_new_symbol(symbol_kind kind, const char *name, decl *decl)
 resolved_expr *get_resolved_rvalue_expr(type *t)
 {
     assert(t);
-    resolved_expr *result = xcalloc(sizeof(resolved_expr));
+    resolved_expr *result = push_struct(arena, resolved_expr);
     result->type = t;
     return result;
 }
@@ -503,7 +503,7 @@ resolved_expr *get_resolved_lvalue_expr(type *t)
 {
     assert(t);
     assert(t->kind != SYMBOL_CONST);
-    resolved_expr *result = xcalloc(sizeof(resolved_expr));
+    resolved_expr *result = push_struct(arena, resolved_expr);
     result->type = t;
     result->is_lvalue = true;
     return result;
@@ -511,7 +511,7 @@ resolved_expr *get_resolved_lvalue_expr(type *t)
 
 resolved_expr *get_resolved_const_expr(int64_t val)
 {
-    resolved_expr *result = xcalloc(sizeof(resolved_expr));
+    resolved_expr *result = push_struct(arena, resolved_expr);
     result->type = type_long;
     result->is_const = true;
     result->val = val;
@@ -697,7 +697,7 @@ void complete_type(type *t)
             type *field_type = resolve_typespec(field.type);
             complete_type(field_type); // wszystkie muszą być completed, ponieważ musimy znać ich rozmiar
 
-            type_aggregate_field *type_field = xcalloc(sizeof(type_aggregate_field));
+            type_aggregate_field *type_field = push_struct(arena, type_aggregate_field);
             type_field->name = field.name;
             type_field->type = field_type;
             buf_push(fields, type_field);
@@ -725,6 +725,8 @@ void complete_type(type *t)
             assert(d->kind == DECL_UNION);
             complete_aggregate_type(t, fields, buf_len(fields), true);
         }
+
+        buf_free(fields);
     }
 
     buf_push(ordered_global_symbols, t->symbol);
@@ -1899,7 +1901,8 @@ type *resolve_function_decl(decl *d)
         }
     }
 
-    type *result = get_function_type(resolved_args, buf_len(resolved_args), resolved_return_type);
+    type *result = get_function_type(resolved_args, resolved_return_type);
+    buf_free(resolved_args);
 
     result->function.has_variadic_arg = variadic_declared;
     result->function.is_extern = d->function.is_extern;

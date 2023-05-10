@@ -54,6 +54,9 @@ void __fatal(const char *format, ...)
 }
 
 #include "memory.c"
+#include "stretchy_buffers.c"
+
+char **global_xprintf_results = 0;
 
 char *xprintf(const char *format, ...)
 {
@@ -63,8 +66,9 @@ char *xprintf(const char *format, ...)
     size_t length = 1 + vsnprintf(null, 0, format, args);
     va_end(args);
 
-    char *str = xmalloc(length);
-    
+    char *str = xmalloc(length);    
+    buf_push(global_xprintf_results, str);
+
     va_start(args, format);
     vsnprintf(str, length, format, args);
     va_end(args);
@@ -96,7 +100,6 @@ float get_random_01(void)
     return ((float)rand() / (float)RAND_MAX);
 }
 
-#include "stretchy_buffers.c"
 #include "hashmap.c"
 #include "interning.c"
 #include "errors.c"

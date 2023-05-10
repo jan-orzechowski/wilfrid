@@ -40,11 +40,12 @@ const char *intern_keyword(const char *keyword)
     return result;
 }
 
+bool keywords_initialized;
 void init_keywords(void)
 {
-    static bool initialized = false;
-    if (false == initialized)
+    if (false == keywords_initialized)
     {
+        buf_free(keywords_list);
         struct_keyword = intern_keyword("struct");
         enum_keyword = intern_keyword("enum");
         union_keyword = intern_keyword("union");
@@ -76,7 +77,7 @@ void init_keywords(void)
     }
     first_keyword = struct_keyword;
     last_keyword = extern_keyword;
-    initialized = true;
+    keywords_initialized = true;
 }
 
 bool is_name_keyword(const char *name)

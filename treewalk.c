@@ -17,7 +17,6 @@
 size_t failed_asserts;
 
 #if DEBUG_BUILD
-hashmap debug_names_dict;
 char *debug_print_buffer;
 size_t debug_print_buffer_size = 100;
 #define save_debug_string(str) map_put(&debug_strings, str, str);
@@ -240,10 +239,6 @@ byte *push_global_identifier(const char *name, byte* init_val, size_t val_size)
     copy_vm_val(result, init_val, val_size);
 
     map_put(&global_identifiers, name, result);
-
-#if DEBUG_BUILD
-    map_put(&debug_names_dict, result, name);
-#endif
 
     return result;
 }
@@ -1710,20 +1705,14 @@ void eval_function(symbol *function_sym, byte *ret_value)
     }
 }
 
-void treewalk_interpreter_test(void)
+void init_interpreter_memory(void)
 {
-    vm_global_memory = allocate_memory_arena(kilobytes(5));
-    map_grow(&global_identifiers, 16);
+    
+}
 
-#if DEBUG_BUILD    
-    map_grow(&debug_names_dict, 16);
-#endif
-
-    decl **all_declarations = null;
-    parse_file("test/arrays.txt", &all_declarations);
-    symbol **resolved = resolve(all_declarations, true);
-    assert(all_declarations);
-    assert(resolved);
+void run_interpreter(symbol **resolved_decls)
+{
+    init_interpreter_memory();
 
     shorten_source_pos = true;
 
@@ -1733,30 +1722,11 @@ void treewalk_interpreter_test(void)
         return;
     }
 
-    bool print_ast = true;
-    if (print_ast)
-    {
-        printf("\nDeclarations in sorted order:\n");
-
-        for (symbol **it = ordered_global_symbols; it != buf_end(ordered_global_symbols); it++)
-        {
-            symbol *sym = *it;
-            if (sym->decl)
-            {
-                printf("\n%s\n", get_decl_ast(sym->decl));
-            }
-            else
-            {
-                printf("\n%s\n", sym->name);
-            }
-        }
-    }
-
     printf("\n=== TREEWALK INTERPRETER RUN ===\n\n");
 
-    eval_global_declarations(resolved);
+    eval_global_declarations(resolved_decls);
 
-    symbol *main = get_entry_point(resolved);
+    symbol *main = get_entry_point(resolved_decls);
     assert(main);
 
     if (buf_len(errors) > 0)
@@ -1778,4 +1748,38 @@ void treewalk_interpreter_test(void)
     }
 
     debug_breakpoint;
+}
+
+void treewalk_interpreter_test()
+{
+    init_interpreter_memory();
+
+    decl **all_declarations = null;
+    parse_file("test/auto_dereference.txt", &all_declarations);
+    symbol **resolved = resolve(all_declarations, true);
+    assert(all_declarations);
+    assert(resolved);
+
+    // to można by przenieść do resolve...
+    bool print_ast = true;
+    if (print_ast)
+    {
+        printf("\nDeclarations in sorted order:\n");
+
+        for (symbol **it = ordered_global_symbols; it != buf_end(ordered_global_symbols); it++)
+        {
+            symbol *sym = *it;
+            if (sym->decl)
+            {
+                printf("\n%s\n", get_decl_ast(sym->decl));
+            }
+            else
+            {
+                printf("\n%s\n", sym->name);
+            }
+        }
+    }
+
+    run_interpreter(resolved);
+    
 }

@@ -5,6 +5,8 @@ char *test_parse_case(char **source, char *source_end, char *case_label, char *e
     int case_label_length = (int)strlen(case_label);
     int end_label_length = (int)strlen(end_label);
 
+    char **allocs = null;
+
     char *case_str = null;
     bool end_found = false;
 
@@ -23,6 +25,7 @@ char *test_parse_case(char **source, char *source_end, char *case_label, char *e
                 {
                     end_found = true;
                     case_str = make_str_range_copy(case_str, stream);
+                    buf_push(allocs, case_str);
                     stream += end_label_length;
                     goto parse_case_exit_loop_label;
                 }
@@ -35,6 +38,11 @@ char *test_parse_case(char **source, char *source_end, char *case_label, char *e
 parse_case_exit_loop_label:
     
     *source = stream;
+
+    for (size_t i = 0; i < buf_len(allocs); i++)
+    {
+        free(allocs[i]);
+    }
 
     if (end_found)
     {
@@ -83,6 +91,7 @@ void test_file_parsing_test(string_ref source, bool print_results)
                         buf_printf(output, "\nExpected:\n'%s'\n", test_str);
                         buf_printf(output, "Got:\n'%s'\n", ast);
                     }
+                    buf_free(ast);
                 }
 
                 if (buf_len(errors) > 0)
@@ -142,8 +151,8 @@ void test_parsing_single_case(void)
     lex_and_parse(test, null, &decls);
     if (decls != 0)
     {
-        char *ast = get_decl_ast(decls[0]);
-        printf("\nAST:\n%s\n", ast);
+        printf("\nAST:");
+        printf_decl_ast(decls[0]);
     }   
 
     if (buf_len(errors) > 0)
@@ -192,7 +201,7 @@ symbol **test_resolve_decls(char **decl_arr, size_t decl_arr_count, bool print_a
 
             if (print_ast)
             {
-                printf("\n%s\n", get_decl_ast(decls[0]));
+                printf_decl_ast(decls[0]);
             }
 
             error_counter += buf_len(errors);
@@ -218,7 +227,7 @@ symbol **test_resolve_decls(char **decl_arr, size_t decl_arr_count, bool print_a
             symbol *sym = *it;
             if (sym->decl)
             {
-                printf("\n%s\n", get_decl_ast(sym->decl));
+                printf_decl_ast(sym->decl);
             }
             else
             {

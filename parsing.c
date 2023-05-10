@@ -404,10 +404,10 @@ expr *parse_compound_literal(void)
         }
         while (field);
 
-        if (buf_len(fields) > 0)
+        e->compound.fields_count = buf_len(fields);
+        if (e->compound.fields_count > 0)
         {
             e->compound.fields = copy_buf_to_arena(arena, fields);
-            e->compound.fields_count = buf_len(fields);
             buf_free(fields);
         }
 
@@ -541,12 +541,14 @@ expr *parse_base_expr(void)
 void parse_function_call_arguments(expr *e)
 {
     assert(e->kind == EXPR_CALL);
+    
+    expr **args = null;
     while (false == is_token_kind(TOKEN_RIGHT_PAREN))
     {
         expr *arg = parse_expr();
         if (arg)
         {
-            buf_push(e->call.args, arg);
+            buf_push(args, arg);
         }
         else
         {
@@ -559,7 +561,13 @@ void parse_function_call_arguments(expr *e)
             expect_token_kind(TOKEN_COMMA);
         }
     }
-    e->call.args_num = buf_len(e->call.args);
+
+    e->call.args_num = buf_len(args);
+    if (e->call.args_num > 0)
+    {
+        e->call.args = copy_buf_to_arena(arena, args);
+        buf_free(args);
+    }
 }
 
 // przydałaby się lepsza nazwa na to
@@ -973,9 +981,8 @@ void parse_switch_cases(switch_stmt *switch_stmt)
     {
         switch_stmt->cases_num = buf_len(cases);
         switch_stmt->cases = copy_buf_to_arena(arena, cases);     
+        buf_free(cases);
     }
-
-    buf_free(cases);
 }
 
 #define expect_token_kind_or_return(kind) if (false == expect_token_kind(kind)) { return null; }
@@ -1245,6 +1252,7 @@ stmt_block parse_statement_block(void)
     {
         result.stmts = copy_buf_to_arena(arena, statements);
         result.stmts_count = count;
+        buf_free(statements);
     }
 
     expect_token_kind(TOKEN_RIGHT_BRACE);
@@ -1430,7 +1438,7 @@ void parse_enum(enum_decl *decl)
         new_value = parse_enum_value();
     }
 
-    decl->values_count = (size_t)buf_len(values);
+    decl->values_count = buf_len(values);
     if (decl->values_count > 0)
     {
         decl->values = copy_buf_to_arena(arena, values);
