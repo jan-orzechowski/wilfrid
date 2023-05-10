@@ -154,7 +154,7 @@ void allocate_memory(void)
     map_grow(&global_identifiers, 16);
 }
 
-void clear_memory(char ***sources)
+void clear_memory()
 {
     buf_free(all_tokens);
 
@@ -227,7 +227,7 @@ int main(int arg_count, char **args)
             printf("No commands or source files provided.\n");
         }
 
-        clear_memory(&options.sources);
+        clear_memory();
 
         debug_breakpoint;
     }
@@ -239,5 +239,16 @@ int main(int arg_count, char **args)
 
 #else 
 
+
+int main(int arg_count, char **args)
+{
+    allocate_memory();
+
+    char **sources = null;
+    buf_push(sources, "input.txt");
+    compile_sources(sources, true);
+
+    clear_memory();
+}
 
 #endif
