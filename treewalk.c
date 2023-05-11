@@ -236,7 +236,10 @@ byte *push_global_identifier(const char *name, byte* init_val, size_t val_size)
     assert(null == map_get(&global_identifiers, name));
     
     byte *result = push_size(vm_global_memory, val_size);
-    copy_vm_val(result, init_val, val_size);
+    if (init_val)
+    {
+        copy_vm_val(result, init_val, val_size);
+    }
 
     map_put(&global_identifiers, name, result);
 
@@ -1680,9 +1683,15 @@ void eval_global_declarations(symbol **syms)
             {
                 assert(sym->decl->kind == DECL_VARIABLE);
                 
-                byte *result = eval_expression(sym->decl->variable.expr);
-
-                push_global_identifier(sym->name, result, size);
+                if (sym->decl->variable.expr)
+                {
+                    byte *result = eval_expression(sym->decl->variable.expr);
+                    push_global_identifier(sym->name, result, size);
+                }
+                else
+                {
+                    push_global_identifier(sym->name, 0, size);
+                }
             }
             break;
             case SYMBOL_CONST:
