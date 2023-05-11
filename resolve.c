@@ -1663,10 +1663,16 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
             type *t = resolved_expr->type;
             const char *field_name = e->field.field_name;
 
+            // zawsze uzyskujemy dostęp za pomocą x.y, nawet gdy x jest wskaźnikiem do wskaźnika itd.
+            while (t->kind == TYPE_POINTER)
+            {
+                t = t->pointer.base_type;
+            }
+
+            complete_type(t);            
+
             if (t->kind == TYPE_ENUM)
             {
-                complete_type(t);
-
                 void *val_ptr = map_get(&t->enumeration.values, field_name);
                 if (val_ptr == null)
                 {
@@ -1681,14 +1687,6 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
             }
             else
             {                
-                // zawsze uzyskujemy dostęp za pomocą x.y, nawet gdy x jest wskaźnikiem do wskaźnika itd.
-                while (t->kind == TYPE_POINTER)
-                {
-                    t = t->pointer.base_type;
-                }
-               
-                complete_type(t);
-
                 if (false == (t->kind == TYPE_STRUCT || t->kind == TYPE_UNION))
                 {
                     error_in_resolving(xprintf(
