@@ -952,7 +952,9 @@ resolved_expr *resolve_expr_binary(expr *expr)
         return resolved_expr_invalid;
     }
 
-    if (false == can_perform_cast(right->type, left->type, false))
+    if (false == can_perform_cast(right->type, left->type, false)
+        && (right->type != null && right->type->kind != TYPE_NONE)
+        && (left->type != null && left->type->kind != TYPE_NONE))
     {
         error_in_resolving(
             xprintf(
@@ -1241,15 +1243,18 @@ resolved_expr *resolve_special_case_methods(expr *e)
 
                 type *list_type = e->call.method_receiver->resolved_type;
                 type *list_element_type = list_type->list.base_type;
-                type *new_element_type = resolve_expr(e->call.args[0])->type;
+                type *new_element_type = resolve_expr(e->call.args[0])->type;                
 
                 if (false == can_perform_cast(new_element_type, list_element_type, true))
                 {
-                    error_in_resolving(
-                        xprintf("Cannot add %d element to a list of %d",
-                            pretty_print_type_name(new_element_type, false),
-                            pretty_print_type_name(list_element_type, true)),
-                        e->pos);
+                    if (new_element_type->kind != TYPE_NONE)
+                    {
+                        error_in_resolving(
+                            xprintf("Cannot add %s element to a list of %s",
+                                pretty_print_type_name(new_element_type, false),
+                                pretty_print_type_name(list_element_type, true)),
+                            e->pos);
+                    }
                     return null;
                 }
                 
@@ -2178,9 +2183,12 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
 
             if (false == can_perform_cast(cond_expr->type, type_long, true))
             {
-                error_in_resolving(xprintf(
-                    "Condition expression in a switch statement should be an integer or an enumeration. Specified expression was %s",
-                    pretty_print_type_name(cond_expr->type, false)), st->pos);
+                if (cond_expr->type->kind != TYPE_NONE)
+                {
+                    error_in_resolving(xprintf(
+                        "Condition expression in a switch statement should be an integer or an enumeration. Specified expression was %s",
+                        pretty_print_type_name(cond_expr->type, false)), st->pos);
+                }                
             }
 
             for (size_t i = 0; i < st->switch_stmt.cases_num; i++)
@@ -2190,12 +2198,14 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
                 for (size_t k = 0; k < cas->cond_exprs_num; k++)
                 {
                     resolved_expr* case_expr = resolve_expr(cas->cond_exprs[k]);
-                    if (false == case_expr->is_const)
+                    if (false == case_expr->is_const
+                        && case_expr->type->kind != TYPE_NONE)
                     {
                         error_in_resolving("Case expression in a switch statement should be a constant value", st->pos);
                     }
 
-                    if (false == can_perform_cast(case_expr->type, type_long, true))
+                    if (false == can_perform_cast(case_expr->type, type_long, true)
+                        && case_expr->type->kind != TYPE_NONE)
                     {
                         error_in_resolving(xprintf(
                             "Case expression in a switch statement should be an integer or an enumeration. Specified expression was %s",
