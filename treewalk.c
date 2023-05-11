@@ -18,7 +18,7 @@ size_t failed_asserts;
 
 #if DEBUG_BUILD
 char *debug_print_buffer;
-size_t debug_print_buffer_size = 100;
+size_t debug_print_buffer_size = 1000;
 #define save_debug_string(str) map_put(&debug_strings, str, str);
 #define debug_vm_print(...) _vm_debug_printf(__VA_ARGS__)
 #define debug_print_vm_value(val, typ) _debug_print_vm_value(val, typ)
@@ -76,16 +76,16 @@ typedef ___list_hdr___ vm_list_header;
 //    byte *buffer;
 //} vm_list_header;
 
+chained_hashmap vm_all_allocations;
+
 char *_debug_print_vm_value(byte *val, type *typ)
 {    
     assert(typ);
 
-    // jeśli używamy tylko jednego bufora, nie możemy użyć dwa razy debug_print_vm_value w jednej wiadomości...
-
-    //if (debug_print_buffer == null)
-    //{
+    if (debug_print_buffer == null)
+    {
         debug_print_buffer = xcalloc(debug_print_buffer_size * sizeof(char));
-    //}
+    }
     
     switch (typ->kind)
     {
@@ -222,7 +222,7 @@ char *_debug_print_vm_value(byte *val, type *typ)
     // zabezpieczenie
     debug_print_buffer[debug_print_buffer_size - 1] = 0;
 
-    return debug_print_buffer;
+    return xprintf("%s", debug_print_buffer);
 }
 
 void eval_function(symbol *function_sym, byte *ret_value);
@@ -1006,6 +1006,7 @@ byte *eval_expression(expr *exp)
             size_t size = get_type_size(exp->new.resolved_type);
             uintptr_t ptr = (uintptr_t)xcalloc(size);
             copy_vm_val(result, (byte *)&ptr, sizeof(uintptr_t));
+            map_chain_put(&vm_all_allocations, ptr, false);
 
             debug_vm_print(exp->pos, "allocation at %p, type %s, size %zu", 
                 (void *)ptr,
@@ -1021,6 +1022,7 @@ byte *eval_expression(expr *exp)
             size_t size = get_type_size(exp->auto_new.resolved_type);
             uintptr_t ptr = (uintptr_t)xcalloc(size);
             copy_vm_val(result, (byte *)&ptr, sizeof(uintptr_t));
+            map_chain_put(&vm_all_allocations, ptr, false);
 
             debug_vm_print(exp->pos, "GC allocation at %p, type %s, size %zu",
                 (void *)ptr,
@@ -1146,6 +1148,9 @@ byte *eval_stub_expression(byte *result, expr *exp)
             //gen_printf("___list_free___(");
             //gen_expr(receiver);
             //gen_printf(")");
+
+            //map_chain_delete(&vm_all_allocations, ptr, ptr);
+
             fatal("unimplemented");
         }
         break;
@@ -1169,8 +1174,9 @@ byte *eval_stub_expression(byte *result, expr *exp)
             assert(managed || orig_exp->kind == EXPR_NEW);
             assert(false == managed || orig_exp->kind == EXPR_AUTO);
 
-            ___list_hdr___ *ptr = ___list_initialize___(8, element_size, managed);            
-            copy_vm_val(result, (byte *)&ptr, sizeof(___list_hdr___ *));
+            vm_list_header *ptr = ___list_initialize___(8, element_size, managed);
+            copy_vm_val(result, (byte *)&ptr, sizeof(vm_list_header *));
+            map_chain_put(&vm_all_allocations, ptr, true);
         }
         break;
 
@@ -1656,6 +1662,8 @@ void eval_statement(stmt *st, byte *opt_ret_value)
             byte *obj = eval_expression(st->delete.expr);
             uintptr_t ptr = *(uintptr_t *)obj;
 
+            map_chain_delete(&vm_all_allocations, ptr);
+
             debug_vm_print(st->pos, "free allocation at: %p", (void *)ptr);
             
             free((void *)ptr);
@@ -1705,14 +1713,9 @@ void eval_function(symbol *function_sym, byte *ret_value)
     }
 }
 
-void init_interpreter_memory(void)
-{
-    
-}
-
 void run_interpreter(symbol **resolved_decls)
 {
-    init_interpreter_memory();
+    map_chain_grow(&vm_all_allocations, 16);
 
     shorten_source_pos = true;
 
@@ -1747,13 +1750,29 @@ void run_interpreter(symbol **resolved_decls)
         fatal("\nNumber of failed assertions: %d\n", failed_asserts);
     }
 
+    for (size_t i = 0; i < vm_all_allocations.capacity; i++)
+    {
+        hashmap_value *val = vm_all_allocations.values[i];
+        while (val)
+        {
+            hashmap_value *temp = val->next;
+            assert(val->key);
+            if (val->value)
+            {
+                vm_list_header *hdr = (vm_list_header *)val->key;
+                free(hdr->buffer);
+            }
+            free(val->key);
+            val = temp;
+        }
+    }
+    map_chain_free(&vm_all_allocations);
+
     debug_breakpoint;
 }
 
 void treewalk_interpreter_test()
 {
-    init_interpreter_memory();
-
     decl **all_declarations = null;
     parse_file("test/auto_dereference.txt", &all_declarations);
     symbol **resolved = resolve(all_declarations, true);
@@ -1781,5 +1800,4 @@ void treewalk_interpreter_test()
     }
 
     run_interpreter(resolved);
-    
 }

@@ -144,7 +144,11 @@ typedef struct chained_hashmap
     size_t capacity;
 } chained_hashmap;
 
-void *map_get_from_chain(chained_hashmap *map, void *key)
+#define map_chain_put(map, key, val) _map_chain_put(map, (void *)key, (void *)val)
+#define map_chain_get(map, key) _map_chain_get(map, (void *)key)
+#define map_chain_delete(map, key) _map_chain_delete(map, (void *)key)
+
+void *_map_chain_get(chained_hashmap *map, void *key)
 {
     hashmap_value *val = null;
     size_t index = (size_t)hash_ptr(key) & (map->capacity - 1);
@@ -168,15 +172,13 @@ void *map_get_from_chain(chained_hashmap *map, void *key)
     return null;
 }
 
-void map_delete_from_chain(chained_hashmap *map, void *key)
+void _map_chain_delete(chained_hashmap *map, void *key)
 {
     size_t index = (size_t)hash_ptr(key) & (map->capacity - 1);
     hashmap_value *val = map->values[index];
 
     bool found = false;
-    hashmap_value *prev_val = 0;
-    hashmap_value *debug_first_val = val;
-
+    hashmap_value *prev_val = null;
     size_t chain_length = 0;
 
     while (val)
@@ -190,12 +192,10 @@ void map_delete_from_chain(chained_hashmap *map, void *key)
             {
                 if (prev_val)
                 {
-                    // rozrywamy i łączymy łańcuch bez obj
                     prev_val->next = val->next;
                 }
                 else
                 {
-                    // obj->next będzie teraz pierwszym w łańcuchu
                     map->values[index] = val->next;
                 }
             }
@@ -208,11 +208,12 @@ void map_delete_from_chain(chained_hashmap *map, void *key)
 
                 if (chain_length == 1)
                 {
-                    size_t index = (size_t)hash_ptr(key) & (map->capacity - 1);
+                    assert(map->values[index] == val);
                     map->values[index] = null;
                     map->used_capacity--;
                 }
             }
+
             free(val);
             map->total_count--;
             break;
@@ -223,32 +224,47 @@ void map_delete_from_chain(chained_hashmap *map, void *key)
             val = val->next;
         }
     }
+
+    if (found == false)
+    {
+        fatal("key not found");
+    }
 }
 
-void map_add_to_chain(chained_hashmap *map, void *key, void *value);
+void _map_chain_put(chained_hashmap *map, void *key, void *value);
 
 void map_chain_grow(chained_hashmap *map, size_t new_capacity)
 {
+    bool free_values = (map->capacity > 0);
+
     new_capacity = max(16, new_capacity);
     chained_hashmap new_map = {
         .values = xcalloc(new_capacity * sizeof(hashmap_value *)),
         .capacity = new_capacity,
     };
+    
     for (size_t i = 0; i < map->capacity; i++)
     {
         // rehashing już umieszczonych wartości
         hashmap_value *val = map->values[i];
         while (val)
         {
-            map_add_to_chain(&new_map, val->key, val->value);
-            val = val->next;
+            map_chain_put(&new_map, val->key, val->value);
+            hashmap_value *temp = val->next;
+            free(val);
+            val = temp;
         }
     }
-    free(map->values);
+
+    if (free_values)
+    {
+        free(map->values);
+    }
+    
     *map = new_map;
 }
 
-void map_add_to_chain(chained_hashmap *map, void *key, void *value)
+void _map_chain_put(chained_hashmap *map, void *key, void *value)
 {
     size_t index = (size_t)hash_ptr(key) & (map->capacity - 1);
     hashmap_value *val = map->values[index];
@@ -257,21 +273,20 @@ void map_add_to_chain(chained_hashmap *map, void *key, void *value)
     {
         val->next = xcalloc(sizeof(hashmap_value));
         val->next->key = key;
-        val->next->value = value;
-        map->total_count++;
+        val->next->value = value;        
     }
     else
-    {
-        hashmap_value *new_value = xcalloc(sizeof(hashmap_value));
-        new_value->key = key;
-        new_value->value = value;
-
+    {        
         if (2 * map->used_capacity >= map->capacity)
         {
             map_chain_grow(map, 2 * map->capacity);
         }
 
-        size_t index = (size_t)hash_ptr(key) & (map->capacity - 1);
+        hashmap_value *new_value = xcalloc(sizeof(hashmap_value));
+        new_value->key = key;
+        new_value->value = value;
+
+        index = (size_t)hash_ptr(key) & (map->capacity - 1);
         val = map->values[index];
 
         if (val)
@@ -283,9 +298,9 @@ void map_add_to_chain(chained_hashmap *map, void *key, void *value)
             map->values[index] = new_value;
             map->used_capacity++;
         }
-
-        map->total_count++;
     }
+
+    map->total_count++;
 }
 
 void map_chain_free(chained_hashmap *map)
