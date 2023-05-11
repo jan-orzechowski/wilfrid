@@ -141,7 +141,7 @@ char *type_to_cdecl(type *type, char *name)
         case TYPE_ARRAY:
         {
             assert(type->array.base_type);
-            result = type_to_cdecl(type->array.base_type, parenthesize(xprintf("%s[%llu]", name, type->array.size), name));
+            result = type_to_cdecl(type->pointer.base_type, parenthesize(xprintf("*%s", name), name));
         }
         break;
         case TYPE_LIST:
@@ -774,19 +774,9 @@ void gen_expr(expr *e)
             assert(t);
             assert(t->kind != TYPE_LIST)
 
-            // przypadek specjalny
-            if (t->kind == TYPE_POINTER
-                && (t->pointer.base_type->kind == TYPE_ARRAY
-                    || t->pointer.base_type->kind == TYPE_LIST))
-            {                
-                gen_printf("(*(");
-                gen_expr(e->index.array_expr);
-                gen_printf("))");
-            }
-            else
-            {
-                gen_expr(e->index.array_expr);                
-            }
+            gen_printf("(");
+            gen_expr(e->index.array_expr);
+            gen_printf(")");
 
             gen_printf("[");
             gen_expr(e->index.index_expr);
@@ -809,7 +799,7 @@ void gen_expr(expr *e)
         {
             assert(e->resolved_type);
             char *decl = type_to_cdecl(e->resolved_type, null);
-            gen_printf("(%s){", decl);
+            gen_printf("{");
             
             gen_indent++;
             if (e->compound.fields_count > 1)

@@ -816,7 +816,7 @@ byte *eval_expression(expr *exp)
                 eval_unary_op(result, exp->unary.operator, operand, operand_t);
             }
 
-            debug_vm_print(exp->pos, "operation %s pn %s, result %s", 
+            debug_vm_print(exp->pos, "operation %s on %s, result %s", 
                 get_token_kind_name(exp->unary.operator), 
                 debug_print_vm_value(operand, operand_t),
                 debug_print_vm_value(result, exp->resolved_type));
@@ -970,15 +970,10 @@ byte *eval_expression(expr *exp)
             byte *arr = eval_expression(exp->index.array_expr);
             type *arr_type = exp->index.array_expr->resolved_type;
 
-            // przypadek specjalny 
-            if (arr_type->kind == TYPE_POINTER
-                && (arr_type->pointer.base_type->kind == TYPE_ARRAY
-                    || arr_type->pointer.base_type->kind == TYPE_LIST))
-            {
-                debug_vm_print(exp->pos, "auto deref ptr %s", debug_print_vm_value(arr, arr_type));
-                arr_type = arr_type->pointer.base_type;
-                arr = (byte *)*(uintptr_t *)arr;
-            }
+            assert(arr_type->kind == TYPE_ARRAY || arr_type->kind == TYPE_POINTER);
+            
+            debug_vm_print(exp->pos, "index expr - auto deref ptr %s", debug_print_vm_value(arr, arr_type));
+            arr = (byte *)*(uintptr_t *)arr;            
 
             byte *ind = eval_expression(exp->index.index_expr);
             type *ind_type = exp->index.index_expr->resolved_type;

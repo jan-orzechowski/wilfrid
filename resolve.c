@@ -126,11 +126,20 @@ size_t get_field_offset_by_index(type *aggr_type, size_t field_index)
 size_t get_array_index_offset(type *arr_type, size_t element_index)
 {
     assert(arr_type);
-    assert(arr_type->kind == TYPE_ARRAY);
-
-    assert(element_index < arr_type->array.size);
-    size_t result = get_type_size(arr_type->array.base_type) * element_index;
-    return result;
+    assert(arr_type->kind == TYPE_ARRAY || arr_type->kind == TYPE_POINTER);
+   
+    if (arr_type->kind == TYPE_ARRAY)
+    {
+        assert(element_index < arr_type->array.size);
+        size_t result = get_type_size(arr_type->array.base_type) * element_index;
+        return result;
+    }
+    else
+    {
+        assert(arr_type->pointer.base_type->kind != TYPE_ARRAY);
+        size_t result = get_type_size(arr_type->pointer.base_type) * element_index;
+        return result;
+    }
 }
 
 bool compare_types(type *a, type *b)
@@ -1555,13 +1564,17 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
             on_invalid_type_return(t);
 
             e->new.resolved_type = t;
-            if (t->kind != TYPE_LIST)
+            if (t->kind == TYPE_ARRAY)
             {
-                t = get_pointer_type(t);
+                t = get_pointer_type(t->array.base_type);
+            }
+            else if (t->kind == TYPE_LIST)
+            {
+                stub_kind = STUB_EXPR_LIST_NEW;
             }
             else
             {
-                stub_kind = STUB_EXPR_LIST_NEW;
+                t = get_pointer_type(t);
             }
 
             result = get_resolved_lvalue_expr(t);
@@ -1705,37 +1718,25 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
         case EXPR_INDEX:
         {
             resolved_expr *operand_expr = resolve_expr(e->index.array_expr);
+            on_invalid_expr_return(operand_expr);
 
-            if (operand_expr->type->kind != TYPE_LIST 
-                && operand_expr->type->kind != TYPE_ARRAY
-                && operand_expr->type->kind != TYPE_POINTER)
+            type *t = operand_expr->type;
+            if (t->kind != TYPE_LIST && t->kind != TYPE_ARRAY && t->kind != TYPE_POINTER)
             {
                 error_in_resolving(xprintf(
                     "Only arrays, lists, and pointers can be accessed by index; tried to access %s",
-                    pretty_print_type_name(operand_expr->type, false)), e->pos);
+                    pretty_print_type_name(t, false)), e->pos);
                 return resolved_expr_invalid;
             }
             
             resolved_expr *index_expr = resolve_expr(e->index.index_expr);
+            on_invalid_expr_return(index_expr);
 
             if (false == is_integer_type(index_expr->type))
             {
                 error_in_resolving("Index to an array/pointer must be an integer", e->pos);
             }
-            
-            on_invalid_expr_return(operand_expr);
-                        
-            // przypadek specjalny
-            type *t = operand_expr->type;
-            if (t->kind == TYPE_POINTER)
-            {
-                if (t->pointer.base_type->kind == TYPE_ARRAY
-                    || t->pointer.base_type->kind == TYPE_LIST)
-                {
-                    t = t->pointer.base_type;
-                }
-            }
-
+                       
             if (t->kind == TYPE_LIST)
             {
                 result = get_resolved_lvalue_expr(t->list.base_type);
@@ -1743,7 +1744,6 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
             }
             else if (t->kind == TYPE_ARRAY)
             {
-                // tutaj ew. array to pointer decay
                 result = get_resolved_lvalue_expr(t->array.base_type);
             } 
             else

@@ -1,41 +1,85 @@
 ﻿extern fn printf(str: char*, variadic) : int
 extern fn assert(condition: bool)
 
-struct test_struct
+struct test
 {
     val_long: long,
     val_int: int,
     val_bool: bool,
 }
 
-union test_union
+fn modify_20_only (arr : test*)
 {
-    val_int : int,
-    val_float : float
-    val_long: long
+    for (let i := 0, i < 20, i++)
+    {
+        arr[i].val_int = 20 - i
+    }
+}
+
+fn modify (arr : test*, length : int)
+{
+    for (let i := 0, i < length, i++)
+    {
+        arr[i].val_int = i
+    }
+}
+
+fn modify_copy(arr : test*, length : int) : test*
+{
+    let copy := new test[length]
+    for (let i := 0, i < length, i++)
+    {
+        copy[i] = arr[i]
+    }
+
+    modify(copy as test*, length)
+    return copy
+}
+
+fn test_array(arr : test*, length : int)
+{
+    for (let i := 0, i < length, i++)
+    {
+        assert(arr[i].val_int == i)
+    }
+}
+
+fn print_array(arr : test*, length : int)
+{
+    for (let i := 0, i < length, i++)
+    {
+        printf("%d", arr[i].val_int)
+    }
+}
+
+fn test_empty_array(arr : test*, length : int)
+{
+    for (let i := 0, i < length, i++)
+    {
+        assert(arr[i].val_int == 0)
+    }
 }
 
 fn main()
 {
-    let x := new test_struct[100]
-    let y := new test_struct[20]
-    let z : test_struct[20] = { }
+    let x := new test[100]
+    let y := new test[20]
+    let z : test[20] = { }
 
-    // auto dereference test
-    (*x)[1].val_int = 6
+    //print_array(x, 100)
+
+    test_empty_array(x, 100)
+    test_empty_array(y, 20)
+    test_empty_array(&z as test*, 20)
+
+    x[1].val_int = 6
     y[1].val_int = 6
-
+    
     assert(x[1].val_int == y[1].val_int)
-
-    for (let i := 0, i < 100, i++)
-    {
-        x[i].val_int = i
-    }
     
-    for (let i := 0, i < 100, i++)
-    {
-        assert(x[i].val_int == i)
-    }
-
+    modify_20_only(x)
     
+    modify(x as test*, 100)    
+    
+    test_array(x as test*, 100)
 }
