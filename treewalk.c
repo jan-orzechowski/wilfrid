@@ -1000,8 +1000,22 @@ byte *eval_expression(expr *exp)
         break;
         case EXPR_NEW:
         {
-            assert(exp->new.resolved_type);
-            size_t size = get_type_size(exp->new.resolved_type);
+            // tu mamy problem z arrays których rozmiar jest znany tylko w runtime...
+            type *t = exp->new.resolved_type;
+            assert(t);
+
+            size_t size = 0;
+            if (t->kind == TYPE_ARRAY && t->array.size == 0)
+            {                
+                byte *runtime_size = eval_expression(exp->new.type->array.size_expr);
+                size = *(uintptr_t *)runtime_size;
+            }
+            else
+            {
+                size = get_type_size(exp->new.resolved_type);
+            }
+            assert(size);
+            
             uintptr_t ptr = (uintptr_t)xcalloc(size);
             copy_vm_val(result, (byte *)&ptr, sizeof(uintptr_t));
             map_chain_put(&vm_all_allocations, ptr, false);
