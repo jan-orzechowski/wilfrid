@@ -45,6 +45,7 @@ void gen_line_hint(source_pos pos)
 void gen_stmt(stmt *s);
 void gen_expr(expr *e);
 void gen_func_decl(decl *d, const char *mangled_name);
+void gen_expr_stub(expr *exp);
 
 const char *gen_expr_str(expr *e)
 {
@@ -373,10 +374,17 @@ void gen_simple_stmt(stmt *stmt)
         break;
         case STMT_DELETE:
         {
-            assert(stmt->delete.expr->resolved_type->kind != TYPE_LIST);
-            gen_printf("___free___(");
-            gen_expr(stmt->delete.expr);
-            gen_printf(")");            
+            if (stmt->delete.expr->kind == EXPR_STUB)
+            {
+                gen_expr_stub(stmt->delete.expr);
+            }
+            else
+            {
+                assert(stmt->delete.expr->resolved_type->kind != TYPE_LIST);
+                gen_printf("___free___(");
+                gen_expr(stmt->delete.expr);
+                gen_printf(")");            
+            }
         }
         break;
         invalid_default_case;
@@ -549,8 +557,10 @@ void gen_expr_stub(expr *exp)
         break;
         case STUB_EXPR_LIST_FREE:
         {
+            assert(orig_exp->resolved_type);
+            assert(orig_exp->resolved_type->kind == TYPE_LIST);
             gen_printf("___list_free___(");
-            gen_expr(receiver);
+            gen_expr(orig_exp);
             gen_printf(")");
         }
         break;

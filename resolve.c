@@ -2222,12 +2222,10 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
         break;
         case STMT_DELETE:
         {
-            // TODO: powinniśmy sprawdzić czy zmienna nie jest const albo zaalokowana globalnie
-            resolved_expr *expr = resolve_expr(st->delete.expr);
-            if (expr->type == null || expr->type->kind == TYPE_NONE)
+            resolved_expr *expr = resolve_expr(st->delete.expr);            
+            if (check_resolved_expr(expr) && expr->type->kind == TYPE_LIST)
             {
-                error_in_resolving("Could not resolve delete statement", st->pos);
-                return;
+                plug_stub_expr(st->delete.expr, STUB_EXPR_LIST_FREE, expr->type);
             }
         }
         break;
