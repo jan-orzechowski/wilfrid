@@ -176,6 +176,11 @@ char *type_to_cdecl(type *type, char *name)
             result = type_to_cdecl(type->function.return_type, result);
         }
         break;
+        case TYPE_ENUM:
+        {
+            result = xprintf("%s%s%s", get_c_type_name(type_long), *name ? " " : "", *name ? name : "");
+        }
+        break;
         invalid_default_case;       
     }
 
