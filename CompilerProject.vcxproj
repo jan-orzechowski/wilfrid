@@ -147,6 +147,7 @@
     <ClCompile Include="main.c" />
   </ItemGroup>
   <ItemGroup>
+    <Text Include="examples\stack_vm.txt" />
     <Text Include="interpreter\hashmap.txt" />
     <Text Include="interpreter\keywords.txt" />
     <Text Include="interpreter\tokens.txt" />

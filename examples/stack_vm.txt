@@ -1,0 +1,131 @@
+﻿extern fn printf(str: char*, variadic) : int
+extern fn assert(condition: bool)
+
+fn main()
+{
+    vm_code = new int[]
+    vm_output = new int[]
+
+    vm_code.add(instruction.PUSH)
+    vm_code.add(3)
+    vm_code.add(instruction.PUSH)
+    vm_code.add(7)
+    vm_code.add(instruction.ADD)
+    vm_code.add(instruction.BRANCH)
+    vm_code.add(9)
+    vm_code.add(instruction.ADD)
+    vm_code.add(4)
+    vm_code.add(instruction.POP)
+    vm_code.add(instruction.HALT)
+
+    stack_size = 1024
+    stack = new int[(size_of_type(int) as int) * stack_size]
+
+    run_vm()
+
+    assert(vm_output[0] == 10)
+
+    delete vm_code
+    delete vm_output
+    delete stack
+}
+
+enum instruction
+{
+    HALT,
+    ADD,
+    POP,
+    PUSH,
+    SUB,
+    DIV,
+    MUL,
+    PRINT,
+    BRANCH,
+}
+
+let stack: int*
+let stack_size: int
+let ip: int
+let sp: int
+
+let vm_output: int[]
+
+let vm_code: int[]
+
+fn run_vm()
+{   
+    let opcode := vm_code[0] as instruction
+    
+    ip = 0
+    sp = -1
+
+    let a: int
+    let b: int
+
+    while (opcode != instruction.HALT && ip < vm_code.length())
+    {
+        switch (opcode)
+        {
+            case instruction.BRANCH:
+            {
+                // argumentem jest miejsce, do którego mamy przeskoczyć
+                ip++
+                ip = vm_code[ip] - 1
+            }
+            break
+            case instruction.PUSH:
+            {
+                sp++
+                ip++
+                stack[sp] = vm_code[ip]
+            }
+            break
+            case instruction.POP:
+            {
+                a = stack[sp--]
+                vm_output.add(a)
+            }
+            break
+            case instruction.ADD:
+            {
+                a = stack[sp--]                
+                b = stack[sp--]
+                sp++
+                stack[sp] = b + a
+            }
+            break
+            case instruction.SUB:
+            {
+                a = stack[sp--]
+                b = stack[sp--]
+                sp++
+                stack[sp] = b - a
+            }
+            break
+            case instruction.MUL:
+            {
+                a = stack[sp--]
+                b = stack[sp--]
+                sp++
+                stack[sp] = b * a
+            }
+            break
+            case instruction.DIV:
+            {
+                a = stack[sp--]
+                b = stack[sp--]
+                sp++
+                stack[sp] = b / a
+            }
+            break
+            case instruction.HALT:
+            {
+                return
+            }
+            break
+        }
+
+        ip++
+        opcode = vm_code[ip] as instruction
+    }
+}
