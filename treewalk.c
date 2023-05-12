@@ -1159,16 +1159,22 @@ byte *eval_stub_expression(byte *result, expr *exp)
             copy_vm_val(result, (byte *)&value, sizeof(size_t));
         }
         break;
-
         case STUB_EXPR_LIST_FREE:
         {
-            //gen_printf("___list_free___(");
-            //gen_expr(receiver);
-            //gen_printf(")");
+            assert(orig_exp);
+            byte *list = eval_expression(orig_exp);
+            if (*(uintptr_t *)list == 0)
+            {
+                fatal("runtime error: list uninitialized");
+            }
 
-            //map_chain_delete(&vm_all_allocations, ptr, ptr);
+            vm_list_header *hdr = *(vm_list_header **)list;
 
-            fatal("unimplemented");
+            map_chain_delete(&vm_all_allocations, hdr);
+            ___list_free___(hdr);
+
+            uintptr_t zero = 0;
+            copy_vm_val(list, (byte *)&zero, sizeof(uintptr_t));
         }
         break;
         case STUB_EXPR_LIST_REMOVE_AT:
@@ -1177,7 +1183,6 @@ byte *eval_stub_expression(byte *result, expr *exp)
             fatal("unimplemented");
         }
         break;
-
         case STUB_EXPR_LIST_NEW:
         case STUB_EXPR_LIST_AUTO:
         {            
@@ -1196,7 +1201,6 @@ byte *eval_stub_expression(byte *result, expr *exp)
             map_chain_put(&vm_all_allocations, ptr, true);
         }
         break;
-
         case STUB_EXPR_LIST_ADD:
         {
             assert(orig_exp->kind == EXPR_CALL);
@@ -1269,7 +1273,6 @@ byte *eval_stub_expression(byte *result, expr *exp)
             debug_breakpoint;
         }
         break;
-
         case STUB_EXPR_CONSTRUCTOR:
         {
             //assert(e->stub.original_expr->kind == EXPR_CALL);
@@ -1676,14 +1679,21 @@ void eval_statement(stmt *st, byte *opt_ret_value)
         break;
         case STMT_DELETE:
         {
-            byte *obj = eval_expression(st->delete.expr);
-            uintptr_t ptr = *(uintptr_t *)obj;
+            if (st->delete.expr->kind == EXPR_STUB)
+            {
+                eval_stub_expression(null, st->delete.expr);
+            }
+            else
+            {
+                byte *obj = eval_expression(st->delete.expr);
+                uintptr_t ptr = *(uintptr_t *)obj;
 
-            map_chain_delete(&vm_all_allocations, ptr);
+                map_chain_delete(&vm_all_allocations, ptr);
 
-            debug_vm_print(st->pos, "free allocation at: %p", (void *)ptr);
-            
-            free((void *)ptr);
+                debug_vm_print(st->pos, "free allocation at: %p", (void *)ptr);
+
+                free((void *)ptr);
+            }            
         }
         break;
         invalid_default_case;

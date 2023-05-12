@@ -150,6 +150,8 @@ typedef struct chained_hashmap
 
 void *_map_chain_get(chained_hashmap *map, void *key)
 {
+    assert(key);
+
     hashmap_value *val = null;
     size_t index = (size_t)hash_ptr(key) & (map->capacity - 1);
     val = map->values[index];
@@ -174,6 +176,8 @@ void *_map_chain_get(chained_hashmap *map, void *key)
 
 void _map_chain_delete(chained_hashmap *map, void *key)
 {
+    assert(key);
+
     size_t index = (size_t)hash_ptr(key) & (map->capacity - 1);
     hashmap_value *val = map->values[index];
 
