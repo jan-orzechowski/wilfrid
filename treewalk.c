@@ -78,6 +78,7 @@ typedef ___list_hdr___ vm_list_header;
 
 chained_hashmap vm_all_allocations;
 
+#if DEBUG_BUILD
 char *_debug_print_vm_value(byte *val, type *typ)
 {    
     assert(typ);
@@ -224,6 +225,7 @@ char *_debug_print_vm_value(byte *val, type *typ)
 
     return xprintf("%s", debug_print_buffer);
 }
+#endif
 
 void eval_function(symbol *function_sym, byte *ret_value);
 
@@ -867,6 +869,8 @@ byte *eval_expression(expr *exp)
             // specjalny przypadek na razie
             if (exp->call.resolved_function->name == str_intern("printf"))
             {
+                // na razie tylko w debug, ponieważ opiera się na debug_print_vm_value
+#if DEBUG_BUILD
                 assert(exp->call.args_num >= 2);
                 char *format = exp->call.args[0]->string_value;
 
@@ -874,7 +878,8 @@ byte *eval_expression(expr *exp)
                 byte *val = eval_expression(exp->call.args[1]);
                 char *val_str = debug_print_vm_value(val, exp->call.args[1]->resolved_type);
 
-                printf("--------------------------- PRINTF CALL: format: %s, vals: %s\n", format, val_str);                
+                printf("--------------------------- PRINTF CALL: format: %s, vals: %s\n", format, val_str);          
+#endif
             }
             else if (exp->call.resolved_function->name == str_intern("assert"))
             {
