@@ -3,31 +3,32 @@ extern fn assert(condition: bool)
 
 fn main()
 {
-    vm_code = new int[]
-    vm_output = new int[]
+    init()
 
     vm_code.add(instruction.PUSH)
     vm_code.add(3)
     vm_code.add(instruction.PUSH)
     vm_code.add(7)
     vm_code.add(instruction.ADD)
+    vm_code.add(instruction.POP)
     vm_code.add(instruction.BRANCH)
-    vm_code.add(9)
+    vm_code.add(13) // jump to 13
+    vm_code.add(instruction.PUSH)
+    vm_code.add(4)
+    vm_code.add(instruction.PUSH)
+    vm_code.add(5)
     vm_code.add(instruction.ADD)
+    vm_code.add(instruction.PUSH) // 13
     vm_code.add(4)
     vm_code.add(instruction.POP)
     vm_code.add(instruction.HALT)
-
-    stack_size = 1024
-    stack = new int[(size_of_type(int) as int) * stack_size]
-
+    
     run_vm()
 
     assert(vm_output[0] == 10)
+    assert(vm_output[1] == 4)
 
-    delete vm_code
-    delete vm_output
-    delete stack
+    clear()    
 }
 
 enum instruction
@@ -43,32 +44,49 @@ enum instruction
     BRANCH,
 }
 
+let vm_code: int[]
+let vm_output: int[]
+
 let stack: int*
 let stack_size: int
 let ip: int
 let sp: int
 
-let vm_output: int[]
+fn init()
+{
+    vm_code = new int[]
+    vm_output = new int[]
+    stack_size = 1024
+    stack = new int[(size_of_type(int) as int) * stack_size]
+}
 
-let vm_code: int[]
+fn clear()
+{
+    delete vm_code
+    delete vm_output
+    delete stack
+}
 
 fn run_vm()
 {   
-    let opcode := vm_code[0] as instruction
-    
     ip = 0
     sp = -1
 
     let a: int
     let b: int
 
+    let opcode := vm_code[ip] as instruction
+    assert(opcode as instruction == instruction.PUSH)
+
+    printf("%d", vm_code[ip] as instruction)
+    printf("%d", instruction.PUSH as int)
+    
     while (opcode != instruction.HALT && ip < vm_code.length())
     {
         switch (opcode)
         {
             case instruction.BRANCH:
             {
-                // argumentem jest miejsce, do którego mamy przeskoczyć
                 ip++
                 ip = vm_code[ip] - 1
             }
@@ -78,44 +96,62 @@ fn run_vm()
                 sp++
                 ip++
                 stack[sp] = vm_code[ip]
+                assert(stack[sp] == vm_code[ip])
+                printf("pushed %d", stack[sp])
             }
             break
             case instruction.POP:
             {
-                a = stack[sp--]
+                assert(sp >= 0)
+                a = stack[sp]
+                sp--
                 vm_output.add(a)
+                printf("added %d to output", a)
+                printf("stack 0: %d", stack[0])
+                printf("stack 1: %d", stack[1])
+                printf("stack 2: %d", stack[2])
+                printf("stack 3: %d", stack[3])
+                printf("stack 4: %d", stack[4])
             }
             break
             case instruction.ADD:
             {
-                a = stack[sp--]                
-                b = stack[sp--]
-                sp++
+                assert(sp >= 1)
+                a = stack[sp]
+                sp--
+                b = stack[sp]
                 stack[sp] = b + a
+                assert(stack[sp] == b + a)
             }
             break
             case instruction.SUB:
             {
-                a = stack[sp--]
-                b = stack[sp--]
-                sp++
+                assert(sp >= 1)
+                a = stack[sp]
+                sp--
+                b = stack[sp]
                 stack[sp] = b - a
+                assert(stack[sp] == b - a)
             }
             break
             case instruction.MUL:
             {
-                a = stack[sp--]
-                b = stack[sp--]
-                sp++
+                assert(sp >= 1)
+                a = stack[sp]
+                sp--
+                b = stack[sp]
                 stack[sp] = b * a
+                assert(stack[sp] == b * a)
             }
             break
             case instruction.DIV:
             {
-                a = stack[sp--]
-                b = stack[sp--]
-                sp++
+                assert(sp >= 1)
+                a = stack[sp]
+                sp--
+                b = stack[sp]
                 stack[sp] = b / a
+                assert(stack[sp] == b / a)
             }
             break
             case instruction.HALT:
@@ -127,5 +163,8 @@ fn run_vm()
 
         ip++
         opcode = vm_code[ip] as instruction
+
+        printf("stack pointer: %d", sp)
+        printf("instruction pointer %d", ip)
     }
 }
