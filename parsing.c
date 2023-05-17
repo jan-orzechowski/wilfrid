@@ -311,7 +311,7 @@ typespec *parse_basic_typespec(void)
 typespec *parse_typespec(void)
 {
     typespec *t = parse_basic_typespec();
-    while(is_token_kind(TOKEN_MUL) || is_token_kind(TOKEN_LEFT_BRACKET))
+    while (is_token_kind(TOKEN_MUL) || is_token_kind(TOKEN_LEFT_BRACKET))
     {
         if (is_token_kind(TOKEN_MUL))
         {
@@ -688,17 +688,6 @@ expr *parse_unary_expr(void)
             e = push_unary_expr(pos, TOKEN_BITWISE_AND, parse_unary_expr());
         }
     }
-    else
-    {
-        if (match_token_kind(TOKEN_INC))
-        {
-            e = push_unary_expr(pos, TOKEN_INC, e);
-        }
-        else if (match_token_kind(TOKEN_DEC))
-        {
-            e = push_unary_expr(pos, TOKEN_DEC, e);
-        }
-    }
     return e;
 }
 
@@ -884,6 +873,16 @@ stmt *parse_simple_statement(void)
         s->assign.operation = op;
         s->assign.value_expr = e;
         s->assign.assigned_var_expr = left_expr;
+    }
+    else if (tok.kind == TOKEN_INC || tok.kind == TOKEN_DEC)
+    {
+        token_kind op = tok.kind;
+        next_token();
+
+        s = push_struct(arena, stmt);
+        s->kind = STMT_INC;
+        s->inc.operand = left_expr;
+        s->inc.operator = op;
     }
     else 
     {

@@ -808,23 +808,16 @@ byte *eval_expression(expr *exp)
 
                 debug_vm_print(exp->pos, "result is ptr %s", 
                     debug_print_vm_value(result, exp->resolved_type));
-            }
-            else if (exp->unary.operator == TOKEN_INC || exp->unary.operator == TOKEN_DEC)
-            {
-                // te operatory zmieniają wartość, do której się odnosiły               
-                eval_unary_op(operand, exp->unary.operator, operand, operand_t);
-
-                copy_vm_val(result, operand, get_type_size(exp->resolved_type));
-            }
+            }            
             else
             {
                 eval_unary_op(result, exp->unary.operator, operand, operand_t);
-            }
 
-            debug_vm_print(exp->pos, "operation %s on %s, result %s", 
-                get_token_kind_name(exp->unary.operator), 
-                debug_print_vm_value(operand, operand_t),
-                debug_print_vm_value(result, exp->resolved_type));
+                debug_vm_print(exp->pos, "operation %s on %s, result %s",
+                    get_token_kind_name(exp->unary.operator),
+                    debug_print_vm_value(operand, operand_t),
+                    debug_print_vm_value(result, exp->resolved_type));
+            }
         }
         break;
         case EXPR_BINARY:
@@ -1694,6 +1687,21 @@ void eval_statement(stmt *st, byte *opt_ret_value)
 
                 free((void *)ptr);
             }            
+        }
+        break;
+        case STMT_INC:
+        {
+            assert(st->inc.operator == TOKEN_INC || st->inc.operator == TOKEN_DEC);            
+            assert(st->inc.operand->resolved_type);
+
+            byte *operand = eval_expression(st->inc.operand);
+            type *operand_t = st->inc.operand->resolved_type;
+           
+            eval_unary_op(operand, st->inc.operator, operand, operand_t);
+
+            debug_vm_print(st->pos, "operation %s, result %s",
+                get_token_kind_name(st->inc.operator),
+                debug_print_vm_value(operand, operand_t));            
         }
         break;
         invalid_default_case;

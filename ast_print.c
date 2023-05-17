@@ -444,6 +444,15 @@ void ast_print_statement(stmt *s)
             ast_printf(")");
         }
         break;
+        case STMT_INC:
+        {
+            ast_printf("(");
+            ast_print_expr(s->inc.operand);
+            ast_printf(" ");            
+            ast_print_token_kind(s->inc.operator);
+            ast_printf(")");
+        }
+        break;
         invalid_default_case;
     }
 }

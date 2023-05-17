@@ -2222,10 +2222,22 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
         break;
         case STMT_DELETE:
         {
-            resolved_expr *expr = resolve_expr(st->delete.expr);            
+            resolved_expr *expr = resolve_expr(st->delete.expr);
             if (check_resolved_expr(expr) && expr->type->kind == TYPE_LIST)
             {
                 plug_stub_expr(st->delete.expr, STUB_EXPR_LIST_FREE, expr->type);
+            }
+        }
+        break;
+        case STMT_INC:
+        {
+            assert(st->inc.operator == TOKEN_INC || st->inc.operator == TOKEN_DEC);
+            resolved_expr *expr = resolve_expr(st->inc.operand);
+            if (check_resolved_expr(expr) && false == is_integer_type(expr->type))
+            {
+                error_in_resolving(xprintf(
+                    "Increment/decrement statements allowed only for integer types. The type was %s",
+                    pretty_print_type_name(expr->type, false)), st->pos);
             }
         }
         break;

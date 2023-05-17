@@ -392,6 +392,13 @@ void gen_simple_stmt(stmt *stmt)
             }
         }
         break;
+        case STMT_INC:
+        {
+            gen_printf("(");
+            gen_expr(stmt->inc.operand);
+            gen_printf(")%s", get_token_kind_name(stmt->inc.operator));
+        }
+        break;
         invalid_default_case;
     }
 }
@@ -662,6 +669,7 @@ void gen_expr(expr *e)
         break;
         case EXPR_UNARY:
         {
+            assert(e->unary.operator != TOKEN_INC && e->unary.operator != TOKEN_DEC);            
             gen_printf("(%s(", get_token_kind_name(e->unary.operator));
             gen_expr(e->unary.operand);
             gen_printf("))");

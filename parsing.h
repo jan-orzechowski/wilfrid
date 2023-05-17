@@ -236,7 +236,8 @@ typedef enum stmt_kind
     STMT_SWITCH,
     STMT_EXPR,
     STMT_BLOCK,  
-    STMT_DELETE
+    STMT_DELETE,
+    STMT_INC
 } stmt_kind;
 
 typedef struct stmt_block
@@ -306,6 +307,12 @@ typedef struct delete_stmt
     expr *expr;
 } delete_stmt;
 
+typedef struct inc_stmt
+{
+    expr *operand;
+    token_kind operator;
+} inc_stmt;
+
 struct stmt
 {
     stmt_kind kind;
@@ -323,6 +330,7 @@ struct stmt
         while_stmt do_while_stmt;
         switch_stmt switch_stmt;
         delete_stmt delete;
+        inc_stmt inc;
     };
 };
 
