@@ -5,8 +5,6 @@ char *test_parse_case(char **source, char *source_end, char *case_label, char *e
     int case_label_length = (int)strlen(case_label);
     int end_label_length = (int)strlen(end_label);
 
-    char **allocs = null;
-
     char *case_str = null;
     bool end_found = false;
 
@@ -25,7 +23,6 @@ char *test_parse_case(char **source, char *source_end, char *case_label, char *e
                 {
                     end_found = true;
                     case_str = make_str_range_copy(case_str, stream);
-                    buf_push(allocs, case_str);
                     stream += end_label_length;
                     goto parse_case_exit_loop_label;
                 }
@@ -38,11 +35,6 @@ char *test_parse_case(char **source, char *source_end, char *case_label, char *e
 parse_case_exit_loop_label:
     
     *source = stream;
-
-    for (size_t i = 0; i < buf_len(allocs); i++)
-    {
-        free(allocs[i]);
-    }
 
     if (end_found)
     {
@@ -91,7 +83,7 @@ void test_file_parsing_test(string_ref source, bool print_results)
                         buf_printf(output, "\nExpected:\n'%s'\n", test_str);
                         buf_printf(output, "Got:\n'%s'\n", ast);
                     }
-                    buf_free(ast);
+                    buf_free(ast_buf);
                 }
 
                 if (buf_len(errors) > 0)
@@ -108,12 +100,17 @@ void test_file_parsing_test(string_ref source, bool print_results)
                 {
                     buf_printf(output, "Passed!\n");
                 }
+
+                buf_free(decls);               
+                free(test_str);
             }
             else
             {
                 error_counter++;
                 buf_printf(output, "CASE without matching TEST");
             }
+
+            free(case_str);
         }
         else
         {
