@@ -36,6 +36,8 @@ typedef struct vm_value_meta
 
 typedef char byte;
 
+byte *eval_expression(expr *exp);
+
 void copy_vm_val(byte *dest, byte *val, size_t size)
 {
     if (val)
@@ -548,6 +550,14 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
             {
                 *(int32_t *)new_val = (int32_t)*(uintptr_t *)old_val;
             }
+            else if (old_type->kind == TYPE_ENUM)
+            {
+                *(int32_t *)new_val = (int32_t)*(int64_t *)old_val;
+            }
+            else 
+            { 
+                fatal("unimplemented");
+            }
         } 
         break;
         case TYPE_ENUM:
@@ -576,6 +586,14 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
             else if (old_type->kind == TYPE_POINTER)
             {
                 *(int64_t *)new_val = (int64_t)*(uintptr_t *)old_val;
+            }
+            else if (old_type->kind == TYPE_ENUM)
+            {
+                *(int64_t *)new_val = (int64_t)*(int64_t *)old_val;
+            }
+            else
+            {
+                fatal("unimplemented");
             }
         }
         break;
@@ -607,6 +625,14 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
             {
                 *(uint32_t *)new_val = (uint32_t)*(uintptr_t *)old_val;
             }
+            else if (old_type->kind == TYPE_ENUM)
+            {
+                *(uint32_t *)new_val = (uint32_t)*(int64_t *)old_val;
+            }
+            else
+            {
+                fatal("unimplemented");
+            }
         }
         break;
         case TYPE_ULONG:
@@ -634,6 +660,14 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
             else if (old_type->kind == TYPE_POINTER)
             {
                 *(uint64_t *)new_val = (uint64_t)*(uintptr_t *)old_val;
+            }
+            else if (old_type->kind == TYPE_ENUM)
+            {
+                *(uint64_t *)new_val = (uint64_t)*(int64_t *)old_val;
+            }
+            else
+            {
+                fatal("unimplemented");
             }
         }
         break;
@@ -663,6 +697,14 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
             {
                 *(float *)new_val  = (float)*(uintptr_t *)old_val;
             }
+            else if (old_type->kind == TYPE_ENUM)
+            {
+                *(float *)new_val = (float)*(int64_t *)old_val;
+            }
+            else
+            {
+                fatal("unimplemented");
+            }
         }
         break;
         case TYPE_POINTER:
@@ -691,6 +733,10 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
             {
                 *(uintptr_t *)new_val = (uintptr_t)*(uintptr_t *)old_val;;
             }
+            else
+            {
+                fatal("unimplemented");
+            }
         } 
         break; 
 
@@ -707,6 +753,34 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
         }
         break;
     }
+}
+
+byte *eval_binary_expression(expr *exp, byte *result)
+{
+    assert(exp->kind == EXPR_BINARY);
+
+    byte *left = eval_expression(exp->binary.left);
+    byte *right = eval_expression(exp->binary.right);
+
+    type *left_t = exp->binary.left->resolved_type;
+    assert(left_t);
+    type *right_t = exp->binary.right->resolved_type;
+    assert(right_t);
+    assert(compare_types(left_t, right_t));
+
+    size_t left_size = get_type_size(left_t);
+    size_t right_size = get_type_size(right_t);
+    assert(left_size == right_size);
+
+    eval_binary_op_with_bool_casting(exp->binary.operator, result, left, right, left_t);
+
+    debug_vm_print(exp->pos, "operation %s on %s and %s, result %s",
+        get_token_kind_name(exp->binary.operator),
+        debug_print_vm_value(left, left_t),
+        debug_print_vm_value(right, right_t),
+        debug_print_vm_value(result, exp->resolved_type));
+
+    return result;
 }
 
 byte *eval_stub_expression(byte *result, expr *exp);
@@ -769,7 +843,7 @@ byte *eval_expression(expr *exp)
         {
             assert_is_interned(exp->name);
 
-            result = get_vm_variable(exp->name);            
+            result = get_vm_variable(exp->name);
             assert(result);
 
             debug_vm_print(exp->pos, "read var '%s' from stack, value %s", 
@@ -780,7 +854,7 @@ byte *eval_expression(expr *exp)
         {
             assert(exp->unary.operand->resolved_type);
 
-            byte *operand = eval_expression(exp->unary.operand);       
+            byte *operand = eval_expression(exp->unary.operand);
             type *operand_t = exp->unary.operand->resolved_type;
 
             if (exp->unary.operator == TOKEN_MUL) // pointer dereference
@@ -822,26 +896,7 @@ byte *eval_expression(expr *exp)
         break;
         case EXPR_BINARY:
         {
-            byte *left = eval_expression(exp->binary.left);
-            byte *right = eval_expression(exp->binary.right);
-            
-            type *left_t = exp->binary.left->resolved_type;
-            assert(left_t);
-            type *right_t = exp->binary.right->resolved_type;
-            assert(right_t);            
-            assert(compare_types(left_t, right_t));
-            
-            size_t left_size = get_type_size(left_t);
-            size_t right_size = get_type_size(right_t);
-            assert(left_size == right_size);
-
-            eval_binary_op_with_bool_casting(exp->binary.operator, result, left, right, left_t);
-
-            debug_vm_print(exp->pos, "operation %s on %s and %s, result %s", 
-                get_token_kind_name(exp->binary.operator), 
-                debug_print_vm_value(left, left_t),
-                debug_print_vm_value(right, right_t),
-                debug_print_vm_value(result, exp->resolved_type));
+            result = eval_binary_expression(exp, result);
         }
         break;
         case EXPR_TERNARY:
@@ -998,7 +1053,6 @@ byte *eval_expression(expr *exp)
         break;
         case EXPR_NEW:
         {
-            // tu mamy problem z arrays których rozmiar jest znany tylko w runtime...
             type *t = exp->new.resolved_type;
             assert(t);
 
@@ -1006,7 +1060,16 @@ byte *eval_expression(expr *exp)
             if (t->kind == TYPE_ARRAY && t->array.size == 0)
             {                
                 byte *runtime_size = eval_expression(exp->new.type->array.size_expr);
-                size = *(uintptr_t *)runtime_size;
+                // to powinno być załatwione jakoś lepiej 
+                // - przez upewnienie się, że rozmiar w sizeof jest zawsze long albo coś
+                if (exp->new.type->array.size_expr->resolved_type->size == 4)
+                {
+                    size = *(uint32_t *)runtime_size;
+                }
+                else
+                {
+                    size = *(uint64_t *)runtime_size;
+                }
             }
             else
             {
