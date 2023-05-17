@@ -14,7 +14,7 @@ void map_test(void)
         assert(val == (void *)(i + 1));
     }
 
-    debug_breakpoint;
+    map_free(&map);
 }
 
 void intern_str_test(void)
@@ -51,6 +51,7 @@ void buf_remove_at_test(void)
     buf_remove_at(integers, 0);
     assert(buf_len(integers) == 0);
     buf_remove_at(integers, 0);
+    buf_free(integers);
 }
 
 void stretchy_buffers_test(void)
@@ -80,6 +81,7 @@ void stretchy_buffers_test(void)
     assert(strcmp(char_buf, "One: 1\n") == 0);
     buf_printf(char_buf, "Hex: 0x%x\n", 0x12345678);
     assert(strcmp(char_buf, "One: 1\nHex: 0x12345678\n") == 0);
+    buf_free(char_buf);
 
     buf_remove_at_test();
 }

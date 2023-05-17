@@ -157,6 +157,8 @@ void test_parsing_single_case(void)
         print_errors_to_console();
         debug_breakpoint;
     }
+
+    buf_free(decls);
 }
 
 void test_parsing(void)
@@ -167,6 +169,7 @@ void test_parsing(void)
 
     string_ref test_file = read_file_for_parsing("test/parsing_tests.txt");
     test_file_parsing_test(test_file, true);
+    free(test_file.str);
 }
 
 symbol **test_resolve_decls(char **decl_arr, size_t decl_arr_count, bool print_ast)
@@ -208,6 +211,8 @@ symbol **test_resolve_decls(char **decl_arr, size_t decl_arr_count, bool print_a
         {
             printf("\nResolve test error: couldn't parse test case %zu\n", i);
         }
+
+        buf_free(decls);
     }
 
     buf_free(errors);
@@ -244,6 +249,8 @@ symbol **test_resolve_decls(char **decl_arr, size_t decl_arr_count, bool print_a
     {
         printf("\nAll resolving tests passed!\n");
     }
+
+    buf_free(all_decls);
 
     return ordered_global_symbols;
 }
