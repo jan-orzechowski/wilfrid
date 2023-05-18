@@ -434,7 +434,9 @@ void ast_print_statement(stmt *s)
         break;
         case STMT_EXPR:
         {
-            ast_print_expr(s->return_stmt.ret_expr);
+            ast_printf("(");
+            ast_print_expr(s->expr);
+            ast_printf(")");
         }
         break;
         case STMT_DELETE:
