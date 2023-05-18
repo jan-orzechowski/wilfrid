@@ -162,6 +162,7 @@ void clear_memory()
     map_free(interns);
     free(interns);
     keywords_initialized = false;
+    buf_free(keywords_list);
 
     free_memory_arena(arena);
 
