@@ -155,7 +155,18 @@ bool compare_types(type *a, type *b)
     if ((a == type_long && b->kind == TYPE_ENUM)
         || (b == type_long && a->kind == TYPE_ENUM))
     {
-        debug_breakpoint;
+        return true;
+    }
+
+    if ((a == type_null && b->kind == TYPE_POINTER)
+        || (b == type_null && a->kind == TYPE_POINTER))
+    {
+        return true;
+    }
+
+    if ((a == type_ulong && b->kind == TYPE_POINTER)
+        || (b == type_ulong && a->kind == TYPE_POINTER))
+    {
         return true;
     }
 
@@ -187,53 +198,167 @@ bool compare_types(type *a, type *b)
     return false;
 }
 
-bool can_perform_cast(type *from_type, type *to_type, bool allow_integer_conversion)
+void plug_stub_expr(expr *original_expr, stub_expr_kind kind, type *resolved_type)
 {
-    if (allow_integer_conversion)
+    expr *new_expr = push_struct(arena, expr);
+    new_expr->kind = EXPR_STUB;
+    new_expr->pos = original_expr->pos;
+    new_expr->stub.kind = kind;
+    new_expr->resolved_type = resolved_type;
+
+    expr temp = *original_expr;
+    (*original_expr) = *new_expr;
+    *new_expr = temp;
+
+    // tutaj nazwy są odwrócone; efekt jest taki, że stub ma teraz odniesienie do starego wyrażenia
+    original_expr->stub.original_expr = new_expr;
+
+    assert(original_expr->kind == EXPR_STUB);
+}
+
+cast_info try_cast(type *from, type* to, bool allow_forcing_numeric_types)
+{
+    cast_info result = { 0 };
+    if (is_numeric_type(from) && is_numeric_type(to))
     {
-        if (is_integer_type(from_type) && is_integer_type(to_type))
+        if (allow_forcing_numeric_types)
         {
-            return true;
+            result.type = to;
+            return result;
+        }
+
+        if (from->kind == TYPE_FLOAT && to->kind != TYPE_FLOAT)
+        {
+            // nie castujemy floata do nie-floata
+            result.kind = CAST_TYPES_INCOMPATIBLE;
+            return result;
+        }
+
+        if (get_type_size(from) > get_type_size(to))
+        {
+            // nie castujemy większego do mniejszego 
+            result.kind = CAST_TYPES_INCOMPATIBLE;
+            return result;
+        }
+
+        if (is_signed_type(from) && false == is_signed_type(to))
+        {
+            // nie castujemy signed do unsigned
+            result.kind = CAST_TYPES_INCOMPATIBLE;
+            return result;
+        }
+
+        result.type = to;
+        return result;
+    }
+    // ewentualnie można jeszcze dodać array to ptr
+    else
+    {
+        result.kind = CAST_TYPES_INCOMPATIBLE;
+        return result;
+    }
+}
+
+cast_info check_if_cast_needed(type *left, type *right, bool can_cast_right_to_left, bool allow_forcing_numeric_types)
+{
+    cast_info result = { 0 };
+
+    assert(left);
+    assert(right);
+
+    if (compare_types(left, right))
+    {
+        result.kind = CAST_NO_CAST_NEEDED;
+        return result;
+    }
+    
+    cast_info left_cast = try_cast(left, right, allow_forcing_numeric_types);
+    if (left_cast.kind == CAST_TYPES_INCOMPATIBLE)
+    {
+        if (can_cast_right_to_left)
+        {
+            cast_info right_cast = try_cast(right, left, allow_forcing_numeric_types);
+            if (right_cast.kind == CAST_TYPES_INCOMPATIBLE)
+            {
+                result.kind = CAST_TYPES_INCOMPATIBLE;               
+            }
+            else
+            {
+                result.kind = CAST_RIGHT;
+                assert(right_cast.type);
+                result.type = right_cast.type;
+            }
+        }
+        else
+        {
+            result.kind = CAST_TYPES_INCOMPATIBLE;
         }
     }
-
-    if (compare_types(from_type, to_type))
+    else
     {
-        return true;
+        result.kind = CAST_LEFT;
+        assert(left_cast.type);
+        result.type = left_cast.type;
     }
 
-    if (from_type == type_null && to_type->kind == TYPE_POINTER)
-    {
-        return true;
-    }
+    return result;
+}
 
-    if ((from_type == type_ulong && to_type->kind == TYPE_POINTER)
-        || (to_type == type_ulong && from_type->kind == TYPE_POINTER))
+void insert_cast_expr(expr *left_expr, expr *right_expr, cast_info cast)
+{
+    switch (cast.kind)
     {
-        return true;
+        case CAST_LEFT:
+        {
+            assert(left_expr)
+            assert(cast.type);
+            plug_stub_expr(left_expr, STUB_EXPR_CAST, cast.type);
+            left_expr->stub.cast = cast;
+        }
+        break;
+        case CAST_RIGHT:
+        {
+            assert(right_expr);
+            assert(cast.type);
+            plug_stub_expr(right_expr, STUB_EXPR_CAST, cast.type);
+            right_expr->stub.cast = cast;
+        }
+        break;
+        case CAST_BOTH:
+        {
+            assert(left_expr);
+            assert(right_expr);
+            assert(cast.type);
+            plug_stub_expr(left_expr, STUB_EXPR_CAST, cast.type);
+            left_expr->stub.cast = cast;
+            plug_stub_expr(right_expr, STUB_EXPR_CAST, cast.type);
+            right_expr->stub.cast = cast;
+        }
+        break;
+        case CAST_NO_CAST_NEEDED:
+        {
+            return;
+        }
+        break;
+        case CAST_NONE:
+        case CAST_TYPES_INCOMPATIBLE:
+        invalid_default_case;
     }
-
-    if ((from_type == type_long && to_type->kind == TYPE_ENUM)
-        || (to_type == type_long && from_type->kind == TYPE_ENUM))
-    {
-        return true;
-    }
-
-    return false;
 }
 
 bool are_symbols_the_same_function(symbol *a, symbol *b)
 {
     assert(a);
     assert(b);
-
-    /*
-        do rozważenia: zakładając interning stringów, może po prostu porównanie mangled names byłoby szybsze?
-    */
-
     assert(a->kind == SYMBOL_FUNCTION);
     assert(b->kind == SYMBOL_FUNCTION);
+    
     if (a == b)
+    {
+        return true;
+    }
+
+    if (a->mangled_name == b->mangled_name)
     {
         return true;
     }
@@ -253,7 +378,6 @@ bool are_symbols_the_same_function(symbol *a, symbol *b)
     if (a->decl->function.return_type != null
         && a->decl->function.return_type != null)
     {
-        // zakładam interning stringów
         if (a->decl->function.return_type->name
             != b->decl->function.return_type->name)
         {
@@ -276,7 +400,6 @@ bool are_symbols_the_same_function(symbol *a, symbol *b)
     if (a->decl->function.method_receiver != null
         && a->decl->function.method_receiver != null)
     {
-        // zakładam interning stringów
         assert(a->decl->function.method_receiver->type);
         assert(b->decl->function.method_receiver->type);
         if (a->decl->function.method_receiver->type->name
@@ -875,7 +998,7 @@ resolved_expr *resolve_expr_unary(expr *expr)
         case TOKEN_BITWISE_NOT:
         case TOKEN_NOT:
         {
-            if (false == (operand->type == type_uint || operand->type == type_ulong))
+            if (false == is_unsigned_type(operand->type))
             {
                 error_in_resolving(
                     xprintf("Bitwise operators allowed only for unsigned integers types, got %s type instead.", operand->type), expr->pos);
@@ -946,15 +1069,14 @@ resolved_expr *resolve_expr_binary(expr *expr)
     assert(expr->kind == EXPR_BINARY);
     resolved_expr *left = resolve_expr(expr->binary.left);
     resolved_expr *right = resolve_expr(expr->binary.right);
-    
-    if (left == null || right == null)
+        
+    if (false == (check_resolved_expr(left) && check_resolved_expr(left)))
     {
         return resolved_expr_invalid;
     }
 
-    if (false == can_perform_cast(right->type, left->type, false)
-        && (right->type != null && right->type->kind != TYPE_NONE)
-        && (left->type != null && left->type->kind != TYPE_NONE))
+    cast_info cast = check_if_cast_needed(left->type, right->type, true, false);
+    if (cast.kind == CAST_TYPES_INCOMPATIBLE)
     {
         error_in_resolving(
             xprintf(
@@ -964,6 +1086,10 @@ resolved_expr *resolve_expr_binary(expr *expr)
                 pretty_print_type_name(left->type, false)),
             expr->pos);
         return resolved_expr_invalid;
+    }
+    else
+    {
+        insert_cast_expr(expr->binary.left, expr->binary.right, cast);
     }
 
     switch (expr->binary.operator)
@@ -1013,7 +1139,7 @@ resolved_expr *resolve_expr_binary(expr *expr)
     return result;
 }
 
-bool check_compound_expr_field(resolved_expr *init_expr, type *expected_type, size_t init_expr_position, source_pos pos)
+bool check_compound_expr_field(expr *orig_init_expr, resolved_expr *init_expr, type *expected_type, size_t init_expr_position, source_pos pos)
 {    
     if (false == check_resolved_expr(init_expr))
     {
@@ -1024,7 +1150,8 @@ bool check_compound_expr_field(resolved_expr *init_expr, type *expected_type, si
         return false;
     }
 
-    if (false == can_perform_cast(init_expr->type, expected_type, true))
+    cast_info cast = check_if_cast_needed(init_expr->type, expected_type, false, init_expr->is_const);
+    if (cast.kind == CAST_TYPES_INCOMPATIBLE)
     {
         error_in_resolving(
             xprintf(
@@ -1034,6 +1161,10 @@ bool check_compound_expr_field(resolved_expr *init_expr, type *expected_type, si
                 pretty_print_type_name(init_expr->type, false)),
             pos);
         return false;
+    }
+    else
+    {
+        insert_cast_expr(orig_init_expr, null, cast);
     }
 
     return true;
@@ -1122,8 +1253,8 @@ Please provide a type either as a cast or in the variable declaration", e->pos);
                 }
             }
 
-            resolved_expr *init_expr = resolve_expected_expr(field->expr, aggr_field_type, false);
-            if (false == check_compound_expr_field(init_expr, aggr_field_type, i, field->expr->pos))
+            resolved_expr *resolved_field_expr = resolve_expected_expr(field->expr, aggr_field_type, false);
+            if (false == check_compound_expr_field(field->expr, resolved_field_expr, aggr_field_type, i, field->expr->pos))
             {
                 return result;
             }
@@ -1168,8 +1299,8 @@ Please provide a type either as a cast or in the variable declaration", e->pos);
                 }
             }
             
-            resolved_expr *init_expr = resolve_expected_expr(field->expr, expected_type, false);
-            if (false == check_compound_expr_field(init_expr, expected_type, i, field->expr->pos))
+            resolved_expr *resolved_field_expr = resolve_expected_expr(field->expr, expected_type, false);
+            if (false == check_compound_expr_field(field->expr, resolved_field_expr, expected_type, i, field->expr->pos))
             {
                 return result;
             }            
@@ -1177,22 +1308,6 @@ Please provide a type either as a cast or in the variable declaration", e->pos);
     }
         
     return result;
-}
-
-void plug_stub_expr(expr *original_expr, stub_expr_kind kind, type *resolved_type)
-{
-    expr *new_expr = push_struct(arena, expr);
-    new_expr->kind = EXPR_STUB;
-    new_expr->pos = original_expr->pos;
-    new_expr->stub.kind = kind;
-    new_expr->resolved_type = resolved_type;
-    
-    expr temp = *original_expr;
-    (*original_expr) = *new_expr;
-    *new_expr = temp;
-
-    // tutaj nazwy są odwrócone; efekt jest taki, że stub ma teraz odniesienie do starego wyrażenia
-    original_expr->stub.original_expr = new_expr;
 }
 
 resolved_expr *resolve_special_case_methods(expr *e)
@@ -1243,19 +1358,25 @@ resolved_expr *resolve_special_case_methods(expr *e)
 
                 type *list_type = e->call.method_receiver->resolved_type;
                 type *list_element_type = list_type->list.base_type;
-                type *new_element_type = resolve_expr(e->call.args[0])->type;                
-
-                if (false == can_perform_cast(new_element_type, list_element_type, true))
+                resolved_expr *new_element_expr = resolve_expr(e->call.args[0]);                
+                if (false == check_resolved_expr(new_element_expr))
                 {
-                    if (new_element_type->kind != TYPE_NONE)
-                    {
-                        error_in_resolving(
-                            xprintf("Cannot add %s element to a list of %s",
-                                pretty_print_type_name(new_element_type, false),
-                                pretty_print_type_name(list_element_type, true)),
-                            e->pos);
-                    }
                     return null;
+                }
+                
+                cast_info cast = check_if_cast_needed(new_element_expr->type, list_element_type, false, new_element_expr->is_const);
+                if (cast.kind == CAST_TYPES_INCOMPATIBLE)
+                {
+                    error_in_resolving(
+                        xprintf("Cannot add %s element to a list of %s",
+                            pretty_print_type_name(new_element_expr->type, false),
+                            pretty_print_type_name(list_element_type, true)),
+                        e->pos);                    
+                    return null;
+                }
+                else
+                {
+                    insert_cast_expr(e, null, cast);
                 }
                 
                 stub_kind = STUB_EXPR_LIST_ADD;
@@ -1369,8 +1490,13 @@ resolved_expr *resolve_call_expr(expr *e)
 
     symbol *matching = null;
     resolved_expr *fn_expr = resolve_expr(e->call.function_expr);
-    
-    if (fn_expr == null || fn_expr->type->kind != TYPE_FUNCTION)
+        
+    if (false == check_resolved_expr(fn_expr))
+    {
+        return resolved_expr_invalid;
+    }
+
+    if (fn_expr->type->kind != TYPE_FUNCTION)
     {
         if (e->call.function_expr->kind == EXPR_NAME && e->call.function_expr->name)
         {
@@ -1812,14 +1938,15 @@ type *resolve_variable_decl(decl *d)
         resolved_expr *expr = resolve_expected_expr(d->variable.expr, declared_type, false);
         if (false == check_resolved_expr(expr))
         {
-            //error_in_resolving("Cannot resolve type in the variable declaration", d->pos);
-            return null;
+            error_in_resolving("Cannot resolve type in the variable declaration", d->pos);
+            return type_invalid;
         }
         
         // musimy sprawdzić, czy się zgadzają
         if (declared_type && declared_type->kind != TYPE_NONE)
         {
-            if (false == can_perform_cast(expr->type, declared_type, true))
+            cast_info cast = check_if_cast_needed(expr->type, declared_type, false, true);
+            if (cast.kind == CAST_TYPES_INCOMPATIBLE)
             {
                 error_in_resolving(
                     xprintf(
@@ -1827,6 +1954,10 @@ type *resolve_variable_decl(decl *d)
                         pretty_print_type_name(expr->type, false),
                         pretty_print_type_name(declared_type, false)),
                     d->pos);
+            }
+            else
+            {
+                insert_cast_expr(d->variable.expr, null, cast);
             }
         }
        
@@ -1836,7 +1967,7 @@ type *resolve_variable_decl(decl *d)
             if (declared_type == null)
             {
                 error_in_resolving("Must specify a type in the variable declaration with null value.", d->pos);
-                return null;
+                return type_invalid;
             }
             else
             {
@@ -2008,13 +2139,15 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
         {
             if (st->expr)
             {
-                resolved_expr *result = resolve_expected_expr(st->expr, opt_ret_type, true);
-                if (result == null || result->type == null || result->type->kind == TYPE_NONE)
+                resolved_expr *result = resolve_expected_expr(st->expr, opt_ret_type, true);                
+                if (false == check_resolved_expr(result))
                 {
                     error_in_resolving("Could not resolve return statement", st->pos);
                     return;
                 }
-                if (result && false == can_perform_cast(result->type, opt_ret_type, false))
+
+                cast_info cast = check_if_cast_needed(result->type, opt_ret_type, false, result->is_const);
+                if (cast.kind == CAST_TYPES_INCOMPATIBLE)
                 {                    
                     error_in_resolving(
                         xprintf("Return type mismatch. Got %s, expected %s",
@@ -2022,6 +2155,10 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
                             pretty_print_type_name(opt_ret_type, false)),
                         st->pos);
                     return;
+                }
+                else
+                {
+                    insert_cast_expr(st->expr, null, cast);
                 }
             }
             else
@@ -2095,12 +2232,7 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
                 assert(st->decl_stmt.decl->kind == DECL_VARIABLE);
                 type *t = resolve_variable_decl(st->decl_stmt.decl);
                 
-                if (t == null)
-                {
-                    // jeśli resolve się nie udało, błąd został rzucony już wcześniej
-                    return;
-                }
-
+                // nie sprawdzamy, czy type jest null
                 if (check_if_symbol_name_unused(st->decl_stmt.decl->name, st->pos))
                 {
                     push_local_symbol(st->decl_stmt.decl->name, t);
@@ -2110,6 +2242,7 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
             }
             else
             {
+                assert(st->decl_stmt.decl->kind == DECL_CONST);
                 error_in_resolving("Const declarations not allowed in a function scope", st->pos);
                 return;
             }
@@ -2118,9 +2251,9 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
         case STMT_ASSIGN:
         {
             resolved_expr *left = resolve_expr(st->assign.assigned_var_expr);
-            if (left == null || left->type == TYPE_NONE)
+            if (false == check_resolved_expr(left))
             {
-                error_in_resolving("Cannot assign to an expression of an unknown type", st->assign.assigned_var_expr->pos);
+                //error_in_resolving("Cannot assign to an expression of an unknown type", st->assign.assigned_var_expr->pos);
                 return;
             }
 
@@ -2135,19 +2268,18 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
 
                 if (false == compare_types(left->type, right->type))
                 {
-                    if (left->type->kind == TYPE_LIST)
+                /*    if (left->type->kind == TYPE_LIST)
                     {
-                        if (right->type->kind != left->type->list.base_type->kind)
+                        if (compare_types(right->type, left->type->list.base_type))
                         {
                             error_in_resolving("list of different type", st->assign.value_expr->pos);
                             return;
                         }
                     }
-                    else if (false == can_perform_cast(right->type, left->type, true))
-                    {
-                        // dajemy błąd tylko jeśli oba są resolved - w przeciwnym wypadku będzie już inny błąd
-                        // informujący dlaczego typy nie zostały rozstrzygnięte
-                        if (check_resolved_expr(right) && check_resolved_expr(left))
+                    else 
+                    {*/
+                        cast_info cast = check_if_cast_needed(right->type, left->type, false, right->is_const);
+                        if (cast.kind == CAST_TYPES_INCOMPATIBLE)
                         {
                             error_in_resolving(
                                 xprintf("Types do not match in assignment. Trying to assign %s to %s",
@@ -2155,8 +2287,12 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
                                     pretty_print_type_name(left->type, false)),
                                 st->assign.assigned_var_expr->pos);
                         }
+                        else
+                        {
+                            insert_cast_expr(st->assign.value_expr, null, cast);
+                        }
                         return;
-                    }
+                    //}
                 }
             }
             
@@ -2180,15 +2316,19 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
         case STMT_SWITCH:
         {
             resolved_expr *cond_expr = resolve_expr(st->switch_stmt.var_expr);
-
-            if (false == can_perform_cast(cond_expr->type, type_long, true))
+            if (check_resolved_expr(cond_expr))
             {
-                if (cond_expr->type->kind != TYPE_NONE)
+                cast_info cast = check_if_cast_needed(cond_expr->type, type_long, false, cond_expr->is_const);
+                if (cast.kind == CAST_TYPES_INCOMPATIBLE)
                 {
                     error_in_resolving(xprintf(
                         "Condition expression in a switch statement should be an integer or an enumeration. Specified expression was %s",
                         pretty_print_type_name(cond_expr->type, false)), st->pos);
-                }                
+                }        
+                else
+                {
+                    insert_cast_expr(st->switch_stmt.var_expr, null, cast);
+                }
             }
 
             for (size_t i = 0; i < st->switch_stmt.cases_num; i++)
@@ -2196,25 +2336,34 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
                 switch_case *cas = st->switch_stmt.cases[i];
                 int64_t *values = null;
                 for (size_t k = 0; k < cas->cond_exprs_num; k++)
-                {
+                {                    
                     resolved_expr* case_expr = resolve_expr(cas->cond_exprs[k]);
+                    if (false == check_resolved_expr(case_expr))
+                    {
+                        continue;
+                    }
+
                     if (false == case_expr->is_const
                         && case_expr->type->kind != TYPE_NONE)
                     {
                         error_in_resolving("Case expression in a switch statement should be a constant value", st->pos);
                     }
 
-                    if (false == can_perform_cast(case_expr->type, type_long, true)
-                        && case_expr->type->kind != TYPE_NONE)
+                    cast_info cast = check_if_cast_needed(case_expr->type, type_long, false, case_expr->is_const);
+                    if (cast.kind == CAST_TYPES_INCOMPATIBLE)
                     {
                         error_in_resolving(xprintf(
                             "Case expression in a switch statement should be an integer or an enumeration. Specified expression was %s",
                             pretty_print_type_name(case_expr->type, false)), st->pos);
                     }
+                    else
+                    {
+                        insert_cast_expr(cas->cond_exprs[k], null, cast);
+                    }
 
                     buf_push(values, case_expr->val);
                 }
-                assert(buf_len(values) == cas->cond_exprs_num);
+
                 cas->cond_exprs_vals = copy_buf_to_arena(arena, values);
                 buf_free(values);
 

@@ -11,17 +11,18 @@ typedef enum type_kind
     TYPE_COMPLETED,
     TYPE_VOID,
     
-    // integer types
+    TYPE_CHAR,
     TYPE_INT,
     TYPE_LONG,
     TYPE_UINT,
     TYPE_ULONG,
-    FIRST_INTEGER_TYPE = TYPE_INT,
-    LAST_FIRST_INTEGER_TYPE = TYPE_ULONG,
+    FIRST_INTEGER_TYPE = TYPE_CHAR,
+    LAST_INTEGER_TYPE = TYPE_ULONG,
 
     TYPE_FLOAT,
-    
-    TYPE_CHAR,
+    FIRST_NUMERIC_TYPE = FIRST_INTEGER_TYPE,
+    LAST_NUMERIC_TYPE = TYPE_FLOAT,
+   
     TYPE_BOOL,
     TYPE_NULL,
     TYPE_STRUCT,
@@ -96,13 +97,29 @@ struct type
 
 bool is_integer_type(type *t)
 {
-    bool result = (t != null && (t->kind >= FIRST_INTEGER_TYPE && t->kind <= LAST_FIRST_INTEGER_TYPE));
+    assert(t);
+    bool result = (t->kind >= FIRST_INTEGER_TYPE && t->kind <= LAST_INTEGER_TYPE);
     return result;
 }
 
 bool is_numeric_type(type *t)
 {
-    bool result = (t != null && (is_integer_type(t) || t->kind == TYPE_FLOAT));
+    assert(t);
+    bool result = (t->kind >= FIRST_NUMERIC_TYPE && t->kind <= LAST_NUMERIC_TYPE);
+    return result;
+}
+
+bool is_unsigned_type(type *t)
+{
+    assert(t);
+    bool result = (t->kind == TYPE_CHAR || t->kind == TYPE_UINT || t->kind == TYPE_ULONG);
+    return result;
+}
+
+bool is_signed_type(type *t)
+{
+    assert(t);
+    bool result = (t->kind == TYPE_INT || t->kind == TYPE_LONG);
     return result;
 }
 

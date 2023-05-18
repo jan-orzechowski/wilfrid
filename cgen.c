@@ -79,7 +79,7 @@ const char *get_c_type_name(type *t)
         }
         case TYPE_UINT:
         {
-            return "unsigned int";
+            return "uint";
         }
         case TYPE_LONG:
         {
@@ -87,7 +87,7 @@ const char *get_c_type_name(type *t)
         }
         case TYPE_ULONG:
         {
-            return "unsigned long";
+            return "ulong";
         }
         case TYPE_FLOAT:
         {
@@ -548,6 +548,18 @@ void gen_expr_stub(expr *exp)
 
     switch (exp->stub.kind)
     {
+        case STUB_EXPR_CAST:
+        {
+            cast_info cast = exp->stub.cast;
+            assert(cast.kind != CAST_NO_CAST_NEEDED);
+            assert(cast.kind != CAST_TYPES_INCOMPATIBLE);
+            assert(cast.type);
+
+            gen_printf("(%s)(", type_to_cdecl(cast.type, null));
+            gen_expr(exp->stub.original_expr);
+            gen_printf(")");
+        }
+        break;
         case STUB_EXPR_LIST_CAPACITY:
         {               
             gen_printf("___get_list_capacity___("), 

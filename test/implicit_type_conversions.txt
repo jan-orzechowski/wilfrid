@@ -1,0 +1,55 @@
+extern fn assert(condition: bool)
+
+fn accept_char(arg1: char, arg2: int) 
+{
+	assert(arg1 == arg2)
+}
+
+fn accept_int(arg1: int, arg2: ulong) 
+{
+	assert(arg1 as long == arg2 as long)
+}
+
+fn accept_long(arg: long) 
+{
+
+}
+
+fn accept_uint(arg: uint) 
+{
+
+}
+
+fn accept_ulong(arg: ulong) 
+{
+
+}
+
+fn main ()
+{
+	let ch : char = 0
+	let in : int = -50
+	let lo : long = -1000
+	let ui : uint = 10
+	let ul : ulong = 120
+
+	assert(ch == 0)
+	assert(in == -50)
+	assert(lo == -1000)
+	assert(ui == 10)
+	assert(ul == 120)
+
+	assert(ch + ch == in + 50)
+	assert(lo + lo == 2 * lo)
+	assert(ui * -5 == in)
+
+
+	//accept_char(ch, ch)
+	//accept_char(ch, 0)
+	//accept_char(ch, in + 50)
+	//accept_char(ch, lo + 1000)
+	//
+	//accept_int(in, lo / 20)
+	//accept_int(in, -50)
+
+}

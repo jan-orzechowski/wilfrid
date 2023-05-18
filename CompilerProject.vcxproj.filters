@@ -45,5 +45,6 @@
     <Text Include="test\arrays.txt" />
     <Text Include="test\auto_dereference.txt" />
     <Text Include="examples\stack_vm.txt" />
+    <Text Include="test\implicit_type_conversions.txt" />
   </ItemGroup>
 </Project>

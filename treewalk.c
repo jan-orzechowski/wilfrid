@@ -21,10 +21,12 @@ char *debug_print_buffer;
 size_t debug_print_buffer_size = 1000;
 #define save_debug_string(str) map_put(&debug_strings, str, str);
 #define debug_vm_print(...) _vm_debug_printf(__VA_ARGS__)
+#define debug_vm_simple_print(...) printf(__VA_ARGS__)
 #define debug_print_vm_value(val, typ) _debug_print_vm_value(val, typ)
 #else
 #define save_debug_string
 #define debug_vm_print
+#define debug_vm_simple_print
 #define debug_print_vm_value
 #endif
 
@@ -434,57 +436,88 @@ void eval_unary_op(byte *dest, token_kind operation, byte *operand, type *operan
     }
 }
 
-void eval_binary_op(byte *dest, token_kind op, byte *left, byte *right, type *operands_type)
+void eval_binary_op(byte *dest, token_kind op, byte *left, byte *right, type *left_t, type *right_t)
 {
     assert(dest);
     assert(left);
     assert(right);
-    assert(operands_type);
+    assert(left_t);
+    assert(right_t);
 
-    if (operands_type == type_int)
+    if (left_t != right_t)
+    {
+        if (left_t->kind == TYPE_POINTER && right_t->kind == TYPE_POINTER)
+        {
+            assert(compare_types(left_t->pointer.base_type, right_t->pointer.base_type));
+            *(uint64_t *)dest = eval_ulong_binary_op(op, *(uint64_t *)left, *(uint64_t *)right);
+        }
+        else
+        {
+            assert(left_t->kind == TYPE_POINTER || right_t->kind == TYPE_POINTER);
+
+            if (left_t->kind == TYPE_POINTER)
+            {
+                assert(*(uint64_t *)left > *(uint64_t *)right);
+                size_t type_size = get_type_size(left_t->pointer.base_type);
+                *(uint64_t *)dest = eval_ulong_binary_op(op, *(uint64_t *)left, (*(uint64_t *)right) * type_size);
+            }
+            else
+            {
+                assert(*(uint64_t *)right > *(uint64_t *)left);
+                size_t type_size = get_type_size(right_t->pointer.base_type);
+                *(uint64_t *)dest = eval_ulong_binary_op(op, *(uint64_t *)left * type_size, (*(uint64_t *)right));
+            }
+
+            //debug_vm_print(st->assign.assigned_var_expr->pos, "pointer arithmetic, result %s",
+            //    get_token_kind_name(op), debug_print_vm_value(new_val, new_val_t));
+        }
+        //else
+        //{
+        //    fatal("this shouldn't happen");
+        //}
+    }
+    else if (left_t == type_int)
     {
         *(int32_t *)dest = (int32_t)eval_long_binary_op(op, *(int32_t *)left, *(int32_t *)right);
     }
-    else if (operands_type == type_uint 
-        || operands_type == type_bool 
-        || operands_type == type_char)
+    else if (left_t == type_uint || left_t == type_bool || left_t == type_char)
     {
         *(uint32_t *)dest = (uint32_t)eval_ulong_binary_op(op, *(uint32_t *)left, *(uint32_t *)right);
     }
-    else if (operands_type == type_long 
-        || operands_type->kind == TYPE_ENUM)
+    else if (left_t == type_long || left_t->kind == TYPE_ENUM)
     {
         *(int64_t *)dest = eval_long_binary_op(op, *(int64_t *)left, *(int64_t *)right);
     }
-    else if (operands_type == type_ulong)
+    else if (left_t == type_ulong || left_t->kind == TYPE_POINTER)
     {
         *(uint64_t *)dest = eval_ulong_binary_op(op, *(uint64_t *)left, *(uint64_t *)right);
     }
-    else if (operands_type == type_float)
+    else if (left_t == type_float)
     {
         *(float *)dest = eval_float_binary_op(op, *(float *)left, *(float *)right);
     }
-    else
+    else 
     {
         fatal("unsupported type");
     }
 }
 
-void eval_binary_op_with_bool_casting(token_kind op, byte* dest, byte* left, byte* right, type* operands_type)
+void eval_binary_op_with_bool_casting(token_kind op, byte* dest, byte* left, byte* right, type* left_t, type* right_t)
 {
     assert(dest);
     assert(left);
     assert(right);
-    assert(operands_type);
+    assert(left_t);
+    assert(right_t);
 
     // bool i inny typ, np. ulong mogą się różnić rozmiarem
     if (is_comparison_operation(op))
     {
-        byte *temp = push_identifier_on_stack(null, operands_type);
-        eval_binary_op(temp, op, left, right, operands_type);
+        byte *temp = push_identifier_on_stack(null, left_t);
+        eval_binary_op(temp, op, left, right, left_t, right_t);
         uint64_t bool_result = 0;
 
-        switch (operands_type->kind)
+        switch (left_t->kind)
         {
             case TYPE_FLOAT:
             {
@@ -498,12 +531,12 @@ void eval_binary_op_with_bool_casting(token_kind op, byte* dest, byte* left, byt
             break;
         }
 
-        assert(get_type_size(operands_type) >= get_type_size(type_bool));
+        assert(get_type_size(left_t) >= get_type_size(type_bool));
         copy_vm_val(dest, (byte *)&bool_result, get_type_size(type_bool));
     }
     else
     {
-        eval_binary_op(dest, op, left, right, operands_type);
+        eval_binary_op(dest, op, left, right, left_t, right_t);
     }
 }
 
@@ -554,6 +587,10 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
             {
                 *(int32_t *)new_val = (int32_t)*(int64_t *)old_val;
             }
+            else if (old_type == type_char)
+            {
+                *(int32_t *)new_val = (int32_t)*(unsigned char *)old_val;
+            }
             else 
             { 
                 fatal("unimplemented");
@@ -590,6 +627,10 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
             else if (old_type->kind == TYPE_ENUM)
             {
                 *(int64_t *)new_val = (int64_t)*(int64_t *)old_val;
+            }
+            else if (old_type == type_char)
+            {
+                *(int64_t *)new_val = (int64_t)*(unsigned char *)old_val;
             }
             else
             {
@@ -629,6 +670,10 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
             {
                 *(uint32_t *)new_val = (uint32_t)*(int64_t *)old_val;
             }
+            else if (old_type == type_char)
+            {
+                *(uint32_t *)new_val = (uint32_t)*(unsigned char *)old_val;
+            }
             else
             {
                 fatal("unimplemented");
@@ -664,6 +709,10 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
             else if (old_type->kind == TYPE_ENUM)
             {
                 *(uint64_t *)new_val = (uint64_t)*(int64_t *)old_val;
+            }
+            else if (old_type == type_char)
+            {
+                *(uint64_t *)new_val = (uint64_t)*(unsigned char *)old_val;
             }
             else
             {
@@ -701,6 +750,10 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
             {
                 *(float *)new_val = (float)*(int64_t *)old_val;
             }
+            else if (old_type == type_char)
+            {
+                *(float *)new_val = (float)*(unsigned char *)old_val;
+            }
             else
             {
                 fatal("unimplemented");
@@ -732,6 +785,10 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
             else if (old_type->kind == TYPE_POINTER)
             {
                 *(uintptr_t *)new_val = (uintptr_t)*(uintptr_t *)old_val;;
+            }
+            else if (old_type == type_char)
+            {
+                *(uintptr_t *)new_val = (uintptr_t)*(unsigned char *)old_val;
             }
             else
             {
@@ -772,7 +829,7 @@ byte *eval_binary_expression(expr *exp, byte *result)
     size_t right_size = get_type_size(right_t);
     assert(left_size == right_size);
 
-    eval_binary_op_with_bool_casting(exp->binary.operator, result, left, right, left_t);
+    eval_binary_op_with_bool_casting(exp->binary.operator, result, left, right, left_t, right_t);
 
     debug_vm_print(exp->pos, "operation %s on %s and %s, result %s",
         get_token_kind_name(exp->binary.operator),
@@ -822,8 +879,8 @@ byte *eval_expression(expr *exp)
         break;
         case EXPR_NULL:
         {
-            assert(type_bool->size == sizeof(byte));
-            *result = 0;
+            assert(type_null->size == sizeof(uintptr_t));
+            *((uintptr_t *)result) = 0;
         }
         break;
         case EXPR_BOOL:
@@ -926,7 +983,7 @@ byte *eval_expression(expr *exp)
                 byte *val = eval_expression(exp->call.args[1]);
                 char *val_str = debug_print_vm_value(val, exp->call.args[1]->resolved_type);
 
-                printf("--------------------------- PRINTF CALL: format: %s, vals: %s\n", format, val_str);          
+                debug_vm_simple_print("--------------------------- PRINTF CALL: format: %s, vals: %s\n", format, val_str);
 #endif
             }
             else if (exp->call.resolved_function->name == str_intern("assert"))
@@ -935,7 +992,7 @@ byte *eval_expression(expr *exp)
                 assert(exp->call.args[0]->resolved_type);
                 byte *val = eval_expression(exp->call.args[0]);
                 bool passed = is_non_zero(val, get_type_size(exp->call.args[0]->resolved_type));
-                printf("--------------------------- ASSERT: %s\n", passed ? "PASSED" : "FAILED");
+                debug_vm_simple_print("--------------------------- ASSERT: %s\n", passed ? "PASSED" : "FAILED");
                 if (false == passed)
                 {
                     failed_asserts++;
@@ -1193,6 +1250,12 @@ byte *eval_stub_expression(byte *result, expr *exp)
 
     switch (exp->stub.kind)
     {
+        case STUB_EXPR_CAST:
+        {
+            byte *old_val = eval_expression(orig_exp);
+            perform_cast(result, orig_exp->resolved_type->kind, old_val, exp->resolved_type);
+        }
+        break;
         case STUB_EXPR_LIST_CAPACITY:
         case STUB_EXPR_LIST_LENGTH:
         {
@@ -1415,7 +1478,7 @@ void eval_statement(stmt *st, byte *opt_ret_value)
 
             if (dec->variable.expr)
             {
-                assert(compare_types(dec->variable.expr->resolved_type, dec->resolved_type));
+                //assert(compare_types(dec->variable.expr->resolved_type, dec->resolved_type));
 
                 byte *new_val = eval_expression(dec->variable.expr);
 
@@ -1623,7 +1686,7 @@ void eval_statement(stmt *st, byte *opt_ret_value)
             if (st->assign.operation != TOKEN_ASSIGN)
             {
                 token_kind op = get_assignment_operation_token(st->assign.operation);
-                eval_binary_op(new_val, op, old_val, new_val, new_val_t);
+                eval_binary_op(new_val, op, old_val, new_val, old_val_t, new_val_t);
 
                 debug_vm_print(st->assign.assigned_var_expr->pos, "operation %s for assignment, result %s",
                     get_token_kind_name(op), debug_print_vm_value(new_val, new_val_t));
