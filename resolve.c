@@ -1503,8 +1503,10 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
             }
             else if (sym->kind == SYMBOL_TYPE)
             {
-                // czy powinno tak być?
-                result = get_resolved_lvalue_expr(sym->type);
+                error_in_resolving(xprintf(
+                    "Expected variable name, got type identifier of %s", 
+                    pretty_print_type_name(sym->type, false)), e->pos);
+                return resolved_expr_invalid;
             }
             else
             {
