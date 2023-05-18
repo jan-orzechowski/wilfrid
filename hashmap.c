@@ -275,9 +275,16 @@ void _map_chain_put(chained_hashmap *map, void *key, void *value)
 
     if (val)
     {
-        val->next = xcalloc(sizeof(hashmap_value));
-        val->next->key = key;
-        val->next->value = value;        
+        hashmap_value *last_val = val;
+        while (val)
+        {
+            last_val = val;
+            val = val->next;
+        }
+
+        last_val->next = xcalloc(sizeof(hashmap_value));
+        last_val->next->key = key;
+        last_val->next->value = value;
     }
     else
     {        
