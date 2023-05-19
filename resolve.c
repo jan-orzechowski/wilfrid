@@ -251,6 +251,12 @@ cast_info try_cast(type *from, type* to, bool allow_forcing_numeric_types)
         result.type = to;
         return result;
     }
+    else if ((from->kind == TYPE_POINTER && to == type_bool)
+        || (from == type_null && to->kind == TYPE_POINTER))
+    {
+        result.type = to;
+        return result;
+    }
     // ewentualnie można jeszcze dodać array to ptr
     else
     {
@@ -313,7 +319,7 @@ void insert_cast_expr(expr *left_expr, expr *right_expr, cast_info cast)
             assert(left_expr)
             assert(cast.type);
             plug_stub_expr(left_expr, STUB_EXPR_CAST, cast.type);
-            left_expr->stub.cast = cast;
+            left_expr->stub.cast_kind = cast.kind;
         }
         break;
         case CAST_RIGHT:
@@ -321,7 +327,7 @@ void insert_cast_expr(expr *left_expr, expr *right_expr, cast_info cast)
             assert(right_expr);
             assert(cast.type);
             plug_stub_expr(right_expr, STUB_EXPR_CAST, cast.type);
-            right_expr->stub.cast = cast;
+            right_expr->stub.cast_kind = cast.kind;
         }
         break;
         case CAST_BOTH:
@@ -330,9 +336,9 @@ void insert_cast_expr(expr *left_expr, expr *right_expr, cast_info cast)
             assert(right_expr);
             assert(cast.type);
             plug_stub_expr(left_expr, STUB_EXPR_CAST, cast.type);
-            left_expr->stub.cast = cast;
+            left_expr->stub.cast_kind = cast.kind;
             plug_stub_expr(right_expr, STUB_EXPR_CAST, cast.type);
-            right_expr->stub.cast = cast;
+            right_expr->stub.cast_kind = cast.kind;
         }
         break;
         case CAST_NO_CAST_NEEDED:
@@ -1069,9 +1075,41 @@ resolved_expr *resolve_expr_binary(expr *expr)
     assert(expr->kind == EXPR_BINARY);
     resolved_expr *left = resolve_expr(expr->binary.left);
     resolved_expr *right = resolve_expr(expr->binary.right);
-        
+    token_kind op = expr->binary.operator;
+
     if (false == (check_resolved_expr(left) && check_resolved_expr(left)))
     {
+        return resolved_expr_invalid;
+    }
+
+    // handle pointer arithmetic
+    if (is_additive_operation(op))
+    {
+        if ((is_integer_type(left->type) && right->type->kind == TYPE_POINTER))
+        {   
+            expr->resolved_type = right->type;
+            plug_stub_expr(expr, STUB_EXPR_POINTER_ARITHMETIC_BINARY, right->type);
+            expr->stub.left_is_pointer = false;
+            return get_resolved_rvalue_expr(right->type);
+        } 
+        else if (left->type->kind == TYPE_POINTER && is_integer_type(right->type))
+        {
+            expr->resolved_type = left->type;
+            plug_stub_expr(expr, STUB_EXPR_POINTER_ARITHMETIC_BINARY, left->type);
+            expr->stub.left_is_pointer = true;
+            return get_resolved_rvalue_expr(left->type);
+        }
+    }
+    
+    if (left->type->kind == TYPE_POINTER && right->type->kind == TYPE_POINTER
+        && op != TOKEN_SUB && false == is_comparison_operation(op))
+    {
+        // zabraniamy, tak jak w C
+        error_in_resolving(xprintf(
+            "Two pointers can be only compared or subtracted. Tried to perform %s on %s and %s",
+            get_token_kind_name(op),
+            pretty_print_type_name(right->type, false),
+            pretty_print_type_name(left->type, false)), expr->pos);
         return resolved_expr_invalid;
     }
 
@@ -1079,13 +1117,11 @@ resolved_expr *resolve_expr_binary(expr *expr)
     cast_info cast = check_if_cast_needed(left->type, right->type, true, is_any_const);
     if (cast.kind == CAST_TYPES_INCOMPATIBLE)
     {
-        error_in_resolving(
-            xprintf(
-                "Types mismatch in a %s expression: %s and %s. A manual cast is required.",
-                get_token_kind_name(expr->binary.operator),
-                pretty_print_type_name(right->type, false),
-                pretty_print_type_name(left->type, false)),
-            expr->pos);
+        error_in_resolving(xprintf(
+            "Types mismatch in a %s expression: %s and %s. A manual cast is required.",
+            get_token_kind_name(op),
+            pretty_print_type_name(right->type, false),
+            pretty_print_type_name(left->type, false)), expr->pos);
         return resolved_expr_invalid;
     }
     else
@@ -1093,15 +1129,15 @@ resolved_expr *resolve_expr_binary(expr *expr)
         insert_cast_expr(expr->binary.left, expr->binary.right, cast);
     }
 
-    switch (expr->binary.operator)
+    switch (op)
     {
         case TOKEN_MOD:
         {
             if (false == is_integer_type(left->type))
             {
-                error_in_resolving(
-                    xprintf("Modulus operator is allowed only for integer types, got %s type.", 
-                        pretty_print_type_name(left->type, false)), expr->pos);
+                error_in_resolving(xprintf(
+                    "Modulus operator is allowed only for integer types, got %s type.", 
+                    pretty_print_type_name(left->type, false)), expr->pos);
                 return resolved_expr_invalid;
             }
         }
@@ -1114,22 +1150,22 @@ resolved_expr *resolve_expr_binary(expr *expr)
         {
             if (false == (left->type == type_uint || left->type == type_ulong))
             {
-                error_in_resolving(
-                    xprintf("Bitwise operators allowed only for unsigned integers types, got %s type instead.", 
-                        pretty_print_type_name(left->type, false)), expr->pos);
+                error_in_resolving(xprintf(
+                    "Bitwise operators allowed only for unsigned integers types, got %s type instead.", 
+                    pretty_print_type_name(left->type, false)), expr->pos);
                 return resolved_expr_invalid;
             }
         }
         break;
     };
         
-    if (is_comparison_operation(expr->binary.operator))
+    if (is_comparison_operation(op))
     {
         result = get_resolved_rvalue_expr(type_bool);
     }
     else if (left->is_const && right->is_const)
     {
-        int64_t const_value = eval_long_binary_op(expr->binary.operator, left->val, right->val);
+        int64_t const_value = eval_long_binary_op(op, left->val, right->val);
         result = get_resolved_const_expr(const_value);
     }
     else
@@ -2388,11 +2424,21 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
         {
             assert(st->inc.operator == TOKEN_INC || st->inc.operator == TOKEN_DEC);
             resolved_expr *expr = resolve_expr(st->inc.operand);
-            if (check_resolved_expr(expr) && false == is_integer_type(expr->type))
+            if (check_resolved_expr(expr))
             {
-                error_in_resolving(xprintf(
-                    "Increment/decrement statements allowed only for integer types. The type was %s",
-                    pretty_print_type_name(expr->type, false)), st->pos);
+                if (expr->type->kind == TYPE_POINTER)
+                {  
+                    bool is_increment = (st->inc.operator == TOKEN_INC);
+                    plug_stub_expr(st->inc.operand, STUB_EXPR_POINTER_ARITHMETIC_INC, expr->type);
+                    assert(st->inc.operand->kind == EXPR_STUB);
+                    st->inc.operand->stub.is_inc = is_increment;
+                }
+                else if (false == is_integer_type(expr->type))
+                {
+                    error_in_resolving(xprintf(
+                        "Increment/decrement statements allowed only for pointer and integer types. The type was %s",
+                        pretty_print_type_name(expr->type, false)), st->pos);
+                }
             }
         }
         break;

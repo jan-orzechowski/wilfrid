@@ -550,12 +550,24 @@ void gen_expr_stub(expr *exp)
     {
         case STUB_EXPR_CAST:
         {
-            cast_info cast = exp->stub.cast;
-            assert(cast.kind != CAST_NO_CAST_NEEDED);
-            assert(cast.kind != CAST_TYPES_INCOMPATIBLE);
-            assert(cast.type);
+            assert(exp->stub.cast_kind != CAST_NO_CAST_NEEDED);
+            assert(exp->stub.cast_kind != CAST_TYPES_INCOMPATIBLE);
+            assert(exp->resolved_type);
 
-            gen_printf("(%s)(", type_to_cdecl(cast.type, null));
+            gen_printf("(%s)(", type_to_cdecl(exp->resolved_type, null));
+            gen_expr(exp->stub.original_expr);
+            gen_printf(")");
+        }
+        break;
+        case STUB_EXPR_POINTER_ARITHMETIC_BINARY:
+        {
+            // w C gen nie musimy nic robić
+            gen_expr(exp->stub.original_expr);
+        }
+        break;
+        case STUB_EXPR_POINTER_ARITHMETIC_INC:
+        {
+            gen_printf("(%s(", exp->stub.is_inc ? "++" : "--");
             gen_expr(exp->stub.original_expr);
             gen_printf(")");
         }

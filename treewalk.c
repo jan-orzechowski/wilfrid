@@ -86,6 +86,7 @@ chained_hashmap vm_all_allocations;
 char *_debug_print_vm_value(byte *val, type *typ)
 {    
     assert(typ);
+    assert(val);
 
     if (debug_print_buffer == null)
     {
@@ -120,7 +121,7 @@ char *_debug_print_vm_value(byte *val, type *typ)
         break;
         case TYPE_POINTER:
         {
-            snprintf(debug_print_buffer, debug_print_buffer_size, "%p", (void *)val);
+            snprintf(debug_print_buffer, debug_print_buffer_size, "%p (%llu)", (void *)val, *(uint64_t *)val);
         }
         break;
         case TYPE_FLOAT:
@@ -921,20 +922,20 @@ byte *eval_expression(expr *exp)
             byte *operand = eval_expression(exp->unary.operand);
             type *operand_t = exp->unary.operand->resolved_type;
 
-            if (exp->unary.operator == TOKEN_MUL) // pointer dereference
+            if (exp->unary.operator == TOKEN_MUL)
             {       
                 assert(operand_t->kind == TYPE_POINTER);
                 assert(operand_t->pointer.base_type);
 
                 debug_vm_print(exp->pos, "deref ptr %s", 
-                    debug_print_vm_value(operand, operand_t->pointer.base_type));
+                    debug_print_vm_value(operand, operand_t));
 
                 result = (byte *)*(uintptr_t *)operand;
                 
                 debug_vm_print(exp->pos, "result is val %s", 
                     debug_print_vm_value(result, exp->resolved_type));
             }
-            else if (exp->unary.operator == TOKEN_BITWISE_AND) // address of
+            else if (exp->unary.operator == TOKEN_BITWISE_AND)
             {
                 assert(exp->resolved_type->kind == TYPE_POINTER);
                 assert(exp->resolved_type->pointer.base_type);
@@ -1291,6 +1292,82 @@ byte *eval_stub_expression(byte *result, expr *exp)
         {
             byte *old_val = eval_expression(orig_exp);
             perform_cast(result, orig_exp->resolved_type->kind, old_val, exp->resolved_type);
+        }
+        break;
+        case STUB_EXPR_POINTER_ARITHMETIC_BINARY:
+        {
+            assert(orig_exp->kind == EXPR_BINARY);
+            
+            bool is_ptr_left = exp->stub.left_is_pointer;
+            expr *left = orig_exp->binary.left;
+            expr *right = orig_exp->binary.right;
+            token_kind op = orig_exp->binary.operator;
+
+            byte *ptr_val = eval_expression(is_ptr_left ? left : right);
+            byte *int_val = eval_expression(is_ptr_left ? right : left);            
+            type *ptr_type = is_ptr_left ? left->resolved_type : right->resolved_type;
+            type *int_type = is_ptr_left ? right->resolved_type : left->resolved_type;
+
+            assert(ptr_type->kind == TYPE_POINTER);
+            size_t ptr_base_type_size = get_type_size(ptr_type->pointer.base_type);
+            assert(ptr_base_type_size != 0);
+
+            uintptr_t old_ptr_val = *(uintptr_t*)ptr_val;
+            int64_t int_operand = 0;
+            perform_cast((byte *)&int_operand, TYPE_LONG, int_val, int_type);
+            
+            uintptr_t new_ptr_val = 0;
+            assert(op == TOKEN_ADD || op == TOKEN_SUB);
+            if (op == TOKEN_ADD)
+            {
+                new_ptr_val = old_ptr_val + (int_operand * ptr_base_type_size);
+            }
+            else
+            {
+                new_ptr_val = old_ptr_val - (int_operand * ptr_base_type_size);
+            }
+
+            copy_vm_val(result, (byte *)&new_ptr_val, sizeof(uintptr_t));
+
+            debug_vm_print(exp->pos, 
+                "pointer arithmetic operation %s on %s and %s (base type size: %zu), result %s",
+                get_token_kind_name(op),
+                debug_print_vm_value(ptr_val, ptr_type),
+                debug_print_vm_value(int_val, int_type),
+                ptr_base_type_size, 
+                debug_print_vm_value(result, exp->resolved_type)
+            );
+        }
+        break;
+        case STUB_EXPR_POINTER_ARITHMETIC_INC:
+        {
+            byte *ptr_val = eval_expression(orig_exp);
+            type *ptr_type = orig_exp->resolved_type;
+            assert(ptr_type->kind == TYPE_POINTER);
+            size_t ptr_base_type_size = get_type_size(ptr_type->pointer.base_type);
+            assert(ptr_base_type_size != 0);
+
+            uintptr_t old_ptr_val = *(uintptr_t *)ptr_val;
+            uintptr_t new_ptr_val = 0;
+            if (exp->stub.is_inc)
+            {
+                new_ptr_val = old_ptr_val + ptr_base_type_size;
+            }
+            else
+            {
+                new_ptr_val = old_ptr_val - ptr_base_type_size;
+            }
+
+            // inc/dec zmienia wartość
+            copy_vm_val(ptr_val, (byte *)&new_ptr_val, sizeof(uintptr_t));
+
+            debug_vm_print(exp->pos,
+                "pointer arithmetic operation %s on %s (base type size: %zu), result %s",
+                exp->stub.is_inc ? "++" : "--",
+                debug_print_vm_value((byte*)&old_ptr_val, ptr_type),
+                ptr_base_type_size,
+                debug_print_vm_value(ptr_val, exp->resolved_type)
+            );
         }
         break;
         case STUB_EXPR_LIST_CAPACITY:
@@ -1843,28 +1920,35 @@ void eval_statement(stmt *st, byte *opt_ret_value)
             {
                 byte *obj = eval_expression(st->delete.expr);
                 uintptr_t ptr = *(uintptr_t *)obj;
-
-                map_chain_delete(&vm_all_allocations, ptr);
-
-                debug_vm_print(st->pos, "free allocation at: %p", (void *)ptr);
-
-                free((void *)ptr);
-            }            
+                if (ptr != 0)
+                {
+                    map_chain_delete(&vm_all_allocations, ptr);                 
+                    debug_vm_print(st->pos, "free allocation at: %p", (void *)ptr);
+                    free((void *)ptr);
+                }
+            }
         }
         break;
         case STMT_INC:
         {
-            assert(st->inc.operator == TOKEN_INC || st->inc.operator == TOKEN_DEC);            
+            assert(st->inc.operator == TOKEN_INC || st->inc.operator == TOKEN_DEC);
             assert(st->inc.operand->resolved_type);
 
-            byte *operand = eval_expression(st->inc.operand);
-            type *operand_t = st->inc.operand->resolved_type;
-           
-            eval_unary_op(operand, st->inc.operator, operand, operand_t);
+            if (st->inc.operand->kind == EXPR_STUB)
+            {
+                eval_stub_expression(null, st->inc.operand);
+            }
+            else
+            {
+                byte *operand = eval_expression(st->inc.operand);
+                type *operand_t = st->inc.operand->resolved_type;
 
-            debug_vm_print(st->pos, "operation %s, result %s",
-                get_token_kind_name(st->inc.operator),
-                debug_print_vm_value(operand, operand_t));            
+                eval_unary_op(operand, st->inc.operator, operand, operand_t);
+
+                debug_vm_print(st->pos, "operation %s, result %s",
+                    get_token_kind_name(st->inc.operator),
+                    debug_print_vm_value(operand, operand_t));
+            }          
         }
         break;
         invalid_default_case;

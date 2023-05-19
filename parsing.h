@@ -186,6 +186,8 @@ typedef enum stub_expr_kind
     STUB_EXPR_LIST_INDEX,
     STUB_EXPR_CONSTRUCTOR,
     STUB_EXPR_CAST,
+    STUB_EXPR_POINTER_ARITHMETIC_BINARY,
+    STUB_EXPR_POINTER_ARITHMETIC_INC,
 } stub_expr_kind;
 
 typedef enum cast_kind
@@ -207,8 +209,13 @@ typedef struct cast_info
 typedef struct stub_expr
 {
     stub_expr_kind kind;
-    expr *original_expr;    
-    cast_info cast; // używane w przypadku STUB_EXPR_CAST:
+    expr *original_expr;
+    union
+    {
+        cast_kind cast_kind; // gdy STUB_EXPR_CAST
+        bool left_is_pointer; // gdy STUB_EXPR_POINTER_ARITHMETIC
+        bool is_inc; // gdy STUB_EXPR_POINTER_ARITHMETIC_INC
+    };
 } stub_expr;
 
 struct expr
