@@ -50,6 +50,28 @@ void parse_directory(char *path, decl ***declarations_list)
     buf_free(source_files);
 }
 
+void report_errors(void)
+{
+    if (buf_len(errors) == 0)
+    {
+        return;
+    }
+
+    // zmienić na parametr
+    if (true)
+    {
+        print_errors_to_console();
+    }
+
+    // zmienić na parametr
+    if (true)
+    {
+        char *printed_errors = print_errors();
+        write_file("output/errors.log", printed_errors, buf_len(errors));
+        buf_free(printed_errors);
+    }
+}
+
 void compile_sources(char **sources, bool print_ast)
 {
     decl **all_declarations = null;
@@ -85,30 +107,25 @@ void compile_sources(char **sources, bool print_ast)
 
     if (buf_len(errors) > 0)
     {
-        // zmienić na parametr
-        if (true)
-        {
-            print_errors_to_console();
-        }
-
-        // zmienić na parametr
-        if (true)
-        {
-            char *printed_errors = print_errors();
-            write_file("output/errors.log", printed_errors, buf_len(errors));
-            buf_free(printed_errors);
-        }
+        report_errors();
     }
     else
     {
         resolved = resolve(all_declarations, true);
         
+        if (buf_len(errors) > 0)
+        {
+            report_errors();
+        }
+        else
+        {
 #if __EMSCRIPTEN__
-        run_interpreter(resolved);
+            run_interpreter(resolved);
 #else
-        c_gen(resolved, "output/testcode.c", false);
-        run_interpreter(resolved);
+            c_gen(resolved, "output/testcode.c", false);
+            run_interpreter(resolved);
 #endif
+        }
     }
 
     buf_free(all_declarations);
