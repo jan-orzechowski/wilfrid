@@ -998,6 +998,22 @@ byte *eval_expression(expr *exp)
                     failed_asserts++;
                 }
             }
+            else if (exp->call.resolved_function->name == str_intern("allocate"))
+            {
+                assert(exp->call.args_num == 1);
+                assert(exp->call.args[0]->resolved_type);
+
+                byte *val = eval_expression(exp->call.args[0]);
+                size_t size = *(int64_t *)val;
+                assert(size < megabytes(100));
+
+                uintptr_t ptr = (uintptr_t)xcalloc(size);
+                copy_vm_val(result, (byte *)&ptr, sizeof(uintptr_t));
+                map_chain_put(&vm_all_allocations, ptr, false);
+
+                debug_vm_print(exp->pos, "allocation at %p, via 'allocate', size %zu",
+                    (void *)ptr, size);
+            }
             else
             {
                 assert(exp->call.resolved_function);
