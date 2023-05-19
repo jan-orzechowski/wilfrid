@@ -91,16 +91,20 @@ char *print_errors(void)
     char *buffer = null;
     size_t errors_count = buf_len(errors);
     if (errors_count > 0)
-    {
-        buf_printf(buffer, "\n%zu errors:\n", errors_count);
+    {        
+        buf_printf(buffer, "\n%zu %s:\n\n", errors_count, errors_count == 1 ? "ERROR" : "ERRORS");
         for (size_t i = 0; i < errors_count; i++)
         {
             error_message msg = errors[i];
-            buf_printf(buffer, "- %s", msg.text);
             if (msg.pos.filename)
             {
-                buf_printf(buffer, " ");
+                buf_printf(buffer, "- ");
                 print_source_pos(&buffer, msg.pos);
+                buf_printf(buffer, " %s", msg.text);
+            }
+            else
+            {
+                buf_printf(buffer, "- %s", msg.text);
             }
             buf_printf(buffer, "\n");
         }
