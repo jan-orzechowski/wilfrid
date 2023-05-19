@@ -1,0 +1,220 @@
+﻿extern fn printf(str: char*, variadic) : int
+extern fn assert(condition: bool)
+extern fn allocate(size: ulong) : void*
+
+struct dummy
+{
+    data: char[512]
+}
+
+struct memory_arena
+{
+    stack_frames: ulong,
+    memory_block_count: ulong,
+    first_block: memory_arena_block*,
+    last_block: memory_arena_block*,
+}
+
+struct memory_arena_block
+{    
+    base_address: void*, // zamienić potem na char* żeby pozbyć się castów
+    max_size: ulong,
+    current_size: ulong,
+    next: memory_arena_block*,
+}
+
+fn main()
+{
+    let block_size : ulong = 1024
+
+    let arena := allocate_memory_arena(block_size)
+    assert(arena.first_block != null)
+
+    // allocate 50kb in 1kb blocks
+    for (let i := 0, i < 100, i++)
+    {
+        let size : ulong = size_of_type(dummy)
+        assert(size == 512 as ulong)
+        let new_data := push_size(arena, size) as dummy*
+        new_data.data[0] = i as char 
+    }
+
+    // travese blocks to see what's there
+    let block_count : ulong = 0
+    let block := arena.first_block
+    while (block)
+    {
+        assert(block.current_size == block_size)
+        let char_value : char = *(block.base_address as char*)
+        assert(char_value == block_count * 2)
+        block = block.next
+        block_count++
+    }
+
+    assert(block_count == 50 as ulong)
+
+    free_memory_arena(arena)
+}
+
+fn allocate_new_block(arena: memory_arena*, size: ulong): memory_arena_block*
+{
+    let new_block : memory_arena_block* = allocate(size + size_of_type(memory_arena_block) as ulong) as memory_arena_block*
+    assert(new_block != null)
+
+    new_block.base_address = (new_block as char* + size_of_type(memory_arena_block) as char*) as void*
+    new_block.max_size = size
+    new_block.current_size = 0
+   
+    if (arena.last_block)
+    {
+        arena.last_block.next = new_block
+        arena.last_block = new_block
+    }
+    else
+    {
+        arena.first_block = new_block
+        arena.last_block = new_block
+    }
+
+    arena.memory_block_count++
+
+    return new_block
+}
+
+fn allocate_memory_arena(block_size: ulong): memory_arena*
+{
+    let arena : memory_arena* = allocate(size_of_type(memory_arena) as ulong) as memory_arena*
+    allocate_new_block(arena, block_size)
+    return arena
+}
+
+fn get_remaining_space_in_block(block: memory_arena_block*): ulong
+{
+    let result : ulong = block.max_size - block.current_size
+    return result
+}
+
+fn free_memory_arena(arena: memory_arena*)
+{
+    if (arena == null)
+    {
+        return
+    }
+
+    let block_to_delete := arena.first_block
+    while (block_to_delete)
+    {
+        let temp := block_to_delete.next
+        delete block_to_delete
+        block_to_delete = temp
+    }
+
+    delete arena
+}
+
+fn push_size(arena: memory_arena*, size: ulong): void*
+{
+    assert(arena != null)
+    assert(size > 0 as ulong)
+    assert(size < arena.first_block.max_size)
+
+    let block := arena.last_block
+    if (block.max_size - block.current_size < size)
+    {
+        block = allocate_new_block(arena, block.max_size)
+    }
+
+    let result := block.base_address as char* + block.current_size
+    block.current_size += size
+    return result as void*
+}
+
+struct arena_stack_marker
+{
+    block: memory_arena_block*,
+    address: void*,
+}
+
+fn push_arena_stack(arena: memory_arena*): arena_stack_marker
+{
+    arena.stack_frames++
+    let current_address := arena.last_block.base_address as char* + arena.last_block.current_size
+    let result : arena_stack_marker = 
+    { 
+        block = arena.last_block,
+        address = current_address as void*
+    }
+    return result
+}
+
+fn get_arena_total_size(arena: memory_arena*): ulong
+{
+    let size : ulong = 0
+    let block = arena.first_block
+    while (block)
+    {
+        size += block.max_size //as ulong
+        block = block.next
+    }
+    return size
+}
+
+fn get_arena_used_size(arena: memory_arena*): ulong
+{
+    let size : ulong = 0
+    let block = arena.first_block
+    while (block)
+    {
+        size += block.current_size
+        block = block.next
+    }
+    return size
+}
+
+fn zero_memory_arena_block(block: memory_arena_block*, from_address: void*)
+{
+    let block_current_address : void* = (block.base_address as char* + block.current_size) as void*
+    let block_max_address : void* = (block.base_address as char* + block.max_size) as void*
+    assert(block_current_address < block_max_address)
+    assert(from_address > block.base_address)
+    assert(from_address < block_max_address)
+
+    zero_memory(from_address, block_current_address, 0 as char)
+    block.current_size = from_address as char* - block.base_address as char* - 1 as char*
+}
+
+fn zero_memory(from_address : void*, to_address : void*, value : char)
+{
+    let from := from_address as char*
+    let to := to_address as char*
+    for (let addr := from, addr < to, addr = addr + 1 as char*)
+    {
+        *addr = 0
+    }
+}
+
+fn pop_arena_stack(arena: memory_arena*, marker: arena_stack_marker)
+{    
+    assert(arena.stack_frames > 0 as ulong)
+    arena.stack_frames--
+
+    if (marker.block == arena.last_block)
+    {
+        zero_memory_arena_block(marker.block, marker.address)
+    }
+    else
+    {
+        zero_memory_arena_block(marker.block, marker.address)
+
+        let block_to_delete = marker.block.next
+        while (block_to_delete)
+        {
+            let temp = block_to_delete.next
+            delete block_to_delete
+            arena.memory_block_count--
+            block_to_delete = temp
+        }
+        marker.block.next = null
+        arena.last_block = marker.block
+    }
+}
