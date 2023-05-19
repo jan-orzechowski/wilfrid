@@ -28,7 +28,7 @@ void parse_file(char *filename, decl ***declarations_list)
     string_ref source = read_file_for_parsing(filename);
     if (source.str == null || source.length == 0)
     {
-        error("Failed to parse source file", (source_pos) { .filename = filename }, 0);
+        error_without_pos(xprintf("Source file '%s' doesn't exist.", filename));
         return;
     }
 
@@ -69,11 +69,18 @@ void compile_sources(char **sources, bool print_ast)
 
     if (print_ast)
     {
-        printf("\nOUTPUT AST:\n");
-        for (size_t i = 0; i < buf_len(all_declarations); i++)
+        if (buf_len(all_declarations) > 0)
         {
-            printf_decl_ast(all_declarations[i]);
-        }        
+            printf("\nGENERATED AST:\n");
+            for (size_t i = 0; i < buf_len(all_declarations); i++)
+            {
+                printf_decl_ast(all_declarations[i]);
+            }
+        }
+        else
+        {
+            printf("\nNO AST GENERATED\n");
+        } 
     }
 
     if (buf_len(errors) > 0)

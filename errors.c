@@ -56,10 +56,26 @@ void error(const char *error_text, source_pos pos, size_t length)
     buf_push(errors, message);
 }
 
+void error_without_pos(const char *error_text)
+{
+    error_message message =
+    {
+        .text = error_text,
+        .pos = { 0 },
+        .length = 0
+    };
+    buf_push(errors, message);
+}
+
 bool shorten_source_pos = false;
 
 void print_source_pos(char **buffer, source_pos pos)
 {
+    if (pos.filename == null)
+    {
+        return;
+    }
+
     if (shorten_source_pos)
     {
         buf_printf(*buffer, "('%s':%04zu:%02zu)", pos.filename, pos.line, pos.character);
