@@ -1082,7 +1082,12 @@ byte *eval_expression(expr *exp)
                     aggr = (byte*)*(uintptr_t *)aggr;
                 }
 
-                assert(aggr);
+                if (aggr == null)
+                {
+                    fatal("runtime error");
+                    break;
+                }
+
                 size_t field_offset = get_field_offset(aggr_type, exp->field.field_name);
                 result = aggr + field_offset;
 
@@ -1101,8 +1106,17 @@ byte *eval_expression(expr *exp)
 
             assert(arr_type->kind == TYPE_ARRAY || arr_type->kind == TYPE_POINTER);
             
-            debug_vm_print(exp->pos, "index expr - auto deref ptr %s", debug_print_vm_value(arr, arr_type));
-            arr = (byte *)*(uintptr_t *)arr;            
+            if (arr_type->kind == TYPE_POINTER)
+            {
+                debug_vm_print(exp->pos, "index expr - auto deref ptr %s", debug_print_vm_value(arr, arr_type));
+                arr = (byte *)*(uintptr_t *)arr;
+            }
+
+            if (arr == null)
+            {
+                fatal("runtime error");
+                break;
+            }
 
             byte *ind = eval_expression(exp->index.index_expr);
             type *ind_type = exp->index.index_expr->resolved_type;
