@@ -1075,7 +1075,8 @@ resolved_expr *resolve_expr_binary(expr *expr)
         return resolved_expr_invalid;
     }
 
-    cast_info cast = check_if_cast_needed(left->type, right->type, true, false);
+    bool is_any_const = (left->is_const || right->is_const);
+    cast_info cast = check_if_cast_needed(left->type, right->type, true, is_any_const);
     if (cast.kind == CAST_TYPES_INCOMPATIBLE)
     {
         error_in_resolving(
@@ -1959,8 +1960,11 @@ type *resolve_variable_decl(decl *d)
             {
                 insert_cast_expr(d->variable.expr, null, cast);
             }
+
+            result = declared_type;
+            return result;
         }
-       
+        
         // jedyny wyjątek dotyczy null
         if (expr->type->kind == TYPE_NULL)
         {
