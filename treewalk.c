@@ -448,9 +448,16 @@ void eval_binary_op(byte *dest, token_kind op, byte *left, byte *right, type *le
     {
         if (left_t->kind == TYPE_POINTER && right_t->kind == TYPE_POINTER)
         {
-            assert(compare_types(left_t->pointer.base_type, right_t->pointer.base_type));
-            *(uint64_t *)dest = eval_ulong_binary_op(op, *(uint64_t *)left, *(uint64_t *)right);
+            *(uint64_t *)dest = eval_ulong_binary_op(op, (uint64_t)left, (uint64_t)right);
         }
+        else if (left_t->kind == TYPE_POINTER && right_t == type_null)
+        {
+            *(uint64_t *)dest = eval_ulong_binary_op(op, (uint64_t)left, 0);
+        }
+        else if (right_t->kind == TYPE_POINTER && left_t == type_null)
+        {
+            *(uint64_t *)dest = eval_ulong_binary_op(op, 0, (uint64_t)right);
+        }        
         else
         {
             assert(left_t->kind == TYPE_POINTER || right_t->kind == TYPE_POINTER);
