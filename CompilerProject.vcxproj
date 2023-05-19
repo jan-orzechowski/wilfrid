@@ -157,6 +157,7 @@
     <Text Include="test\enum.txt" />
     <Text Include="test\globals.txt" />
     <Text Include="test\implicit_type_conversions.txt" />
+    <Text Include="test\pointer_arithmetic.txt" />
     <Text Include="test\size_of.txt" />
     <Text Include="test\structs.txt" />
     <Text Include="test\casts.txt" />

@@ -47,5 +47,6 @@
     <Text Include="examples\stack_vm.txt" />
     <Text Include="examples\memory_arena.txt" />
     <Text Include="test\implicit_type_conversions.txt" />
+    <Text Include="test\pointer_arithmetic.txt" />
   </ItemGroup>
 </Project>
