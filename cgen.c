@@ -1183,17 +1183,10 @@ void gen_common_includes(void)
     free(file_buf.str);
 }
 
-void c_gen(symbol **resolved_declarations, char *output_filename, char *output_error_log_filename, bool print_to_console)
+void c_gen(symbol **resolved_declarations, char *output_filename, bool print_to_console)
 {
     if (buf_len(errors) > 0)
-    {
-        if (print_to_console)
-        {
-            print_errors_to_console();
-        }
-        char *printed_errors = print_errors();
-        write_file(output_error_log_filename, printed_errors, buf_len(errors));
-        buf_free(printed_errors);
+    {        
         return;
     }
 

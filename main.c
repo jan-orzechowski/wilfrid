@@ -78,14 +78,19 @@ void compile_sources(char **sources, bool print_ast)
 
     if (buf_len(errors) > 0)
     {
+        // zmienić na parametr
         if (true)
         {
             print_errors_to_console();
         }
-        //char *printed_errors = print_errors();
-        //write_file(output_error_log_filename, printed_errors, buf_len(errors));
-        //buf_free(printed_errors);
-        return;       
+
+        // zmienić na parametr
+        if (true)
+        {
+            char *printed_errors = print_errors();
+            write_file("output/errors.log", printed_errors, buf_len(errors));
+            buf_free(printed_errors);
+        }
     }
     else
     {
@@ -94,7 +99,7 @@ void compile_sources(char **sources, bool print_ast)
 #if __EMSCRIPTEN__
         run_interpreter(resolved);
 #else
-        c_gen(resolved, "test/testcode.c", "errors.log", false);
+        c_gen(resolved, "output/testcode.c", false);
         run_interpreter(resolved);
 #endif
     }
@@ -221,7 +226,6 @@ int main(int arg_count, char **args)
         else if (options.sources > 0)
         {
             compile_sources(options.sources, options.print_ast);
-            print_errors_to_console();
         }
         else
         {

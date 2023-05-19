@@ -1919,15 +1919,14 @@ void eval_function(symbol *function_sym, byte *ret_value)
 
 void run_interpreter(symbol **resolved_decls)
 {
+    if (buf_len(errors) > 0)
+    {
+        return;
+    }
+    
     map_chain_grow(&vm_all_allocations, 16);
 
     shorten_source_pos = true;
-
-    if (buf_len(errors) > 0)
-    {
-        print_errors_to_console();
-        return;
-    }
 
     printf("\n=== TREEWALK INTERPRETER RUN ===\n\n");
 
