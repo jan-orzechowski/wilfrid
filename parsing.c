@@ -589,6 +589,12 @@ expr *parse_complex_expr(void)
         expr *left_side = result;
         if (is_token_kind(TOKEN_LEFT_PAREN))
         {
+            // nie ma to sensu po poprzednim wezwaniu funkcji
+            if (left_side && left_side->kind == EXPR_CALL)
+            {
+                return left_side;
+            }
+
             next_token();
 
             result = push_struct(arena, expr);

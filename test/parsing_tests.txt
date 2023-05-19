@@ -279,7 +279,7 @@ TEST:(var-decl x (|| (&& (cast (type bool) var1) (cast (type bool) var2)) (cast 
 
 CASE:fn f1 (x : int[16]*) { f2(&map as int, i as void*, (i + 1) as void*, x as int[8]*) }:END
 TEST:(fn-decl f1 (x (pointer (array (type int) 16)))
-  (f2 (cast (type int) (& map)) (cast (pointer (type void)) i) (cast (pointer (type void)) (+ i 1)) (cast (pointer (array (type int) 8)) x))
+  ((f2 (cast (type int) (& map)) (cast (pointer (type void)) i) (cast (pointer (type void)) (+ i 1)) (cast (pointer (array (type int) 8)) x)))
 ):END
 
 CASE:fn f() { delete x }:END
@@ -402,4 +402,14 @@ CASE:fn f(){
 TEST:(fn-decl f
   (var-decl x (array (type test_struct) 20) (compound ))
   (= (access-field val_int (access-index 1 (pointer-dereference x))) 6)
+):END
+
+CASE:fn main()
+{
+    assert(*arena != null)
+    (*arena) = null
+}:END
+TEST:(fn-decl main
+  ((assert (!= (pointer-dereference arena) null)))
+  (= (pointer-dereference arena) null)
 ):END
