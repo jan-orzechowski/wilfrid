@@ -1178,7 +1178,8 @@ void gen_common_includes(void)
 
     gen_printf(
 "#undef offsetof\n\
-#undef NULL\n");
+#undef NULL\n\
+#define char unsigned char\n");
 
 #if 0
     gen_printf(

@@ -202,7 +202,6 @@ void *reallocate(void *ptr, size_t num_bytes)
     return ___realloc___(ptr, num_bytes);
 }
 
-#define char unsigned char
 #define ulong unsigned long
 #define uint unsigned int
 
