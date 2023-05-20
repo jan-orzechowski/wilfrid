@@ -268,9 +268,42 @@ int main(int arg_count, char **args)
 
 #else 
 
-
-int main(int arg_count, char **args)
+typedef enum compiler_options
 {
+    COMPILER_OPTION_SHOW_AST = (1 << 0),
+    COMPILER_OPTION_C = (1 << 1),
+    COMPILER_OPTION_RUN = (1 << 2),
+    COMPILER_OPTION_RUN_VERBOSE = (1 << 3),
+    COMPILER_OPTION_HELP = (1 << 4),
+    COMPILER_OPTION_TEST = (1 << 5),
+} compiler_options;
+
+EM_JS(void, define_compiler_options, (), {
+    let COMPILER_OPTION_SHOW_AST = (1 << 0);
+    let COMPILER_OPTION_C = (1 << 1);
+    let COMPILER_OPTION_RUN = (1 << 2);
+    let COMPILER_OPTION_RUN_VERBOSE = (1 << 3);
+    let COMPILER_OPTION_HELP = (1 << 4);
+    let COMPILER_OPTION_TEST = (1 << 5);
+});
+
+extern int main(int arg_count, char **args)
+{
+    // empty main
+}
+
+extern void compile_input(int64_t flags)
+{
+    if (flags & COMPILER_OPTION_RUN)
+    {
+        printf("COMPILER_OPTION_RUN\n");
+    }
+
+    if (flags & COMPILER_OPTION_SHOW_AST)
+    {
+        printf("COMPILER_OPTION_SHOW_AST\n");
+    }
+
     allocate_memory();
 
     char **sources = null;
