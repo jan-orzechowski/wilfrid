@@ -1,0 +1,140 @@
+<!doctype html>
+<html Module="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Emscripten-Generated Code</title>
+    <style>
+      .emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
+      textarea.emscripten { font-family: monospace; width: 80%; }
+      div.emscripten { text-align: center; }
+      div.emscripten_border { border: 1px solid black; }
+    </style>
+  </head>
+  <body>
+    <textarea class="emscripten" id="output" rows="12"></textarea>
+    <script type='text/javascript'>
+        var Module = {
+            preRun: [],
+            postRun: [],
+            print: (function() {
+                var element = document.getElementById('output');
+                if (element) element.value = ''; // clear browser cache
+                return function(text) {
+                    if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');           
+                    console.log(text);
+                    if (element) {
+                      element.value += text + "\n";
+                      element.scrollTop = element.scrollHeight; // focus on bottom
+                    }
+                };
+            })()
+        };
+                        
+let path = "input.txt";
+let test_data =
+`
+extern fn printf(str: char*, variadic) : int
+extern fn assert(condition: bool)
+
+const static_array_length = 12
+
+struct list_holder
+{
+    list: int[]
+}
+
+fn print_list_stats(list: int[])
+{
+    let len := list.length()
+    let cap := list.capacity()
+    
+    printf("\nlist:\nlength: %d,\ncapacity:%d", len, cap)
+}
+
+fn append_twice(list: int[], element: int)
+{
+    list.add(element)
+    list.add(element)
+}
+
+fn main () 
+{ 
+    let some_list := new int[]
+    
+    let some_list_pointer_copy := some_list
+
+    let holder_one := new list_holder 
+    holder_one.list = some_list
+    
+    let holder_two := new list_holder 
+    holder_two.list = some_list
+
+    some_list.add(1)
+    some_list.add(2)
+    some_list.add(3)
+
+    holder_one.list.add(4)
+    holder_two.list.add(5)
+
+    assert(some_list[0] == 1)
+    assert(some_list[1] == 2)
+    assert(some_list[2] == 3)
+    assert(some_list[3] == 4)
+    assert(some_list[4] == 5)
+
+    assert(holder_one.list[0] == 1)
+    assert(holder_one.list[1] == 2)
+    assert(holder_one.list[2] == 3)
+    assert(holder_one.list[3] == 4)
+    assert(holder_one.list[4] == 5)
+
+    print_list_stats(holder_one.list)
+    print_list_stats(holder_two.list)
+
+    append_twice(holder_one.list, 6)
+    append_twice(holder_two.list, 6)
+
+    print_list_stats(some_list_pointer_copy)
+
+    if (some_list.add(4))
+    {
+        printf("\ntest if", 0)
+    }
+
+    for (let x := new int[], x.capacity() < 5, x.add(2))
+    {
+        printf("\ntest for", 0)
+    }
+
+    let auto_list := auto int[]
+
+    auto_list[0] = 1
+    auto_list[1] = 2 
+    auto_list[2] = 3
+
+    assert(auto_list[0] == 1)
+    assert(auto_list[1] == 2)
+    assert(auto_list[2] == 3)
+}
+`;
+
+    let main_called = false;
+
+    function run_test(){
+      FS.writeFile(path, test_data);
+      if ((FS.stat("input.txt").size == test_data.length)){
+        if (false == main_called){
+          Module.callMain();
+          main_called = true;
+        }
+        Module._compile_input(COMPILER_OPTION_RUN | COMPILER_OPTION_SHOW_AST);
+      } else{
+        console.error("file length is not equal")
+      }
+    }
+
+    </script>
+    {{{ SCRIPT }}}
+  </body>
+</html>
