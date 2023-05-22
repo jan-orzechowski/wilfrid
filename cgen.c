@@ -1213,6 +1213,8 @@ void c_gen(symbol **resolved_declarations, char *output_filename, bool print_to_
     }
 
     write_file(output_filename, gen_buf, buf_len(gen_buf));    
+
+    buf_free(gen_buf);    
 }
 
 char *get_typespec_mangled_name(typespec *typ)
