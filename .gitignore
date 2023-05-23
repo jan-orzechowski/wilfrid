@@ -32,6 +32,8 @@ bld
 [Oo]bj
 [Ll]og
 [Ll]ogs
+wasm
+output
 
 # Visual Studio 20152017 cacheoptions directory
 .vs
