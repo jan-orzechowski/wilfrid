@@ -155,6 +155,7 @@
     <Text Include="test\arrays.txt" />
     <Text Include="test\auto_dereference.txt" />
     <Text Include="test\enum.txt" />
+    <Text Include="test\function_overloading.txt" />
     <Text Include="test\globals.txt" />
     <Text Include="test\implicit_type_conversions.txt" />
     <Text Include="test\pointer_arithmetic.txt" />

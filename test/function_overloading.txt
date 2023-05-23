@@ -1,0 +1,33 @@
+extern fn printf(str: char*, variadic) : int
+extern fn assert(condition: bool)
+
+fn do_something(arg : ulong) : ulong
+{
+	printf("something done with a unsigned long integer", 1)
+	return arg * 2
+}
+
+fn do_something(arg : long) : long
+{
+	printf("something done with an long integer", 1)
+	return arg * -2
+}
+
+fn do_something() 
+{
+	printf("something done", 1)
+}
+
+fn main()
+{
+	let var_int   : int   = -1001
+	let var_long  : long  = -1002
+	let var_uint  : uint  = 1003
+	let var_ulong : ulong = 1004
+
+	do_something(var_int) // int is implicitly casted to long
+	do_something(var_long)
+	do_something(var_uint as ulong) // cast needed - ambiguous call, because uint can be promoted to long or ulong
+	do_something(var_ulong)
+	do_something()
+}

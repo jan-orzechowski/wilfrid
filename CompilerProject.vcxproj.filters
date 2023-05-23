@@ -48,5 +48,6 @@
     <Text Include="examples\memory_arena.txt" />
     <Text Include="test\implicit_type_conversions.txt" />
     <Text Include="test\pointer_arithmetic.txt" />
+    <Text Include="test\function_overloading.txt" />
   </ItemGroup>
 </Project>
