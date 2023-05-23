@@ -284,7 +284,7 @@ void resolve_test(void)
             return vec.x } ",
         "fn fun(i: int, j: int): int { j++ i++ return i + j }",
         "let x1 := {1,2} as v2",
-        "let y2 = fuu(fuu(7, x1), {3, 4})",
+        "let y2 = fuu(fuu(7, x1), {3, 4} as v2)",
         "fn fzz(x: int, y: int) : v2 { return {x + 1, y - 1} }",
         "fn fuu(x: int, v: v2) : int { return v.x + x } ",
         "fn ftest1(x: int): int { if (x) { return -x } else if (x % 2 == 0) { return x } else { return 0 } }",

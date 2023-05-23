@@ -266,6 +266,7 @@ int main(int arg_count, char **args)
         {
             run_all_tests();
             test_directory("test");
+            test_directory("examples");
         }
         else if (options.sources > 0)
         {
