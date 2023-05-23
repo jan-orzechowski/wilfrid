@@ -131,6 +131,23 @@ void compile_sources(char **sources, bool print_ast)
     buf_free(all_declarations);
 }
 
+void test_directory(char *path)
+{
+    char **source_files = get_source_files_in_dir_and_subdirs(path);
+    for (size_t i = 0; i < buf_len(source_files); i++)
+    {
+        char *test_file = source_files[i];
+        if (0 != strcmp(test_file, "test/parsing_tests.txt") && 0 != strcmp(test_file, "test/error_examples.txt"))
+        {
+            char **temp_buf = null;
+            buf_push(temp_buf, test_file);
+            compile_sources(temp_buf, true);
+            buf_free(temp_buf);
+        }
+    }
+    buf_free(source_files);
+}
+
 typedef struct cmd_arguments
 {
     char **sources;
@@ -246,6 +263,7 @@ int main(int arg_count, char **args)
         else if (options.test_mode)
         {
             run_all_tests();
+            test_directory("test");
         }
         else if (options.sources > 0)
         {
