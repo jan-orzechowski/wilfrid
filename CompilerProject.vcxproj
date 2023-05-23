@@ -149,9 +149,8 @@
   <ItemGroup>
     <Text Include="examples\memory_arena.n" />
     <Text Include="examples\stack_vm.n" />
-    <Text Include="interpreter\hashmap.n" />
-    <Text Include="interpreter\keywords.n" />
-    <Text Include="interpreter\tokens.n" />
+    <Text Include="test\hashmap.n" />
+    <Text Include="examples\nous_parser.n" />
     <Text Include="test\arrays.n" />
     <Text Include="test\auto_dereference.n" />
     <Text Include="test\enum.n" />

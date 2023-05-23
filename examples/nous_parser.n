@@ -1,4 +1,87 @@
-﻿enum token_kind
+﻿let struct_keyword: char*
+let enum_keyword: char*
+let union_keyword: char*
+let let_keyword: char*
+let fn_keyword: char*
+let const_keyword: char*
+let new_keyword: char*
+let auto_keyword: char*
+let delete_keyword: char*
+let sizeof_keyword: char*
+let as_keyword: char*
+let null_keyword: char*
+let true_keyword: char*
+let false_keyword: char*
+let break_keyword: char*
+let continue_keyword: char*
+let return_keyword: char*
+let if_keyword: char*
+let else_keyword: char*
+let while_keyword: char*
+let do_keyword: char*
+let for_keyword: char*
+let switch_keyword: char*
+let case_keyword: char*
+let default_keyword: char*
+let variadic_keyword: char*
+let extern_keyword: char*
+let first_keyword: char*
+let last_keyword: char*
+let keywords_list: char**
+
+fn intern_keyword(keyword: char*) : char*
+{
+    let interned := str_intern(keyword) 
+    buf_push(keywords_list, interned)
+    return interned
+}
+
+let keywords_initialized := false
+
+fn init_keywords()
+{    
+    if (false == keywords_initialized)
+    {
+        struct_keyword = intern_keyword("struct")
+        enum_keyword = intern_keyword("enum")
+        union_keyword = intern_keyword("union")   
+        let_keyword = intern_keyword("let")
+        fn_keyword = intern_keyword("fn")
+        sizeof_keyword = intern_keyword("sizeof")
+        const_keyword = intern_keyword("const")
+        new_keyword = intern_keyword("new")
+        auto_keyword = intern_keyword("auto")
+        delete_keyword = intern_keyword("delete")
+        as_keyword = intern_keyword("as")
+        null_keyword = intern_keyword("null")
+        true_keyword = intern_keyword("true")
+        false_keyword = intern_keyword("false")
+        break_keyword = intern_keyword("break")
+        continue_keyword = intern_keyword("continue")
+        return_keyword = intern_keyword("return")
+        if_keyword = intern_keyword("if")
+        else_keyword = intern_keyword("else")
+        while_keyword = intern_keyword("while")
+        do_keyword = intern_keyword("do")
+        for_keyword = intern_keyword("for")
+        switch_keyword = intern_keyword("switch")
+        case_keyword = intern_keyword("case")
+        default_keyword = intern_keyword("default")
+        variadic_keyword = intern_keyword("variadic")
+        extern_keyword = intern_keyword("extern")
+    }
+    first_keyword = struct_keyword
+    last_keyword = extern_keyword
+    keywords_initialized  = true
+}
+
+fn is_name_keyword(name: char*): bool
+{
+    let result := (name >= first_keyword && name <= last_keyword)
+    return result
+}
+
+enum token_kind
 {
     TOKEN_EOF,
     TOKEN_NEWLINE, // używany do synchronizacji w wypadku błędu parsowania
