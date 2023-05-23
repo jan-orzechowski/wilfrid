@@ -1508,6 +1508,81 @@ resolved_expr *resolve_special_case_constructors(expr *e)
     }
 }
 
+symbol **find_function_overload(symbol *first_overload_sym, type *receiver_type, resolved_expr **resolved_args, 
+    bool allow_implicit_casting, bool allow_variadic)
+{
+    assert(first_overload_sym);
+    assert(false == (allow_implicit_casting && allow_variadic));
+    
+    symbol **matching = null;
+
+    symbol *candidate = first_overload_sym;
+    while (candidate)
+    {
+        assert(candidate->type->kind == TYPE_FUNCTION);
+        type_function candidate_func = candidate->type->function;
+
+        if (false == allow_variadic && candidate_func.has_variadic_arg)
+        {
+            goto find_function_overload_next_candidate;
+        }
+
+        if (receiver_type)
+        {
+            if (false == compare_types(receiver_type, candidate_func.receiver_type))
+            {
+                goto find_function_overload_next_candidate;
+            }
+        }
+
+        if (buf_len(resolved_args) == 0)
+        {
+            if (candidate_func.param_count == 0)
+            {
+                buf_push(matching, candidate);
+            }
+        }
+
+        if (candidate_func.param_count == buf_len(resolved_args)
+            || (candidate_func.has_variadic_arg && buf_len(resolved_args)) >= candidate_func.param_count)
+        {
+            for (size_t i = 0; i < candidate_func.param_count; i++)
+            {                
+                resolved_expr *resolved_arg = resolved_args[i];
+                assert(resolved_arg->type);
+                type *expected_arg_type = candidate_func.param_types[i];
+
+                if (allow_implicit_casting)
+                {
+                    cast_info cast = check_if_cast_needed(resolved_arg->type, expected_arg_type, false, false);
+                    if (cast.kind == CAST_TYPES_INCOMPATIBLE)
+                    {
+                        goto find_function_overload_next_candidate;
+                    }
+                }
+                else
+                {
+                    if (false == compare_types(resolved_arg->type, expected_arg_type))
+                    {
+                        goto find_function_overload_next_candidate;
+                    }
+                }
+
+                buf_push(matching, candidate);
+                if (false == allow_variadic && false == allow_implicit_casting)
+                {
+                    return matching;
+                }
+            }
+        }
+
+find_function_overload_next_candidate:
+        candidate = candidate->next_overload;
+    }
+
+    return matching;
+}
+
 resolved_expr *resolve_call_expr(expr *e)
 {
     assert(e->kind == EXPR_CALL);
@@ -1525,7 +1600,6 @@ resolved_expr *resolve_call_expr(expr *e)
         return result;
     }
 
-    symbol *matching = null;
     resolved_expr *fn_expr = resolve_expr(e->call.function_expr);
         
     if (false == check_resolved_expr(fn_expr))
@@ -1546,81 +1620,78 @@ resolved_expr *resolve_call_expr(expr *e)
         return resolved_expr_invalid;
     }
 
-    symbol *candidate = fn_expr->type->symbol;
-    while (candidate)
+    resolved_expr **resolved_args = null;
+    for (size_t i = 0; i < e->call.args_num; i++)
     {
-        assert(candidate->type->kind == TYPE_FUNCTION);
-
-        if (fn_expr->type->function.receiver_type)
+        resolved_expr *resolved_arg_expr = resolve_expr(e->call.args[i]);
+        if (false == check_resolved_expr(resolved_arg_expr))
         {
-            if (fn_expr->type->function.receiver_type
-                != candidate->type->function.receiver_type)
-            {
-                goto candidate_check_next;
-            }
+            buf_free(resolved_args);
+            return resolved_expr_invalid;
         }
+        buf_push(resolved_args, resolved_arg_expr);
+    }
+    assert(buf_len(resolved_args) == e->call.args_num);
 
-        size_t arg_count = candidate->type->function.param_count;
-        if (arg_count == e->call.args_num
-            || candidate->type->function.has_variadic_arg)
+    type *method_receiver_type = null;
+    if (e->call.method_receiver)
+    {
+        resolved_expr *receiver_expr = resolve_expr(e->call.method_receiver);
+        if (false == check_resolved_expr(receiver_expr))
         {
-            for (size_t i = 0; i < arg_count; i++)
-            {
-                expr *arg_expr = e->call.args[i];
-                type *expected_param_type = candidate->type->function.param_types[i];
-                resolved_expr *resolved_arg_expr = resolve_expected_expr(arg_expr, expected_param_type, true);
-
-                if (false == check_resolved_expr(resolved_arg_expr))
-                {
-                    //error_in_resolving("Not all arguments to a function call could be resolved", e->pos);
-                    return resolved_expr_invalid;
-                }
-
-                if (false == compare_types(resolved_arg_expr->type, expected_param_type))
-                {
-                    goto candidate_check_next;
-                }
-            }
-
-            // w przypadku variadic potrzebujemy resolve pozostałych argumentów
-            if (e->call.args_num > arg_count)
-            {
-                for (size_t i = arg_count; i < e->call.args_num; i++)
-                {
-                    expr *arg_expr = e->call.args[i];
-                    resolved_expr *resolved_arg_expr = resolve_expected_expr(arg_expr, null, false);
-                }
-            }
-
-            // jeśli tu jesteśmy, to wszystkie argumenty zgadzają się
-            // variadic candidate jest użyty tylko wtedy, gdy żaden inny się nie zgadza
-            if (candidate->type->function.has_variadic_arg)
-            {
-                if (matching == null)
-                {
-                    matching = candidate;
-                }
-            }
-            else
-            {
-                matching = candidate;
-            }
+            buf_free(resolved_args);
+            return resolved_expr_invalid;
         }
-
-    candidate_check_next:
-
-        candidate = candidate->next_overload;
+        else
+        {
+            method_receiver_type = receiver_expr->type;
+        }
     }
 
-    if (matching == null)
+    symbol *first_candidate = fn_expr->type->symbol;
+    symbol **matching = find_function_overload(first_candidate, method_receiver_type, resolved_args, false, false);
+    if (buf_len(matching) == 0)
+    {
+        matching = find_function_overload(first_candidate, method_receiver_type, resolved_args, true, false);
+        if (buf_len(matching) == 0)
+        {
+            matching = find_function_overload(first_candidate, method_receiver_type, resolved_args, false, true);
+        }
+    }
+
+    if (buf_len(matching) == 0)
     {
         error_in_resolving("No overload is matching types of arguments in the function call", e->pos);
+        buf_free(resolved_args);
         return resolved_expr_invalid;
     }
 
-    e->call.resolved_function = matching;
+    if (buf_len(matching) > 1)
+    {
+        error_in_resolving("Ambiguous function call - more than one overload is matching passed arguments.", e->pos);
+        buf_free(resolved_args);
+        return resolved_expr_invalid;
+    }
+    
+    symbol *resolved_function = matching[0];
+    e->call.resolved_function = resolved_function;
 
-    result = get_resolved_rvalue_expr(matching->type->function.return_type);
+    // casty wstawiamy dopiero wtedy, gdy ustalimy już, które z przeciążeń wezwać
+    assert(resolved_function->type->function.param_count <= buf_len(resolved_args));
+    for (size_t i = 0; i < resolved_function->type->function.param_count; i++)
+    {
+        type *expected_arg_type = resolved_function->type->function.param_types[i];
+        type *resolved_arg = resolved_args[i]->type;
+        cast_info cast = check_if_cast_needed(resolved_arg, expected_arg_type, false, false);
+        assert(cast.kind != CAST_TYPES_INCOMPATIBLE);
+        assert(cast.kind == CAST_NO_CAST_NEEDED || cast.kind == CAST_LEFT);
+        if (cast.kind != CAST_NO_CAST_NEEDED)
+        {
+            insert_cast_expr(e->call.args[i], null, cast);
+        }
+    }
+    
+    result = get_resolved_rvalue_expr(resolved_function->type->function.return_type);
     return result;
 }
 
@@ -1941,7 +2012,7 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
     // przyda nam się podczas generowania kodu
     if (result && result->type)
     {
-        assert(e->resolved_type == null || e->resolved_type == result->type);
+        assert(e->resolved_type == null || compare_types(e->resolved_type, result->type));
         e->resolved_type = result->type;
     }
 
