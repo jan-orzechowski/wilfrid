@@ -23,6 +23,9 @@
 #include <emscripten/html5.h>
 #endif
 
+void allocate_memory(void);
+void clear_memory(void);
+
 void parse_file(char *filename, decl ***declarations_list)
 {
     string_ref source = read_file_for_parsing(filename);
@@ -46,7 +49,12 @@ void parse_directory(char *path, decl ***declarations_list)
     {
         char *filename = source_files[i];
         parse_file(filename, declarations_list);       
-    }       
+    }
+
+    for (size_t i = 0; i < buf_len(source_files); i++)
+    {
+        free(source_files[i]);
+    }
     buf_free(source_files);
 }
 
@@ -138,6 +146,7 @@ void test_directory(char *path)
     char **source_files = get_source_files_in_dir_and_subdirs(path);
     for (size_t i = 0; i < buf_len(source_files); i++)
     {
+        allocate_memory();
         char *test_file = source_files[i];
         if (0 != strcmp(test_file, "test/parsing_tests.n") && 0 != strcmp(test_file, "test/error_examples.n"))
         {
@@ -146,8 +155,14 @@ void test_directory(char *path)
             compile_sources(temp_buf, true);
             buf_free(temp_buf);
         }
+        clear_memory();
     }
-    buf_free(source_files);
+
+    for (size_t i = 0; i < buf_len(source_files); i++)
+    {
+        free(source_files[i]);
+    }
+    buf_free(source_files);    
 }
 
 typedef struct cmd_arguments
@@ -202,7 +217,7 @@ void allocate_memory(void)
     map_grow(&global_identifiers, 16);
 }
 
-void clear_memory()
+void clear_memory(void)
 {
     buf_free(all_tokens);
 
@@ -218,7 +233,7 @@ void clear_memory()
     buf_free(global_symbols_list);
     buf_free(ordered_global_symbols);
     buf_free(cached_pointer_types);
-   
+
     map_free(&global_symbols);
 
     memset(local_symbols, 0, MAX_LOCAL_SYMBOLS);
@@ -254,10 +269,11 @@ int main(int arg_count, char **args)
     treewalk_interpreter_test();
 #endif
 
-    for (size_t i = 0; i < 1000; i++)
+#if DEBUG_BUILD
+    debug_breakpoint;
+    for (size_t i = 0; i < 100; i++)
     {
-        allocate_memory();
-
+#endif
         if (options.help)
         {
             // po prostu wyrzucamy tekst do konsoli z predefiniowanego pliku
@@ -265,23 +281,28 @@ int main(int arg_count, char **args)
         }
         else if (options.test_mode)
         {
+            allocate_memory();
             run_all_tests();
+            clear_memory();
+            
             test_directory("test");
             test_directory("examples");
         }
         else if (options.sources > 0)
         {
+            allocate_memory();
             compile_sources(options.sources, options.print_ast);
+            clear_memory();
         }
         else
         {
             printf("No commands or source files provided.\n");
         }
 
-        clear_memory();
-
+#if DEBUG_BUILD
         debug_breakpoint;
     }
+#endif
 
     buf_free(options.sources);
 

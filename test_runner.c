@@ -418,41 +418,47 @@ void run_all_tests(void)
 
 void fuzzy_test(void)
 {
-    char *test_file = "test/constructors.n";
-    string_ref file_buf = read_file_for_parsing(test_file);
-    if (file_buf.str)
+    char **source_files = get_source_files_in_dir_and_subdirs("test");
+    for (size_t i = 0; i < buf_len(source_files); i++)
     {
-        unsigned int seed = (unsigned int)time(null);
-        srand(seed);
-
-        // podmieniamy na losowe znaki
-        size_t substitutions_count = file_buf.length / 30;
-        for (; substitutions_count > 0; substitutions_count--)
+        char *test_file = source_files[i];
+        string_ref file_buf = read_file_for_parsing(test_file);
+        if (file_buf.str)
         {
-            size_t char_index = (size_t)(get_random_01() * (file_buf.length - 1));
-            // chcemy kody ascii z przedziału 32-126
-            char new_letter = (char)(get_random_01() * (126 - 32)) + 32;
-            if (new_letter == '%')
+            unsigned int seed = (unsigned int)time(null);
+            srand(seed);
+
+            // podmieniamy na losowe znaki
+            size_t substitutions_count = file_buf.length / 30;
+            for (; substitutions_count > 0; substitutions_count--)
             {
-                new_letter = '_'; // żeby nie wchodziło w konflikty z printf
+                size_t char_index = (size_t)(get_random_01() * (file_buf.length - 1));
+                // chcemy kody ascii z przedziału 32-126
+                char new_letter = (char)(get_random_01() * (126 - 32)) + 32;
+                if (new_letter == '%')
+                {
+                    new_letter = '_'; // żeby nie wchodziło w konflikty z printf
+                }
+                file_buf.str[char_index] = new_letter;
             }
-            file_buf.str[char_index] = new_letter;
-        }
 
-        printf("Random seed: %d\n\n", seed);
-        printf("Original text:\n\n");
-        printf(file_buf.str);
-        printf("\n\n");
+            printf("Random seed: %d\n\n", seed);
+            printf("Original text:\n\n");
+            printf(file_buf.str);
+            printf("\n\n");
 
-        decl **decls = 0;
-        lex_and_parse(file_buf.str, "fuzzy test", &decls);
-        symbol **resolved = resolve(decls, false);
+            decl **decls = 0;
+            lex_and_parse(file_buf.str, "fuzzy test", &decls);
+            symbol **resolved = resolve(decls, false);
 
-        // tutaj dodać printf S expressions?
+            // tutaj dodać printf S expressions?
 
-        if (buf_len(errors) > 0)
-        {
-            print_errors_to_console();
+            if (buf_len(errors) > 0)
+            {
+                print_errors_to_console();
+            }
+
+            free(file_buf.str);
         }
     }
 }

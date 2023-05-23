@@ -105,8 +105,8 @@ void get_source_files_in_dir(char *path, char ***source_files_buf, char ***direc
 
 char **get_source_files_in_dir_and_subdirs(char *path)
 {
-    char **source_files = 0;
-    char **directories = 0;
+    char **source_files = null;
+    char **directories = null;
 
     get_source_files_in_dir(path, &source_files, &directories);
 
@@ -118,7 +118,12 @@ char **get_source_files_in_dir_and_subdirs(char *path)
         get_source_files_in_dir(dir_to_scan, &source_files, &directories);
     }
 
+    for (size_t i = 0; i < buf_len(directories); i++)
+    {
+        free(directories[i]);
+    }
     buf_free(directories);
+
     return source_files;
 }
 
@@ -205,7 +210,6 @@ void get_source_files_in_dir(char *path, char ***source_files_buf, char ***direc
         is_find_handle_valid = true;
     }
 
-    const char *default_parent_directory = str_intern("..");
     while (true)
     {        
         errno = 0;
@@ -221,14 +225,14 @@ void get_source_files_in_dir(char *path, char ***source_files_buf, char ***direc
             {
                 if (0 != strcmp(entry->d_name, ".."))
                 {
-                    buf_push(*directories_buf, str_intern(filename_buffer));
+                    buf_push(*directories_buf, strdup(filename_buffer));
                 }
             }
             else
             {
                 if (path_has_extension(filename_buffer, SOURCEFILE_EXTENSION))
                 {
-                    buf_push(*source_files_buf, str_intern(filename_buffer));
+                    buf_push(*source_files_buf, strdup(filename_buffer));
                 }
             }
         }
@@ -347,7 +351,6 @@ void get_source_files_in_dir(char *path, char ***source_files_buf, char ***direc
         is_find_handle_valid = true;
     }
 
-    const char *default_parent_directory = str_intern("..");
     while (true)
     {
         struct _finddata_t fileinfo = { 0 };
@@ -364,14 +367,14 @@ void get_source_files_in_dir(char *path, char ***source_files_buf, char ***direc
             {
                 if (0 != strcmp(fileinfo.name, ".."))
                 {
-                    buf_push(*directories_buf, str_intern(filename_buffer));
+                    buf_push(*directories_buf, _strdup(filename_buffer));
                 }
             }
             else
             {
                 if (path_has_extension(filename_buffer, SOURCEFILE_EXTENSION))
                 {
-                    buf_push(*source_files_buf, str_intern(filename_buffer));
+                    buf_push(*source_files_buf, _strdup(filename_buffer));
                 }
             }
         }
