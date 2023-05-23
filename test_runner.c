@@ -167,7 +167,7 @@ void test_parsing(void)
 
     test_parsing_single_case();
 
-    string_ref test_file = read_file_for_parsing("test/parsing_tests.txt");
+    string_ref test_file = read_file_for_parsing("test/parsing_tests.n");
     test_file_parsing_test(test_file, true);
     free(test_file.str);
 }
@@ -418,7 +418,7 @@ void run_all_tests(void)
 
 void fuzzy_test(void)
 {
-    char *test_file = "test/constructors.txt";
+    char *test_file = "test/constructors.n";
     string_ref file_buf = read_file_for_parsing(test_file);
     if (file_buf.str)
     {

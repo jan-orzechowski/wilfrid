@@ -2061,7 +2061,7 @@ void run_interpreter(symbol **resolved_decls)
 void treewalk_interpreter_test()
 {
     decl **all_declarations = null;
-    parse_file("test/auto_dereference.txt", &all_declarations);
+    parse_file("test/auto_dereference.n", &all_declarations);
     symbol **resolved = resolve(all_declarations, true);
     assert(all_declarations);
     assert(resolved);

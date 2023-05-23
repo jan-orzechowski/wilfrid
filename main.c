@@ -6,7 +6,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#define SOURCEFILE_EXTENSION "txt"
+#define SOURCEFILE_EXTENSION "n"
 
 #include "lexing.c"
 #include "ast_print.c"
@@ -139,7 +139,7 @@ void test_directory(char *path)
     for (size_t i = 0; i < buf_len(source_files); i++)
     {
         char *test_file = source_files[i];
-        if (0 != strcmp(test_file, "test/parsing_tests.txt") && 0 != strcmp(test_file, "test/error_examples.txt"))
+        if (0 != strcmp(test_file, "test/parsing_tests.n") && 0 != strcmp(test_file, "test/error_examples.n"))
         {
             char **temp_buf = null;
             buf_push(temp_buf, test_file);
@@ -245,8 +245,9 @@ int main(int arg_count, char **args)
 { 
     cmd_arguments options = parse_cmd_arguments(arg_count, args);
     options.print_ast = true;
-#if 1
-    buf_push(options.sources, "test/dynamic_lists.txt");
+#if 0
+    //buf_push(options.sources, "test/implicit_type_conversions.n");
+    buf_push(options.sources, "test/function_overloading.n");
 #elif 1
     options.test_mode = true;
 #else
@@ -328,7 +329,7 @@ extern void compile_input(int64_t flags)
     allocate_memory();
 
     char **sources = null;
-    buf_push(sources, "input.txt");
+    buf_push(sources, "input.n");
     compile_sources(sources, true);
 
     clear_memory();
