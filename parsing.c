@@ -1148,10 +1148,10 @@ stmt *parse_statement(void)
             s->kind = STMT_DELETE;
             s->pos = pos;
             next_token();
-            s->delete.expr = parse_complex_expr();
+            s->delete.expr = parse_unary_expr();
             if (s->delete.expr == null)
             {
-                parsing_error("Only simple expressions allowed in the delete statement");
+                parsing_error("Only simple expressions and expression with unary operators are allowed in the delete statement");
             }
         }
         else if (keyword == fn_keyword)
