@@ -63,13 +63,15 @@ void report_errors(void)
         print_errors_to_console();
     }
 
+#ifndef __EMSCRIPTEN__
     // zmienić na parametr
     if (true)
     {
         char *printed_errors = print_errors();
-        write_file("output/errors.log", printed_errors, buf_len(errors));
+        write_file("output/errors.log", printed_errors, buf_len(printed_errors));
         buf_free(printed_errors);
     }
+#endif
 }
 
 void compile_sources(char **sources, bool print_ast)
