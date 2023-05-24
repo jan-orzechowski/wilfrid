@@ -1,0 +1,1 @@
+Module["print"] = function (text) { print_to_output(text); };
