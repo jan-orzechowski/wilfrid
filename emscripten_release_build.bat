@@ -17,5 +17,20 @@ call emcc -std=c99 %warnings-options% %general-options% %release-options% main.c
 
 pause
 
-del C:\wamp64\www\nous /Q
-xcopy /s "wasm\release" C:\wamp64\www\nous
+REM a script to concatenate all examples into a JS file used on the website
+
+@echo off
+
+set output_js=wasm\release\examples.js
+echo. > %output_js%
+
+echo let all_examples = {}; >> %output_js%
+for %%I in ("examples\*") do (
+	echo let example_%%~nI = >> %output_js%
+	echo ` >> %output_js%
+	type "%%I" >> %output_js%
+	echo `; >> %output_js%
+	echo all_examples[^"example_%%~nI^"] = example_%%~nI; >> %output_js%
+)
+
+pause
