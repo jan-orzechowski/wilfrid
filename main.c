@@ -321,18 +321,24 @@ typedef enum compiler_options
     COMPILER_OPTION_TEST = (1 << 5),
 } compiler_options;
 
-EM_JS(void, define_compiler_options, (), {
-    let COMPILER_OPTION_SHOW_AST = (1 << 0);
-    let COMPILER_OPTION_C = (1 << 1);
-    let COMPILER_OPTION_RUN = (1 << 2);
-    let COMPILER_OPTION_RUN_VERBOSE = (1 << 3);
-    let COMPILER_OPTION_HELP = (1 << 4);
-    let COMPILER_OPTION_TEST = (1 << 5);
+const char *emscripten_input_path = "input.n";
+
+EM_JS(void, define_compiler_constants_in_js, (void), {
+    COMPILER_OPTION_SHOW_AST = (1 << 0);
+    COMPILER_OPTION_C = (1 << 1);
+    COMPILER_OPTION_RUN = (1 << 2);
+    COMPILER_OPTION_RUN_VERBOSE = (1 << 3);
+    COMPILER_OPTION_HELP = (1 << 4);
+    COMPILER_OPTION_TEST = (1 << 5);
+
+    COMPILER_INPUT_PATH = "input.n";
+    COMPILER_MAIN_CALLED = true;
 });
 
 extern int main(int arg_count, char **args)
 {
-    // empty main
+    define_compiler_constants_in_js();
+    return 1;
 }
 
 extern void compile_input(int64_t flags)
@@ -350,7 +356,7 @@ extern void compile_input(int64_t flags)
     allocate_memory();
 
     char **sources = null;
-    buf_push(sources, "input.n");
+    buf_push(sources, emscripten_input_path);
     compile_sources(sources, true);
 
     clear_memory();
