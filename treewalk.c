@@ -813,6 +813,110 @@ byte *eval_binary_expression(expr *exp, byte *result)
 
 byte *eval_stub_expression(byte *result, expr *exp);
 
+byte *eval_function_call(expr *exp, byte *result)
+{
+    assert(exp->kind == EXPR_CALL);
+
+    // specjalny przypadek na razie
+    if (exp->call.resolved_function->name == str_intern("printf"))
+    {
+        // na razie tylko w debug, ponieważ opiera się na debug_print_vm_value
+#if DEBUG_BUILD
+        assert(exp->call.args_num >= 2);
+        char *format = exp->call.args[0]->string_value;
+
+        assert(exp->call.args[1]->resolved_type);
+        byte *val = eval_expression(exp->call.args[1]);
+        char *val_str = debug_print_vm_value(val, exp->call.args[1]->resolved_type);
+
+        debug_vm_simple_print("--------------------------- PRINTF CALL: format: %s, vals: %s\n", format, val_str);
+#endif
+    }
+    else if (exp->call.resolved_function->name == str_intern("assert"))
+    {
+        assert(exp->call.args_num == 1);
+        assert(exp->call.args[0]->resolved_type);
+        byte *val = eval_expression(exp->call.args[0]);
+        bool passed = is_non_zero(val, get_type_size(exp->call.args[0]->resolved_type));
+        debug_vm_simple_print("--------------------------- ASSERT: %s\n", passed ? "PASSED" : "FAILED");
+        if (false == passed)
+        {
+            failed_asserts++;
+        }
+    }
+    else if (exp->call.resolved_function->name == str_intern("allocate"))
+    {
+        assert(exp->call.args_num == 1);
+        assert(exp->call.args[0]->resolved_type);
+
+        byte *val = eval_expression(exp->call.args[0]);
+        size_t size = *(int64_t *)val;
+        assert(size < megabytes(100));
+
+        uintptr_t ptr = (uintptr_t)xcalloc(size);
+        copy_vm_val(result, (byte *)&ptr, sizeof(uintptr_t));
+        map_chain_put(&vm_all_allocations, ptr, false);
+
+        debug_vm_print(exp->pos, "allocation at %p, via 'allocate', size %zu",
+            (void *)ptr, size);
+    }
+    else
+    {
+        assert(exp->call.resolved_function);
+        assert(exp->call.resolved_function->type);
+
+        debug_vm_print(exp->pos, "FUNCTION CALL - %s - enter", exp->call.resolved_function->name);
+
+        byte **arg_vals = null;
+        type **arg_types = null;
+        char **arg_names = null;
+        if (exp->call.method_receiver)
+        {
+            byte *arg_val = eval_expression(exp->call.method_receiver);
+            buf_push(arg_vals, arg_val);
+            buf_push(arg_types, exp->call.method_receiver->resolved_type);
+            buf_push(arg_names, exp->call.resolved_function->decl->function.method_receiver->name);
+        }
+
+        for (size_t i = 0; i < exp->call.args_num; i++)
+        {
+            expr *arg_expr = exp->call.args[i];
+            byte *arg_val = eval_expression(arg_expr);
+            buf_push(arg_vals, arg_val);
+            buf_push(arg_types, exp->call.resolved_function->type->function.param_types[i]);
+            buf_push(arg_names, exp->call.resolved_function->decl->function.params.params[i].name);
+        }
+
+        assert(buf_len(arg_vals) == exp->call.args_num + (exp->call.method_receiver ? 1 : 0));
+        assert(exp->call.args_num == exp->call.resolved_function->type->function.param_count);
+
+        result = push_identifier_on_stack(null, exp->resolved_type);
+
+        byte *marker = enter_vm_stack_scope();
+        {
+            for (size_t i = 0; i < buf_len(arg_vals); i++)
+            {
+                const char *name = arg_names[i];
+                type *type = arg_types[i];
+                byte *arg_val = push_identifier_on_stack(name, type);
+                copy_vm_val(arg_val, arg_vals[i], get_type_size(type));
+            }
+
+            eval_function(exp->call.resolved_function, result);
+        }
+        leave_vm_stack_scope(marker);
+
+        buf_free(arg_vals);
+        buf_free(arg_types);
+        buf_free(arg_names);
+
+        debug_vm_print(exp->pos, "FUNCTION CALL - %s - exit", exp->call.resolved_function->name);
+        debug_vm_print(exp->pos, "returned value from function call: %s", debug_print_vm_value(result, exp->resolved_type));
+    }
+
+    return result;
+}
+
 byte *eval_expression(expr *exp)
 {
     assert(exp);
@@ -942,88 +1046,7 @@ byte *eval_expression(expr *exp)
         break;
         case EXPR_CALL:
         {
-            // specjalny przypadek na razie
-            if (exp->call.resolved_function->name == str_intern("printf"))
-            {
-                // na razie tylko w debug, ponieważ opiera się na debug_print_vm_value
-#if DEBUG_BUILD
-                assert(exp->call.args_num >= 2);
-                char *format = exp->call.args[0]->string_value;
-
-                assert(exp->call.args[1]->resolved_type);
-                byte *val = eval_expression(exp->call.args[1]);
-                char *val_str = debug_print_vm_value(val, exp->call.args[1]->resolved_type);
-
-                debug_vm_simple_print("--------------------------- PRINTF CALL: format: %s, vals: %s\n", format, val_str);
-#endif
-            }
-            else if (exp->call.resolved_function->name == str_intern("assert"))
-            {
-                assert(exp->call.args_num == 1);
-                assert(exp->call.args[0]->resolved_type);
-                byte *val = eval_expression(exp->call.args[0]);
-                bool passed = is_non_zero(val, get_type_size(exp->call.args[0]->resolved_type));
-                debug_vm_simple_print("--------------------------- ASSERT: %s\n", passed ? "PASSED" : "FAILED");
-                if (false == passed)
-                {
-                    failed_asserts++;
-                }
-            }
-            else if (exp->call.resolved_function->name == str_intern("allocate"))
-            {
-                assert(exp->call.args_num == 1);
-                assert(exp->call.args[0]->resolved_type);
-
-                byte *val = eval_expression(exp->call.args[0]);
-                size_t size = *(int64_t *)val;
-                assert(size < megabytes(100));
-
-                uintptr_t ptr = (uintptr_t)xcalloc(size);
-                copy_vm_val(result, (byte *)&ptr, sizeof(uintptr_t));
-                map_chain_put(&vm_all_allocations, ptr, false);
-
-                debug_vm_print(exp->pos, "allocation at %p, via 'allocate', size %zu",
-                    (void *)ptr, size);
-            }
-            else
-            {
-                assert(exp->call.resolved_function);
-                assert(exp->call.resolved_function->type);
-
-                debug_vm_print(exp->pos, "FUNCTION CALL - %s - enter", exp->call.resolved_function->name);
-
-                byte **arg_vals = null;
-                for (size_t i = 0; i < exp->call.args_num; i++)
-                {
-                    expr *arg_expr = exp->call.args[i];
-                    byte *arg_val = eval_expression(arg_expr);
-                    buf_push(arg_vals, arg_val);
-                }
-
-                assert(buf_len(arg_vals) == exp->call.args_num);
-                assert(exp->call.args_num == exp->call.resolved_function->type->function.param_count);
-
-                result = push_identifier_on_stack(null, exp->resolved_type);
-
-                byte *marker = enter_vm_stack_scope();
-                {
-                    for (size_t i = 0; i < buf_len(arg_vals); i++)
-                    {
-                        const char *name = exp->call.resolved_function->decl->function.params.params[i].name;
-                        type *t = exp->call.resolved_function->type->function.param_types[i];
-                        
-                        byte *arg_val = push_identifier_on_stack(name, t);
-                        copy_vm_val(arg_val, arg_vals[i], get_type_size(t));
-                    }
-
-                    eval_function(exp->call.resolved_function, result);
-                }
-                leave_vm_stack_scope(marker);
-                buf_free(arg_vals);
-
-                debug_vm_print(exp->pos, "FUNCTION CALL - %s - exit", exp->call.resolved_function->name);
-                debug_vm_print(exp->pos, "returned value from function call: %s", debug_print_vm_value(result, exp->resolved_type));
-            }
+            result = eval_function_call(exp, result);
         }
         break;
         case EXPR_FIELD:

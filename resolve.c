@@ -2180,9 +2180,10 @@ type *resolve_function_decl(decl *d)
         resolved_return_type = resolve_typespec(d->function.return_type);
     }
 
+    type *resolved_receiver_type = null;
     if (d->function.method_receiver)
     {
-        resolve_typespec(d->function.method_receiver->type);
+        resolved_receiver_type = resolve_typespec(d->function.method_receiver->type);
     }
 
     bool variadic_declared = false;
@@ -2201,19 +2202,19 @@ type *resolve_function_decl(decl *d)
         {           
             if (d->function.is_extern == false)
             {
-                error_in_resolving("Variadic allowed only in extern functions", d->pos);
+                error_in_resolving("Variadic argument is allowed only in extern functions", d->pos);
                 return type_invalid;
             }
             else
             {                
                 if (variadic_declared)
                 {
-                    error_in_resolving("There can only be one variadic argument", d->pos);
+                    error_in_resolving("There can be only one variadic argument", d->pos);
                     return type_invalid;
                 }
                 else if (i < args->param_count - 1)
                 {
-                    error_in_resolving("Variadic must be the last argument", d->pos);
+                    error_in_resolving("Variadic argument must be the last one", d->pos);
                     return type_invalid;
                 }
                 else
@@ -2227,6 +2228,7 @@ type *resolve_function_decl(decl *d)
     type *result = get_function_type(resolved_args, resolved_return_type);
     buf_free(resolved_args);
 
+    result->function.receiver_type = resolved_receiver_type;
     result->function.has_variadic_arg = variadic_declared;
     result->function.is_extern = d->function.is_extern;
 
