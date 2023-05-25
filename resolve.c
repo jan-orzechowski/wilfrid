@@ -970,7 +970,9 @@ resolved_expr *resolve_expr_unary(expr *expr)
             operand = array_to_pointer_decay(operand);
             if (type->kind != TYPE_POINTER)
             {
-                error_in_resolving("Cannot dereference non-pointer type", expr->pos);
+                error_in_resolving(xprintf(
+                    "Cannot dereference non-pointer type: %s",
+                    pretty_print_type_name(type, false)), expr->pos);
                 return resolved_expr_invalid;
             }
             result = get_resolved_lvalue_expr(type->pointer.base_type);

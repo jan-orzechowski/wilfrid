@@ -106,9 +106,13 @@ char *_debug_print_vm_value(byte *val, type *typ)
             snprintf(debug_print_buffer, debug_print_buffer_size, "%lld", *(int64_t*)val);
         }
         break;
+        case TYPE_CHAR:
+        {
+            snprintf(debug_print_buffer, debug_print_buffer_size, "%u", *(uint8_t *)val);
+        }
+        break;
         case TYPE_BOOL:
         case TYPE_NULL:
-        case TYPE_CHAR:
         case TYPE_UINT:
         {
             snprintf(debug_print_buffer, debug_print_buffer_size, "%u", *(uint32_t *)val);
@@ -121,7 +125,7 @@ char *_debug_print_vm_value(byte *val, type *typ)
         break;
         case TYPE_POINTER:
         {
-            snprintf(debug_print_buffer, debug_print_buffer_size, "%p (%llu)", (void *)val, *(uint64_t *)val);
+            snprintf(debug_print_buffer, debug_print_buffer_size, "%p (%llu)", (void *)val, (uint64_t)val);
         }
         break;
         case TYPE_FLOAT:
@@ -444,20 +448,21 @@ void eval_binary_op(byte *dest, token_kind op, byte *left, byte *right, type *le
     assert(right);
     assert(left_t);
     assert(right_t);
-
-    if (left_t != right_t)
+    
+    if (left_t != right_t 
+        && (left_t->kind == TYPE_POINTER || right_t->kind == TYPE_POINTER))
     {
         if (left_t->kind == TYPE_POINTER && right_t->kind == TYPE_POINTER)
         {
-            *(uint64_t *)dest = eval_ulong_binary_op(op, (uint64_t)left, (uint64_t)right);
+            *(uint64_t *)dest = eval_ulong_binary_op(op, *(uint64_t *)left, *(uint64_t *)right);
         }
         else if (left_t->kind == TYPE_POINTER && right_t == type_null)
         {
-            *(uint64_t *)dest = eval_ulong_binary_op(op, (uint64_t)left, 0);
+            *(uint64_t *)dest = eval_ulong_binary_op(op, *(uint64_t *)left, 0);
         }
         else if (right_t->kind == TYPE_POINTER && left_t == type_null)
         {
-            *(uint64_t *)dest = eval_ulong_binary_op(op, 0, (uint64_t)right);
+            *(uint64_t *)dest = eval_ulong_binary_op(op, 0, *(uint64_t *)right);
         }        
         else
         {
@@ -541,7 +546,7 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
             {
                 *(int32_t *)new_val = (int32_t)*(int64_t *)old_val;
             }
-            else if (old_type == type_ulong)
+            else if (old_type == type_ulong || old_type->kind == TYPE_NULL)
             {
                 *(int32_t *)new_val = (int32_t)*(uint64_t *)old_val;
             }
@@ -582,7 +587,7 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
             {
                 *(int64_t *)new_val = (int64_t)*(int64_t *)old_val;
             }
-            else if (old_type == type_ulong)
+            else if (old_type == type_ulong || old_type->kind == TYPE_NULL)
             {
                 *(int64_t *)new_val = (int64_t)*(uint64_t *)old_val;
             }
@@ -624,7 +629,7 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
             {
                 *(uint32_t *)new_val = (uint32_t)*(int64_t *)old_val;
             }
-            else if (old_type == type_ulong)
+            else if (old_type == type_ulong || old_type->kind == TYPE_NULL)
             {
                 *(uint32_t *)new_val = (uint32_t)*(uint64_t *)old_val;
             }
@@ -650,7 +655,9 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
             }
         }
         break;
+        case TYPE_NULL:
         case TYPE_ULONG:
+        case TYPE_POINTER:
         {
             if (old_type == type_int)
             {
@@ -664,7 +671,7 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
             {
                 *(uint64_t *)new_val = (uint64_t)*(int64_t *)old_val;
             }
-            else if (old_type == type_ulong)
+            else if (old_type == type_ulong || old_type->kind == TYPE_NULL)
             {
                 *(uint64_t *)new_val = (uint64_t)*(uint64_t *)old_val;
             }
@@ -704,7 +711,7 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
             {
                 *(float *)new_val  = (float)*(int64_t *)old_val;
             }
-            else if (old_type == type_ulong)
+            else if (old_type == type_ulong || old_type->kind == TYPE_NULL)
             {
                 *(float *)new_val  = (float)*(uint64_t *)old_val;
             }
@@ -730,44 +737,7 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
             }
         }
         break;
-        case TYPE_POINTER:
-        {
-            if (old_type == type_int)
-            {
-                *(uintptr_t *)new_val = (uintptr_t)*(int32_t *)old_val;
-            }
-            else if (old_type == type_uint)
-            {
-                *(uintptr_t *)new_val = (uintptr_t)*(uint32_t *)old_val;
-            }
-            else if (old_type == type_long)
-            {
-                *(uintptr_t *)new_val = (uintptr_t)*(int64_t *)old_val;
-            }
-            else if (old_type == type_ulong)
-            {
-                *(uintptr_t *)new_val = (uintptr_t)*(uint64_t *)old_val;
-            }
-            else if (old_type == type_float)
-            {
-                *(uintptr_t *)new_val = (uintptr_t)*(float *)old_val;
-            }
-            else if (old_type->kind == TYPE_POINTER)
-            {
-                *(uintptr_t *)new_val = (uintptr_t)*(uintptr_t *)old_val;;
-            }
-            else if (old_type == type_char)
-            {
-                *(uintptr_t *)new_val = (uintptr_t)*(unsigned char *)old_val;
-            }
-            else
-            {
-                fatal("unimplemented");
-            }
-        } 
-        break; 
-
-        case TYPE_NULL: 
+     
         case TYPE_STRUCT:
         case TYPE_UNION: 
         case TYPE_ARRAY: 
@@ -776,7 +746,7 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
         
         default:
         {
-            fatal("unimplemented");
+            fatal("runtime error - cast not allowed");
         }
         break;
     }
@@ -993,33 +963,29 @@ byte *eval_expression(expr *exp)
             {       
                 assert(operand_t->kind == TYPE_POINTER);
                 assert(operand_t->pointer.base_type);
-
-                debug_vm_print(exp->pos, "deref ptr %s", 
-                    debug_print_vm_value(operand, operand_t));
-
+                
                 result = (byte *)*(uintptr_t *)operand;
                 
-                debug_vm_print(exp->pos, "result is val %s", 
-                    debug_print_vm_value(result, exp->resolved_type));
+                debug_vm_print(exp->pos, "deref ptr %s, result is %s", 
+                    debug_print_vm_value(operand, operand_t),
+                    debug_print_vm_value(result, exp->resolved_type));                
             }
             else if (exp->unary.operator == TOKEN_BITWISE_AND)
             {
                 assert(exp->resolved_type->kind == TYPE_POINTER);
                 assert(exp->resolved_type->pointer.base_type);
 
-                debug_vm_print(exp->pos, "address of val %s",
-                    debug_print_vm_value(operand, operand_t));
-
                 copy_vm_val(result, (byte *)&operand, sizeof(byte *));
-
-                debug_vm_print(exp->pos, "result is ptr %s", 
+            
+                debug_vm_print(exp->pos, "address of val %s, result is ptr %s",
+                    debug_print_vm_value(operand, operand_t),
                     debug_print_vm_value(result, exp->resolved_type));
             }            
             else
             {
                 eval_unary_op(result, exp->unary.operator, operand, operand_t);
 
-                debug_vm_print(exp->pos, "operation %s on %s, result %s",
+                debug_vm_print(exp->pos, "unary operation %s on %s, result is %s",
                     get_token_kind_name(exp->unary.operator),
                     debug_print_vm_value(operand, operand_t),
                     debug_print_vm_value(result, exp->resolved_type));
@@ -1320,6 +1286,9 @@ byte *eval_stub_expression(byte *result, expr *exp)
             }
 
             copy_vm_val(result, (byte *)&new_ptr_val, sizeof(uintptr_t));
+
+            assert((*(uintptr_t *)result - old_ptr_val) == (int_operand * ptr_base_type_size)
+                || (*(uintptr_t *)result - old_ptr_val) == -(int64_t)(int_operand * ptr_base_type_size));
 
             debug_vm_print(exp->pos, 
                 "pointer arithmetic operation %s on %s and %s (base type size: %zu), result %s",
