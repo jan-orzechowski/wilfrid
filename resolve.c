@@ -316,16 +316,14 @@ void insert_cast_expr(expr *left_expr, expr *right_expr, cast_info cast)
     {
         case CAST_LEFT:
         {
-            assert(left_expr)
-            assert(cast.type);
+            assert(false == compare_types(left_expr->resolved_type, cast.type));
             plug_stub_expr(left_expr, STUB_EXPR_CAST, cast.type);
             left_expr->stub.cast_kind = cast.kind;
         }
         break;
         case CAST_RIGHT:
-        {
-            assert(right_expr);
-            assert(cast.type);
+        {            
+            assert(false == compare_types(right_expr->resolved_type, cast.type));
             plug_stub_expr(right_expr, STUB_EXPR_CAST, cast.type);
             right_expr->stub.cast_kind = cast.kind;
         }
@@ -1113,8 +1111,31 @@ resolved_expr *resolve_expr_binary(expr *expr)
         return resolved_expr_invalid;
     }
 
-    bool is_any_const = (left->is_const || right->is_const);
-    cast_info cast = check_if_cast_needed(left->type, right->type, true, is_any_const);
+    cast_info cast = { .kind = CAST_NO_CAST_NEEDED };
+    if (left->is_const && false == right->is_const)
+    {        
+        bool allow_forcing = (left->val >= 0 && get_type_size(right->type) >= get_type_size(left->type));
+        cast = check_if_cast_needed(left->type, right->type, false, allow_forcing);
+    }
+    else if (right->is_const && false == left->is_const)
+    {
+        bool allow_forcing = (right->val >= 0 && get_type_size(left->type) >= get_type_size(right->type));
+        cast = check_if_cast_needed(right->type, left->type, false, allow_forcing);
+        if (cast.kind == CAST_LEFT)
+        {            
+            cast.kind = CAST_RIGHT;
+        }
+    }
+    else
+    {
+        cast = check_if_cast_needed(left->type, right->type, true, false);
+    }
+    
+    if ((left->is_const || right->is_const) && cast.kind == CAST_TYPES_INCOMPATIBLE)
+    {
+        cast = check_if_cast_needed(left->type, right->type, true, false);
+    }
+    
     if (cast.kind == CAST_TYPES_INCOMPATIBLE)
     {
         error_in_resolving(xprintf(
@@ -1127,6 +1148,12 @@ resolved_expr *resolve_expr_binary(expr *expr)
     else
     {
         insert_cast_expr(expr->binary.left, expr->binary.right, cast);
+    }
+
+    type *result_type = left->type;
+    if (cast.kind == CAST_LEFT || cast.kind == CAST_RIGHT)
+    {
+        result_type = cast.type;
     }
 
     switch (op)
@@ -1158,19 +1185,15 @@ resolved_expr *resolve_expr_binary(expr *expr)
         }
         break;
     };
-        
-    if (is_comparison_operation(op))
-    {
-        result = get_resolved_rvalue_expr(type_bool);
-    }
-    else if (left->is_const && right->is_const)
+
+    if (left->is_const && right->is_const)
     {
         int64_t const_value = eval_long_binary_op(op, left->val, right->val);
         result = get_resolved_const_expr(const_value);
     }
     else
     {
-        result = get_resolved_rvalue_expr(left->type);
+        result = get_resolved_rvalue_expr(result_type);
     }
 
     return result;
@@ -2019,6 +2042,17 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
     if (stub_kind != STUB_EXPR_NONE)
     {
         plug_stub_expr(e, stub_kind, e->resolved_type);
+    }
+
+    // udogodnienie - rezultat porównań to zawsze typ bool, a nie typ porównywany
+    if (e->kind == EXPR_BINARY 
+        && is_comparison_operation(e->binary.operator)
+        && result->type->kind != TYPE_BOOL)
+    {
+        cast_info bool_cast = { .kind = CAST_LEFT, .type = type_bool };
+        e->resolved_type = result->type;
+        insert_cast_expr(e, null, bool_cast);
+        result->type = type_bool;
     }
 
     return result;

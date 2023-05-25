@@ -510,44 +510,6 @@ void eval_binary_op(byte *dest, token_kind op, byte *left, byte *right, type *le
     }
 }
 
-void eval_binary_op_with_bool_casting(token_kind op, byte* dest, byte* left, byte* right, type* left_t, type* right_t)
-{
-    assert(dest);
-    assert(left);
-    assert(right);
-    assert(left_t);
-    assert(right_t);
-
-    // bool i inny typ, np. ulong mogą się różnić rozmiarem
-    if (is_comparison_operation(op))
-    {
-        byte *temp = push_identifier_on_stack(null, left_t);
-        eval_binary_op(temp, op, left, right, left_t, right_t);
-        uint64_t bool_result = 0;
-
-        switch (left_t->kind)
-        {
-            case TYPE_FLOAT:
-            {
-                bool_result = (*(float *)temp != 0.0f ? 1 : 0);
-            }
-            break;
-            default:
-            {
-                bool_result = (*temp != 0 ? 1 : 0);
-            }
-            break;
-        }
-
-        assert(get_type_size(left_t) >= get_type_size(type_bool));
-        copy_vm_val(dest, (byte *)&bool_result, get_type_size(type_bool));
-    }
-    else
-    {
-        eval_binary_op(dest, op, left, right, left_t, right_t);
-    }
-}
-
 void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_type)
 {
     assert(new_val);
@@ -832,12 +794,13 @@ byte *eval_binary_expression(expr *exp, byte *result)
     type *right_t = exp->binary.right->resolved_type;
     assert(right_t);
     assert(compare_types(left_t, right_t));
+    assert(compare_types(left_t, exp->resolved_type));
 
     size_t left_size = get_type_size(left_t);
     size_t right_size = get_type_size(right_t);
     assert(left_size == right_size);
 
-    eval_binary_op_with_bool_casting(exp->binary.operator, result, left, right, left_t, right_t);
+    eval_binary_op(result, exp->binary.operator, left, right, left_t, right_t);
 
     debug_vm_print(exp->pos, "operation %s on %s and %s, result %s",
         get_token_kind_name(exp->binary.operator),
@@ -1291,7 +1254,13 @@ byte *eval_stub_expression(byte *result, expr *exp)
         case STUB_EXPR_CAST:
         {
             byte *old_val = eval_expression(orig_exp);
-            perform_cast(result, orig_exp->resolved_type->kind, old_val, exp->resolved_type);
+            perform_cast(result, exp->resolved_type->kind, old_val, orig_exp->resolved_type);
+
+            debug_vm_print(exp->pos, "implicit cast %s (value: %s) to %s (result value: %s)",
+                pretty_print_type_name(orig_exp->resolved_type, false),
+                debug_print_vm_value(old_val, orig_exp->resolved_type),
+                pretty_print_type_name(exp->resolved_type, false),
+                debug_print_vm_value(result, exp->resolved_type));
         }
         break;
         case STUB_EXPR_POINTER_ARITHMETIC_BINARY:
