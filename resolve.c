@@ -329,17 +329,6 @@ void insert_cast_expr(expr *left_expr, expr *right_expr, cast_info cast)
             right_expr->stub.cast_kind = cast.kind;
         }
         break;
-        case CAST_BOTH:
-        {
-            assert(left_expr);
-            assert(right_expr);
-            assert(cast.type);
-            plug_stub_expr(left_expr, STUB_EXPR_CAST, cast.type);
-            left_expr->stub.cast_kind = cast.kind;
-            plug_stub_expr(right_expr, STUB_EXPR_CAST, cast.type);
-            right_expr->stub.cast_kind = cast.kind;
-        }
-        break;
         case CAST_NO_CAST_NEEDED:
         {
             return;
