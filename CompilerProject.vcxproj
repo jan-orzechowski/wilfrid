@@ -169,10 +169,8 @@
     <Text Include="test\loops.n" />
     <Text Include="test\overloading.n" />
     <Text Include="test\parsing_tests.n" />
-    <Text Include="test\testcode.n" />
     <Text Include="test\switch.n" />
     <Text Include="test\new_and_delete.n" />
-    <Text Include="test\treewalk.n" />
     <Text Include="test\unions.n" />
     <Text Include="test\error_examples.n" />
   </ItemGroup>

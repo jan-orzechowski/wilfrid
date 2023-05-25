@@ -20,7 +20,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="test\testcode.n" />
     <Text Include="test\linked_lists.n" />
     <Text Include="test\dynamic_lists.n" />
     <Text Include="test\error_examples.n" />
@@ -32,7 +31,6 @@
     <Text Include="examples\nous_parser.n" />
     <Text Include="test\hashmap.n" />
     <Text Include="test\compound_literals.n" />
-    <Text Include="test\treewalk.n" />
     <Text Include="test\casts.n" />
     <Text Include="test\structs.n" />
     <Text Include="test\globals.n" />
