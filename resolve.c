@@ -350,81 +350,67 @@ void insert_cast_expr(expr *left_expr, expr *right_expr, cast_info cast)
     }
 }
 
-bool are_symbols_the_same_function(symbol *a, symbol *b)
+bool are_symbols_the_same_function(symbol *sym_a, symbol *sym_b)
 {
-    assert(a);
-    assert(b);
-    assert(a->kind == SYMBOL_FUNCTION);
-    assert(b->kind == SYMBOL_FUNCTION);
+    assert(sym_a);
+    assert(sym_b);
+    assert(sym_a->kind == SYMBOL_FUNCTION);
+    assert(sym_b->kind == SYMBOL_FUNCTION);
     
-    if (a == b)
+    if (sym_a == sym_b)
     {
         return true;
     }
 
-    if (a->mangled_name == b->mangled_name)
+    function_decl a = sym_a->decl->function;
+    function_decl b = sym_b->decl->function;
+
+    if (sym_a->mangled_name == sym_b->mangled_name
+        && a.is_extern == false && b.is_extern == false)
     {
         return true;
     }
 
-    if (a->decl->function.return_type == null
-        && b->decl->function.return_type != null)
+    if (a.return_type == null && b.return_type != null)
     {
         return false;
     }
-
-    if (a->decl->function.return_type != null
-        && b->decl->function.return_type == null)
+    else if (a.return_type != null && b.return_type == null)
     {
         return false;
     }
-
-    if (a->decl->function.return_type != null
-        && a->decl->function.return_type != null)
+    else if (a.return_type != null && b.return_type != null)
     {
-        if (a->decl->function.return_type->name
-            != b->decl->function.return_type->name)
+        if (a.return_type->name != b.return_type->name)
         {
             return false;
         }
     }
 
-    if (a->decl->function.method_receiver == null
-        && b->decl->function.method_receiver != null)
+    if ((a.method_receiver == null && b.method_receiver != null)
+        || (a.method_receiver != null && b.method_receiver == null))
     {
         return false;
     }
 
-    if (a->decl->function.method_receiver != null
-        && b->decl->function.method_receiver == null)
+    if (a.method_receiver != null && b.method_receiver != null)
     {
-        return false;
-    }
-
-    if (a->decl->function.method_receiver != null
-        && a->decl->function.method_receiver != null)
-    {
-        assert(a->decl->function.method_receiver->type);
-        assert(b->decl->function.method_receiver->type);
-        if (a->decl->function.method_receiver->type->name
-            != b->decl->function.method_receiver->type->name)
+        assert(a.method_receiver->type);
+        assert(b.method_receiver->type);
+        if (a.method_receiver->type->name != b.method_receiver->type->name)
         {
             return false;
         }
     }
 
-    if (a->decl->function.params.param_count 
-        != b->decl->function.params.param_count)
+    if (a.params.param_count != b.params.param_count)
     {
         return false;
     }
 
-    for (size_t param_index = 0;
-        param_index < a->decl->function.params.param_count;
-        param_index++)
+    for (size_t i = 0; i < a.params.param_count; i++)
     {
-        if (a->decl->function.params.params[param_index].type->name
-            != b->decl->function.params.params[param_index].type->name)
+        if (a.params.params[i].type->name != b.params.params[i].type->name)
         {
             return false;
         }
