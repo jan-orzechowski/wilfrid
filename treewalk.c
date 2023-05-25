@@ -246,6 +246,11 @@ byte *push_global_identifier(const char *name, byte* init_val, size_t val_size)
 {
     assert(null == map_get(&global_identifiers, name));
     
+    if (val_size > vm_global_memory->first_block->max_size)
+    {
+        fatal("too large global allocation"); // przerobić na runtime błąd
+    }
+
     byte *result = push_size(vm_global_memory, val_size);
     if (init_val)
     {

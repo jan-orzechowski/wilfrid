@@ -213,7 +213,7 @@ void allocate_memory(void)
 
     map_grow(&global_symbols, 16);
 
-    vm_global_memory = allocate_memory_arena(kilobytes(5));
+    vm_global_memory = allocate_memory_arena(kilobytes(100));
     map_grow(&global_identifiers, 16);
 }
 
