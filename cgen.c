@@ -1481,3 +1481,25 @@ const char *pretty_print_type_name(type *ty, bool plural)
     }
     return result;
 }
+
+const char *pretty_print_type_list(type **list)
+{
+    char *buffer = null;
+    assert(buf_len(list) > 0);
+    for (size_t i = 0; i < buf_len(list); i++)
+    {
+        type *t = list[i];
+        if (i != buf_len(list) - 1)
+        {
+            buf_printf(buffer, xprintf("%s, ", pretty_print_type_name(t, false)));
+        }
+        else
+        {
+            buf_printf(buffer, pretty_print_type_name(t, false));
+        }
+    }
+    
+    const char *result = xprintf(buffer);
+    buf_free(buffer);
+    return result;
+}

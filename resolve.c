@@ -64,6 +64,7 @@ void error_in_resolving(const char *error_text, source_pos pos)
 }
 
 const char *pretty_print_type_name(type *ty, bool plural);
+const char *pretty_print_type_list(type **list);
 
 #define on_invalid_type_return(t) if (!(t) || (t->kind == TYPE_NONE)) { return resolved_expr_invalid; }
 #define on_invalid_expr_return(e) if (!(e) || !((e)->type) || ((e)->type->kind == TYPE_NONE)) { return resolved_expr_invalid; }
@@ -1356,6 +1357,39 @@ Please provide a type either as a cast or in the variable declaration", e->pos);
     return result;
 }
 
+const char *pretty_print_function_parameters(type *receiver, resolved_expr **args)
+{
+    if (receiver == null && buf_len(args) == 0)
+    {
+        return "no arguments.";
+    }
+    
+    char *result = null;
+    type **types = null;
+    for (size_t i = 0; i < buf_len(args); i++)
+    {
+        buf_push(types, args[i]->type);
+    }
+
+    if (receiver && buf_len(types) == 0)
+    {
+        result = xprintf("%s as the method receiver", pretty_print_type_name(receiver, false));
+    }     
+    else if (receiver)
+    {
+        result = xprintf("%s as the method receiver, %s as %s",
+            pretty_print_type_name(receiver, false),
+            pretty_print_type_list(types),
+            buf_len(types) == 1 ? "the argument" : "arguments");
+    }
+    else
+    {
+        result = xprintf("%s", pretty_print_type_list(types));
+    }
+
+    return result;
+}
+
 resolved_expr *resolve_special_case_methods(expr *e)
 {    
     resolved_expr *result = null;
@@ -1683,15 +1717,19 @@ resolved_expr *resolve_call_expr(expr *e)
     }
 
     if (buf_len(matching) == 0)
-    {
-        error_in_resolving("No overload is matching types of arguments in the function call", e->pos);
+    {        
+        error_in_resolving(xprintf(
+            "No overload is matching types of arguments in the function call. Passed %s",
+            pretty_print_function_parameters(method_receiver_type, resolved_args)), e->pos);
         buf_free(resolved_args);
         return resolved_expr_invalid;
     }
 
     if (buf_len(matching) > 1)
     {
-        error_in_resolving("Ambiguous function call - more than one overload is matching passed arguments.", e->pos);
+        error_in_resolving(xprintf(
+            "Ambiguous function call - more than one overload is matching passed arguments. Passed %s",
+            pretty_print_function_parameters(method_receiver_type, resolved_args)), e->pos);
         buf_free(resolved_args);
         return resolved_expr_invalid;
     }
