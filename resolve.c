@@ -1123,7 +1123,7 @@ resolved_expr *resolve_expr_binary(expr *expr)
             pretty_print_type_name(left->type, false)), expr->pos);
         return resolved_expr_invalid;
     }
-    else
+    else if (cast.kind != CAST_NO_CAST_NEEDED)
     {
         insert_cast_expr(expr->binary.left, expr->binary.right, cast);
     }
@@ -1164,7 +1164,7 @@ resolved_expr *resolve_expr_binary(expr *expr)
         break;
     };
 
-    if (left->is_const && right->is_const)
+    if (left->is_const && right->is_const && result_type == type_long)
     {
         int64_t const_value = eval_long_binary_op(op, left->val, right->val);
         result = get_resolved_const_expr(const_value);
@@ -1783,7 +1783,7 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
             }
             else if (sym->kind == SYMBOL_CONST)
             {
-                result = get_resolved_rvalue_expr(sym->type);
+                result = get_resolved_rvalue_expr(type_long);
                 result->is_const = true;
                 result->val = sym->val;
             }
