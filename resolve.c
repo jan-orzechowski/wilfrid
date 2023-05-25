@@ -1436,7 +1436,7 @@ resolved_expr *resolve_special_case_methods(expr *e)
                 }
                 else
                 {
-                    insert_cast_expr(e, null, cast);
+                    insert_cast_expr(e->call.args[0], null, cast);
                 }
                 
                 stub_kind = STUB_EXPR_LIST_ADD;
@@ -1552,7 +1552,8 @@ symbol **find_function_overload(symbol *first_overload_sym, type *receiver_type,
 
         if (receiver_type)
         {
-            if (false == compare_types(receiver_type, candidate_func.receiver_type))
+            if (candidate_func.receiver_type == null
+                || false == compare_types(receiver_type, candidate_func.receiver_type))
             {
                 goto find_function_overload_next_candidate;
             }
@@ -1563,11 +1564,12 @@ symbol **find_function_overload(symbol *first_overload_sym, type *receiver_type,
             if (candidate_func.param_count == 0)
             {
                 buf_push(matching, candidate);
+                break;
             }
         }
 
         if (candidate_func.param_count == buf_len(resolved_args)
-            || (candidate_func.has_variadic_arg && buf_len(resolved_args)) >= candidate_func.param_count)
+            || (candidate_func.has_variadic_arg && buf_len(resolved_args) >= candidate_func.param_count))
         {
             for (size_t i = 0; i < candidate_func.param_count; i++)
             {                
@@ -1577,7 +1579,8 @@ symbol **find_function_overload(symbol *first_overload_sym, type *receiver_type,
 
                 if (allow_implicit_casting)
                 {
-                    cast_info cast = check_if_cast_needed(resolved_arg->type, expected_arg_type, false, false);
+                    bool allow_forcing_numbers = (resolved_arg->is_const && resolved_arg->val > 0);
+                    cast_info cast = check_if_cast_needed(resolved_arg->type, expected_arg_type, false, allow_forcing_numbers);
                     if (cast.kind == CAST_TYPES_INCOMPATIBLE)
                     {
                         goto find_function_overload_next_candidate;
@@ -1590,18 +1593,29 @@ symbol **find_function_overload(symbol *first_overload_sym, type *receiver_type,
                         goto find_function_overload_next_candidate;
                     }
                 }
-
-                buf_push(matching, candidate);
-                if (false == allow_variadic && false == allow_implicit_casting)
-                {
-                    return matching;
-                }
             }
+
+            buf_push(matching, candidate);
+
+#if !DEBUG_BUILD
+            // optymalizacja - nie sprawdzamy dalej
+            if (false == allow_variadic && false == allow_implicit_casting)
+            {
+                return matching;
+            }
+#endif
         }
 
 find_function_overload_next_candidate:
         candidate = candidate->next_overload;
     }
+
+#if DEBUG_BUILD
+    if (false == allow_variadic && false == allow_implicit_casting)
+    {
+        assert(buf_len(matching) == 0 || buf_len(matching) == 1);
+    }
+#endif
 
     return matching;
 }
@@ -1704,8 +1718,9 @@ resolved_expr *resolve_call_expr(expr *e)
     for (size_t i = 0; i < resolved_function->type->function.param_count; i++)
     {
         type *expected_arg_type = resolved_function->type->function.param_types[i];
-        type *resolved_arg = resolved_args[i]->type;
-        cast_info cast = check_if_cast_needed(resolved_arg, expected_arg_type, false, false);
+        resolved_expr *resolved_arg = resolved_args[i];
+        bool allow_forcing_numbers = (resolved_arg->is_const && resolved_arg->val > 0);
+        cast_info cast = check_if_cast_needed(resolved_arg->type, expected_arg_type, false, allow_forcing_numbers);
         assert(cast.kind != CAST_TYPES_INCOMPATIBLE);
         assert(cast.kind == CAST_NO_CAST_NEEDED || cast.kind == CAST_LEFT);
         if (cast.kind != CAST_NO_CAST_NEEDED)
@@ -1714,6 +1729,9 @@ resolved_expr *resolve_call_expr(expr *e)
         }
     }
     
+    buf_free(resolved_args);
+    buf_free(matching);
+
     result = get_resolved_rvalue_expr(resolved_function->type->function.return_type);
     return result;
 }
