@@ -1,0 +1,64 @@
+﻿extern fn assert(condition: bool)
+
+struct node
+{
+    value: int 
+    left: node* 
+    right: node* 
+}
+
+fn main()
+{
+    let a : node = { 1 }
+    let b : node = { 2 }
+    assert(a.value == 1)
+    assert(b.value == 2)
+
+    a.left = &b
+    assert(a.left.value == b.value)
+    assert(a.left == &b)
+    assert((*a.left).value == b.value)
+
+    a.right = &b
+    assert(a.left == a.right)
+    assert(a.right.value == b.value)
+    assert(a.right == *(&a.right))
+    
+    let c : node* = new node
+    c.value = 3
+
+    check_pointers(&a, &b, 2)
+    check_pointers(&b, &a, 1)
+    check_pointers(&a, c, 3)
+    check_pointers(c, c, 3)
+    
+    check_pointers_equality(&a, &a)
+    check_pointers_equality(null, null)
+
+    check_pointers(null, c, 3)
+}
+
+fn check_pointers(adr1: node*, adr2: node*, value: int)
+{   
+    if (adr1 == null) 
+    {
+        assert(adr2 != null)
+        assert(adr2.value == value)
+    }
+    else if (adr2 == null) 
+    {
+        assert(adr1 != null)
+        assert(adr1.value == value)
+    }
+    else
+    {
+        assert(adr1 != null)
+        assert(adr2 != null)
+        assert(adr1.value == value || adr2.value == value)
+    }   
+}
+
+fn check_pointers_equality(adr1: node*, adr2: node*)
+{
+    assert(adr1 == adr2)
+}

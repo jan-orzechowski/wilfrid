@@ -149,7 +149,7 @@
   <ItemGroup>
     <Text Include="examples\memory_arena.n" />
     <Text Include="examples\stack_vm.n" />
-    <Text Include="test\hashmap.n" />
+    <Text Include="test\hashmap_test.n" />
     <Text Include="examples\nous_parser.n" />
     <Text Include="test\arrays.n" />
     <Text Include="test\auto_dereference.n" />
@@ -167,12 +167,16 @@
     <Text Include="test\extern.n" />
     <Text Include="test\linked_lists.n" />
     <Text Include="test\loops.n" />
-    <Text Include="test\overloading.n" />
+    <Text Include="test\method_overloading.n" />
     <Text Include="test\parsing_tests.n" />
+    <Text Include="test\binary_tree.n" />
     <Text Include="test\switch.n" />
     <Text Include="test\new_and_delete.n" />
     <Text Include="test\unions.n" />
     <Text Include="test\error_examples.n" />
+	<Text Include="examples\hashmap.n" />
+	<Text Include="test\address_of.n" />
+	<Text Include="test\null.n" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

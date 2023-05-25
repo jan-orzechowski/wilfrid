@@ -20,16 +20,17 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <Text Include="test\binary_tree.n" />
     <Text Include="test\linked_lists.n" />
     <Text Include="test\dynamic_lists.n" />
     <Text Include="test\error_examples.n" />
-    <Text Include="test\overloading.n" />
+    <Text Include="test\method_overloading.n" />
     <Text Include="test\extern.n" />
     <Text Include="test\loops.n" />
     <Text Include="test\constructors.n" />
     <Text Include="test\parsing_tests.n" />
     <Text Include="examples\nous_parser.n" />
-    <Text Include="test\hashmap.n" />
+    <Text Include="test\hashmap_test.n" />
     <Text Include="test\compound_literals.n" />
     <Text Include="test\casts.n" />
     <Text Include="test\structs.n" />
@@ -46,5 +47,8 @@
     <Text Include="test\implicit_type_conversions.n" />
     <Text Include="test\pointer_arithmetic.n" />
     <Text Include="test\function_overloading.n" />
+    <Text Include="examples\hashmap.n" />
+    <Text Include="test\address_of.n" />
+    <Text Include="test\null.n" />
   </ItemGroup>
 </Project>

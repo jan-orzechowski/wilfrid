@@ -1,0 +1,157 @@
+﻿extern fn printf(str: char*, variadic) : int
+extern fn assert(condition: bool)
+
+extern fn max(a: long, b: long) : long
+extern fn max(a: ulong, b: ulong) : ulong
+
+extern fn allocate(num_bytes: ulong) : void*
+extern fn reallocate(ptr : void*, num_bytes: ulong) : void*
+
+fn main()
+{
+    /*
+    let map : hashmap = { }
+    
+    for (let i := 1, i < 2048, i++)
+    {
+        map_put(&map, i as void*, (i + 1) as void*)
+    }
+
+    for (let i := 1, i < 2048, i++)
+    {
+        let val := map_get(&map, i as void*)
+        assert(val == (i + 1) as void*)
+    }
+    */
+}
+
+fn is_power_of_2(val: ulong) : bool
+{
+    if (val != 0)
+    {
+        return ((val & (val - 1)) == 0)
+    } 
+    else
+    {
+        return false
+    }
+}
+
+/*
+struct hashmap
+{
+    keys: void**
+    values: void**
+    count: ulong
+    capacity: ulong
+}
+
+fn map_get(map: hashmap*, key: void*): void*
+{
+    if (map.count == 0)
+    {
+        return null
+    }
+
+    assert(is_power_of_2(map.capacity))
+
+    let index := hash_ptr(key) as ulong
+    assert(map.count < map.capacity)
+    while (true)
+    {
+        index &= map.capacity - 1
+        if (map.keys[index] == key)
+        {
+            return map.values[index]
+        }
+        else if (0 == map.keys[index])
+        {
+            return null
+        }
+        index++
+    }
+    return null
+}
+
+fn map_grow(map: hashmap*, new_capacity: ulong)
+{
+    new_capacity = max(16, new_capacity)
+    let new_map : hashmap = 
+    {
+        keys = allocate(new_capacity * size_of_type(void*)) as void**,
+        values = allocate(new_capacity * size_of_type(void*)) as void**,
+        capacity = new_capacity,
+    }
+
+    for (let i : ulong = 0, i < map.capacity,  i++)
+    {        
+        if (map.keys[i])
+        {
+            map_put(&new_map, map.keys[i], map.values[i])
+        }
+    }
+
+    delete map.keys
+    delete map.values
+    *map = new_map
+}
+
+fn map_put(map: hashmap*, key: void*, val: void*)
+{
+    assert(key)
+    assert(val)
+
+    if (2 * map.count >= map.capacity)
+    {
+        map_grow(map, (2 * map.capacity) as ulong)
+    }
+
+    assert(2 * map.count < map.capacity)
+    assert(is_power_of_2(map.capacity))
+
+    let index := hash_ptr(key) as ulong
+    while (true)
+    {
+        index &= map.capacity - 1
+        if (0 == map.keys[index])
+        {
+            map.count++
+            map.keys[index] = key
+            map.values[index] = val
+            return
+        }
+        else if (map.keys[index] == key)
+        {
+            map.values[index] = val
+            return
+        }
+        index++
+    }
+}
+
+fn hash_uint64(x: ulong) : ulong
+{
+    x *= 0xff51afd7ed558ccd
+    x ^= x >> 32
+    return x
+}
+
+fn hash_ptr(ptr: void*) : ulong
+{
+    return hash_uint64(ptr as ulong)
+}
+
+fn hash_bytes(buf: char*, len: ulong) : ulong
+{
+    // FNV hash
+    let x : ulong = 0xcbf29ce484222325
+    for (let i := 0, i < len, i++)
+    {
+        x ^= buf[i] as int
+        x *= 0x01000193
+        x ^= x >> 32
+    }
+    return x
+}
+
+*/

@@ -15,9 +15,9 @@ fn main()
     let size2 := size_of_type(long)
     assert(size2 == 8 as long)
 
+    let test : test_struct = {}
+    
     let size3 := size_of(test.int_val)
     assert(size3 == 4 as long)
-
-    let test : test_struct = {}
     assert(size_of(test.int_val) == size_of(test.int_val))
 }

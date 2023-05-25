@@ -1,5 +1,10 @@
 extern fn printf(str: char*, variadic) : int
 extern fn assert(condition: bool)
+extern fn assert(condition: int)
+extern fn assert(condition: void*)
+extern fn max(a: long, b: long) : long
+extern fn max(a: ulong, b: ulong) : ulong
+extern fn max(a: int, b: ulong) : ulong
 
 fn do_something(arg : ulong) : ulong
 {
@@ -25,9 +30,19 @@ fn main()
 	let var_uint  : uint  = 1003
 	let var_ulong : ulong = 1004
 
-	do_something(var_int) // int is implicitly casted to long
-	do_something(var_long)
-	do_something(var_uint as ulong) // cast needed - ambiguous call, because uint can be promoted to long or ulong
-	do_something(var_ulong)
-	do_something()
+	let var_int_result = do_something(var_int)
+	assert(var_int_result == -2 * var_int)
+
+	let var_long_result = do_something(var_long)
+	assert(var_long_result == -2 * var_long)
+
+	let var_uint_result = do_something(var_uint as ulong) // cast needed - ambiguous call, because uint can be promoted to long or ulong
+	assert(var_uint_result == 2 * var_uint)
+
+	let var_uint_result2 = do_something(var_uint as long)
+	assert(var_uint_result2 == -2 * var_uint)
+
+	let var_ulong_result = do_something(var_ulong)
+	assert(var_ulong_result == var_ulong * 2)
 }
+

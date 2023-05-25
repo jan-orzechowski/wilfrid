@@ -36,17 +36,13 @@ fn main()
 
     for (let i := 0, i < 20, i++)
     {
-        (*z)[i] = i
+        z[i] = i
     }
 
     for (let i := 0, i < 20, i++)
     {
-        assert((*z)[i] == i)
+        assert(z[i] == i)
     }
 
     delete z
-
-    // do wprowadzenia - także w C
-    //assert(x == null)
-    //assert(y == null)
 }

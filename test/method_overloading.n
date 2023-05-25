@@ -1,4 +1,6 @@
-﻿struct rectangle 
+﻿extern fn assert(condition: bool)
+
+struct rectangle 
 {
     x: int,
     y: int
@@ -35,18 +37,41 @@ fn (a: cuboid) add(b: cuboid) : cuboid
 	return result
 }
 
-// można jeszcze przetestować wersje ze wskaźnikami
-
 fn main()
 {
     let a: rectangle = {1, 2}
     let b: rectangle = {3, 4}
+
+    assert(a.x == 1)
+    assert(a.y == 2)
+    assert(b.x == 3)
+    assert(b.y == 4)
+
     let c := add(a, b)
+    assert(c.x == 4)
+    assert(c.y == 6)
 
     let d: cuboid = {1, 2, 3}
+    assert(d.x == 1)
+    assert(d.y == 2)
+    assert(d.z == 3)
+    
     let e: cuboid = {4, 5, 6}
+    assert(e.x == 4)
+    assert(e.y == 5)
+    assert(e.z == 6)
+
     let f := add(d, e)
+    assert(f.x == 5)
+    assert(f.y == 7)
+    assert(f.z == 9)
 
     c = c.add(b)
+    assert(c.x == 7)
+    assert(c.y == 10)
+
     f = f.add(e)
+    assert(f.x == 9)
+    assert(f.y == 12)
+    assert(f.z == 15)
 }
