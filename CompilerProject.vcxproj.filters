@@ -50,6 +50,8 @@
     <Text Include="examples\hashmap.n" />
     <Text Include="test\address_of.n" />
     <Text Include="test\null.n" />
+    <Text Include="test\bitwise_operators.n" />
+    <Text Include="test\assign_operators.n" />
     <Text Include="include\common.n" />
   </ItemGroup>
 </Project>

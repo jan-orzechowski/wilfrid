@@ -1,0 +1,41 @@
+fn main()
+{
+    let bits : ulong = 0b000010000
+    assert(bits == 0b000010000)
+ 
+    bits <<= 2
+    assert(bits == 0b001000000)
+
+    bits >>= 4
+    assert(bits == 0b000000100)
+
+    bits |= 0b001000000
+    assert(bits == 0b001000100)
+    
+    bits = bits >> 1
+    bits = bits << 3
+    assert(bits == 0b100010000)
+
+    bits &= 0b100010000
+    assert(bits == 0b100010000)
+
+    bits = bits & 0b001010000
+    assert(bits == 0b000010000)
+
+    bits = (~bits & 0b111111111)
+    assert(bits == 0b111101111)
+
+    bits = (~bits & 0b111111111)
+    bits = bits | 0b000101000
+    assert(bits == 0b000111000)
+    
+    bits = bits + 0b000000011
+    bits = bits - 0b000000001
+    assert(bits == 0b000111010)
+
+    bits ^= 0b000000001
+    assert(bits == 0b000111011)
+
+    bits = bits ^ 0b001000100
+    assert(bits == 0b001111111)
+}
