@@ -394,7 +394,7 @@ bool lex_next_token(void)
             }
             else if (*(stream + 1) == '<')
             {
-                if (*(stream + 1) == '=')
+                if (*(stream + 2) == '=')
                 {
                     stream += 3;
                     tok.kind = TOKEN_LEFT_SHIFT_ASSIGN;
@@ -425,7 +425,7 @@ bool lex_next_token(void)
             }
             else if (*(stream + 1) == '>')
             {
-                if (*(stream + 1) == '=')
+                if (*(stream + 2) == '=')
                 {
                     stream += 3;
                     tok.kind = TOKEN_RIGHT_SHIFT_ASSIGN;
