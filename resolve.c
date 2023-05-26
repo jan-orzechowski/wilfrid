@@ -951,7 +951,7 @@ resolved_expr *resolve_expr_unary(expr *expr)
 
     assert(expr->kind == EXPR_UNARY);
     resolved_expr *operand = resolve_expr(expr->unary.operand);
-    if (operand == null || operand->type == null || operand->type->kind == TYPE_NONE)
+    if (false == check_resolved_expr(operand))
     {
         return resolved_expr_invalid;
     }
@@ -991,6 +991,7 @@ resolved_expr *resolve_expr_unary(expr *expr)
                     xprintf("Bitwise operators allowed only for unsigned integers types, got %s type instead.", operand->type), expr->pos);
                 return resolved_expr_invalid;
             }
+            result = get_resolved_rvalue_expr(operand->type);
         }
         break;
         case TOKEN_SUB:
@@ -1034,7 +1035,7 @@ resolved_expr *resolve_expr_unary(expr *expr)
                 return resolved_expr_invalid;
             }
 
-            if (operand->is_const)
+            if (operand->is_const && operand->type == type_long)
             {
                 int64_t value = eval_long_unary_op(expr->unary.operator, operand->val);
                 result = get_resolved_const_expr(value);
@@ -1143,11 +1144,11 @@ resolved_expr *resolve_expr_binary(expr *expr)
     {
         case TOKEN_MOD:
         {
-            if (false == is_integer_type(left->type))
+            if (false == is_integer_type(result_type))
             {
                 error_in_resolving(xprintf(
                     "Modulus operator is allowed only for integer types, got %s type.", 
-                    pretty_print_type_name(left->type, false)), expr->pos);
+                    pretty_print_type_name(result_type, false)), expr->pos);
                 return resolved_expr_invalid;
             }
         }
@@ -1158,7 +1159,7 @@ resolved_expr *resolve_expr_binary(expr *expr)
         case TOKEN_RIGHT_SHIFT: 
         case TOKEN_XOR:
         {
-            if (false == (left->type == type_uint || left->type == type_ulong))
+            if (false == is_unsigned_type(result_type))
             {
                 error_in_resolving(xprintf(
                     "Bitwise operators allowed only for unsigned integers types, got %s type instead.", 
