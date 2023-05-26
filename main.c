@@ -86,6 +86,10 @@ void compile_sources(char **sources, bool print_ast)
 {
     decl **all_declarations = null;
     symbol **resolved = null;
+
+    parse_file("include/common.n", &all_declarations);
+    assert(buf_len(all_declarations) > 0);
+
     for (size_t i = 0; i < buf_len(sources); i++)
     {
         char *filename = sources[i];
@@ -98,21 +102,32 @@ void compile_sources(char **sources, bool print_ast)
             parse_directory(filename, &all_declarations);
         }
     }
-
+    
     if (print_ast)
     {
-        if (buf_len(all_declarations) > 0)
+        decl **decls_to_print = null;
+        for (size_t i = 0; i < buf_len(all_declarations); i++)
+        {
+            if (0 != strcmp(all_declarations[i]->pos.filename, "include/common.n"))
+            {
+                buf_push(decls_to_print, all_declarations[i]);
+            }
+        }
+
+        if (buf_len(decls_to_print) > 0)
         {
             printf("\nGENERATED AST:\n");
-            for (size_t i = 0; i < buf_len(all_declarations); i++)
+            for (size_t i = 0; i < buf_len(decls_to_print); i++)
             {
-                printf_decl_ast(all_declarations[i]);
+                printf_decl_ast(decls_to_print[i]);
             }
         }
         else
         {
             printf("\nNO AST GENERATED\n");
         } 
+
+        buf_free(decls_to_print);
     }
 
     if (buf_len(errors) > 0)
@@ -154,6 +169,11 @@ void test_directory(char *path)
             buf_push(temp_buf, test_file);
             compile_sources(temp_buf, true);
             buf_free(temp_buf);
+            
+            if (buf_len(errors) > 0)
+            {
+                fatal("Errors in parsing test file %s", test_file);
+            }
         }
         clear_memory();
     }

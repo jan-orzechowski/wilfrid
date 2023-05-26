@@ -1,0 +1,14 @@
+extern fn assert(condition: bool)
+extern fn printf(str: char*, variadic) : int
+extern fn allocate(num_bytes: ulong) : void*
+extern fn reallocate(ptr : void*, num_bytes: ulong) : void*
+
+fn max(a : ulong, b : ulong) : ulong
+{
+	return (a > b ? a : b)
+}
+
+fn max(a : long, b : long) : long
+{
+	return (a > b ? a : b)
+}

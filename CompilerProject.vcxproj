@@ -149,6 +149,7 @@
   <ItemGroup>
     <Text Include="examples\memory_arena.n" />
     <Text Include="examples\stack_vm.n" />
+    <Text Include="include\common.n" />
     <Text Include="test\hashmap_test.n" />
     <Text Include="examples\nous_parser.n" />
     <Text Include="test\arrays.n" />
