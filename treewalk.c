@@ -1528,12 +1528,16 @@ void eval_statement(stmt *st, byte *opt_ret_value)
         break;
         case STMT_RETURN:
         {
-            assert(opt_ret_value);
-            byte *val = eval_expression(st->return_stmt.ret_expr);
-            
-            size_t type_size = get_type_size(st->return_stmt.ret_expr->resolved_type);
-            copy_vm_val(opt_ret_value, val, type_size);
+            if (st->return_stmt.ret_expr)
+            {
+                assert(opt_ret_value);
+                byte *val = eval_expression(st->return_stmt.ret_expr);
 
+                size_t type_size = get_type_size(st->return_stmt.ret_expr->resolved_type);
+                copy_vm_val(opt_ret_value, val, type_size);
+            }            
+
+            debug_vm_print(st->pos, "return statement");
             return_func = true;
             return;
         }
