@@ -22,12 +22,12 @@ bool lex_next_token(void)
         {            
             // hexadecimal number
             if (*(stream + 1) == 'x' || *(stream + 1) == 'X')
-            {                
+            {
                 stream += 2;
-                long val = 0;
+                uint64_t val = 0;
                 while (true)
                 {
-                    int digit = char_to_digit[(unsigned char)*stream];
+                    uint8_t digit = char_to_digit[(unsigned char)*stream];
                     if (digit == 0 && *stream != '0')
                     {
                         break;
@@ -39,7 +39,28 @@ bool lex_next_token(void)
                 tok.kind = TOKEN_INT;
                 tok.uint_val = val;
                 break;
-            }           
+            }
+
+            // binary number
+            if (*(stream + 1) == 'b' || *(stream + 1) == 'B')
+            {
+                stream += 2;
+                uint64_t val = 0;
+                while (true)
+                {
+                    uint8_t digit = char_to_digit[(unsigned char)*stream];
+                    if (digit == 0 && *stream != '0')
+                    {
+                        break;
+                    }
+                    val *= 2;
+                    val += digit;
+                    stream++;
+                }
+                tok.kind = TOKEN_INT;
+                tok.uint_val = val;
+                break;
+            }
         } 
         // intentional fallthrough
         case '1': case '2': case '3': case '4': case '5':
