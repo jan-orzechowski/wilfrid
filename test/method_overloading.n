@@ -1,6 +1,4 @@
-﻿extern fn assert(condition: bool)
-
-struct rectangle 
+﻿struct rectangle 
 {
     x: int,
     y: int

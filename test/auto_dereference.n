@@ -1,6 +1,3 @@
-extern fn printf(str: char*, variadic) : int
-extern fn assert(condition: bool)
-
 struct test_struct
 {
     val_long: long,

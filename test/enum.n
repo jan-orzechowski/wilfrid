@@ -1,7 +1,4 @@
-﻿extern fn printf(str: char*, variadic) : int
-extern fn assert(condition: bool)
-
-enum element_kind
+﻿enum element_kind
 {
     A,
     B,

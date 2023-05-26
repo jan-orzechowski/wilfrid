@@ -1,6 +1,3 @@
-extern fn printf(str: char*, variadic) : int
-extern fn assert(condition: bool)
-
 fn main ()
 {
     let x : float = 1.0

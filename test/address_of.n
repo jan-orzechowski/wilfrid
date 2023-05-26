@@ -1,6 +1,4 @@
-﻿extern fn assert(condition: bool)
-
-struct node
+﻿struct node
 {
     value: int 
     left: node* 

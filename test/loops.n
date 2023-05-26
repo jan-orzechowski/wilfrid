@@ -1,5 +1,3 @@
-extern fn printf(str: char*, variadic) : int
-
 fn sub_loop(sum: int*, start: int, end: int)
 {    
     for (let i := start, i < end, i++)

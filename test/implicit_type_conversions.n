@@ -1,6 +1,4 @@
-﻿extern fn assert(condition: bool)
-
-fn test_char_conversion(arg1: char, arg2: int) 
+﻿fn test_char_conversion(arg1: char, arg2: int) 
 {
     assert(arg1 == arg2)
 }

@@ -1,7 +1,4 @@
-﻿extern fn printf(str: char*, variadic) : int
-extern fn assert(condition: bool)
-
-struct tree
+﻿struct tree
 {
     root: node*
 }

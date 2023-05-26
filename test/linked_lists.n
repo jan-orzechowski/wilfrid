@@ -1,6 +1,4 @@
-﻿extern fn printf(str: char*, variadic) : int
-
-struct node
+﻿struct node
 {
     value: int
     next: node*,

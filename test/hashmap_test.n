@@ -1,13 +1,4 @@
-﻿extern fn printf(str: char*, variadic) : int
-extern fn assert(condition: bool)
-
-extern fn max(a: long, b: long) : long
-extern fn max(a: ulong, b: ulong) : ulong
-
-extern fn allocate(num_bytes: ulong) : void*
-extern fn reallocate(ptr : void*, num_bytes: ulong) : void*
-
-fn main()
+﻿fn main()
 {
     /*
     let map : hashmap = { }

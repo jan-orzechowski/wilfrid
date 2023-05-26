@@ -1,9 +1,5 @@
-extern fn printf(str: char*, variadic) : int
-extern fn assert(condition: bool)
 extern fn assert(condition: int)
 extern fn assert(condition: void*)
-extern fn max(a: long, b: long) : long
-extern fn max(a: ulong, b: ulong) : ulong
 extern fn max(a: int, b: ulong) : ulong
 
 fn do_something(arg : ulong) : ulong

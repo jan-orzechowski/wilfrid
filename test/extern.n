@@ -1,6 +1,4 @@
-﻿extern fn printf(str: char*, variadic) : int
-
-fn printf(str: char*, i: int) : int { return -1 }
+﻿fn printf(str: char*, i: int) : int { return -1 }
 
 fn printf(str: char*, i1: int, i2: int) : int { return -1 }
 

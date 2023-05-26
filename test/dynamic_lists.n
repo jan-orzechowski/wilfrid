@@ -1,7 +1,4 @@
-﻿extern fn printf(str: char*, variadic) : int
-extern fn assert(condition: bool)
-
-const static_array_length = 12
+﻿const static_array_length = 12
 
 struct list_holder
 {
