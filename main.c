@@ -15,7 +15,7 @@
 #include "resolve.c"
 #include "cgen.c"
 
-#include "common_include.c"
+#include "include/common.c"
 #include "test_runner.c"
 
 #ifdef __EMSCRIPTEN__
