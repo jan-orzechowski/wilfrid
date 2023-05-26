@@ -199,6 +199,13 @@ bool compare_types(type *a, type *b)
     return false;
 }
 
+void plug_expr(expr *original_expr, expr* new_expr)
+{
+    expr temp = *original_expr;
+    (*original_expr) = *new_expr;
+    *new_expr = temp;
+}
+
 void plug_stub_expr(expr *original_expr, stub_expr_kind kind, type *resolved_type)
 {
     expr *new_expr = push_struct(arena, expr);
@@ -207,9 +214,7 @@ void plug_stub_expr(expr *original_expr, stub_expr_kind kind, type *resolved_typ
     new_expr->stub.kind = kind;
     new_expr->resolved_type = resolved_type;
 
-    expr temp = *original_expr;
-    (*original_expr) = *new_expr;
-    *new_expr = temp;
+    plug_expr(original_expr, new_expr);
 
     // tutaj nazwy są odwrócone; efekt jest taki, że stub ma teraz odniesienie do starego wyrażenia
     original_expr->stub.original_expr = new_expr;
@@ -2062,8 +2067,8 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
         break;
         case EXPR_STUB:
         {
-            // nie powinniśmy się tutaj znaleźć
-            fatal("stubs should not be resolved");
+            assert(e->resolved_type);
+            return get_resolved_rvalue_expr(e->resolved_type);
         }
         break;
         default:
@@ -2121,7 +2126,7 @@ type *resolve_variable_decl(decl *d)
         resolved_expr *expr = resolve_expected_expr(d->variable.expr, declared_type, false);
         if (false == check_resolved_expr(expr))
         {
-            error_in_resolving("Cannot resolve type in the variable declaration", d->pos);
+            //error_in_resolving("Cannot resolve type in the variable declaration", d->pos);
             return type_invalid;
         }
         
@@ -2314,6 +2319,90 @@ void resolve_stmt_block(stmt_block st_block, type *opt_ret_type)
     leave_local_scope(marker);
 }
 
+void resolve_assign_stmt(stmt *st)
+{
+    assert(st->assign.value_expr);
+    assert(st->assign.assigned_var_expr);
+
+    resolved_expr *left = resolve_expr(st->assign.assigned_var_expr);
+    if (false == check_resolved_expr(left))
+    {
+        return;
+    }
+
+    resolved_expr *right = resolve_expected_expr(st->assign.value_expr, left->type, false);
+    if (false == check_resolved_expr(right))
+    {
+        return;
+    }
+
+    token_kind op = TOKEN_ASSIGN;
+    switch (st->assign.operation)
+    {
+        case TOKEN_ASSIGN: op = TOKEN_ASSIGN; break;
+        case TOKEN_ADD_ASSIGN: op = TOKEN_ADD; break;
+        case TOKEN_SUB_ASSIGN: op = TOKEN_SUB; break;
+        case TOKEN_OR_ASSIGN: op = TOKEN_OR; break;
+        case TOKEN_AND_ASSIGN: op = TOKEN_AND; break;
+        case TOKEN_BITWISE_OR_ASSIGN: op = TOKEN_BITWISE_OR; break;
+        case TOKEN_BITWISE_AND_ASSIGN: op = TOKEN_BITWISE_AND; break;
+        case TOKEN_XOR_ASSIGN: op = TOKEN_XOR; break;
+        case TOKEN_MUL_ASSIGN: op = TOKEN_MUL; break;
+        case TOKEN_DIV_ASSIGN: op = TOKEN_DIV; break;
+        case TOKEN_MOD_ASSIGN: op = TOKEN_MOD; break;
+        case TOKEN_LEFT_SHIFT_ASSIGN: op = TOKEN_LEFT_SHIFT; break;
+        case TOKEN_RIGHT_SHIFT_ASSIGN: op = TOKEN_RIGHT_SHIFT; break;
+    }
+
+    if (op != TOKEN_ASSIGN)
+    {
+        st->assign.operation = TOKEN_ASSIGN;
+        expr *new_binary_expr = push_binary_expr(
+            st->assign.assigned_var_expr->pos, op,
+            st->assign.assigned_var_expr,
+            st->assign.value_expr);
+
+        plug_expr(st->assign.value_expr, new_binary_expr);
+        assert(st->assign.value_expr->kind == EXPR_BINARY);
+        // przypisujemy stare wyrażenie jako człon nowego 
+        // - wygląda niepoprawnie, bo po plug_expr wartości są odwrócone
+        st->assign.value_expr->binary.right = new_binary_expr;
+
+        resolved_expr *expr = resolve_expr(st->assign.value_expr);
+        if (false == check_resolved_expr(expr))
+        {
+            return;
+        }
+
+        // podmieniamy dla porównania typów poniżej
+        right = expr;
+    }
+
+    if (false == compare_types(left->type, right->type))
+    {
+        cast_info cast = check_if_cast_needed(right->type, left->type, false, right->is_const);
+        if (cast.kind == CAST_TYPES_INCOMPATIBLE)
+        {
+            error_in_resolving(
+                xprintf("Types do not match in assignment. Trying to assign %s to %s",
+                    pretty_print_type_name(right->type, false),
+                    pretty_print_type_name(left->type, false)),
+                st->assign.assigned_var_expr->pos);
+        }
+        else
+        {
+            insert_cast_expr(st->assign.value_expr, null, cast);
+        }
+        return;
+    }
+
+    if (false == left->is_lvalue)
+    {
+        error_in_resolving("Cannot assign to non-lvalue", st->pos);
+        return;
+    }
+}
+
 void resolve_stmt(stmt *st, type *opt_ret_type)
 {
     switch (st->kind)
@@ -2438,57 +2527,7 @@ void resolve_stmt(stmt *st, type *opt_ret_type)
         break;
         case STMT_ASSIGN:
         {
-            resolved_expr *left = resolve_expr(st->assign.assigned_var_expr);
-            if (false == check_resolved_expr(left))
-            {
-                //error_in_resolving("Cannot assign to an expression of an unknown type", st->assign.assigned_var_expr->pos);
-                return;
-            }
-
-            if (st->assign.value_expr)
-            {                
-                resolved_expr *right = resolve_expected_expr(st->assign.value_expr, left->type, false);
-                if (false == check_resolved_expr(right))
-                {
-                    //error_in_resolving("Cannot assign expression of an unknown type", st->assign.value_expr->pos);
-                    return;
-                }
-
-                if (false == compare_types(left->type, right->type))
-                {
-                /*    if (left->type->kind == TYPE_LIST)
-                    {
-                        if (compare_types(right->type, left->type->list.base_type))
-                        {
-                            error_in_resolving("list of different type", st->assign.value_expr->pos);
-                            return;
-                        }
-                    }
-                    else 
-                    {*/
-                        cast_info cast = check_if_cast_needed(right->type, left->type, false, right->is_const);
-                        if (cast.kind == CAST_TYPES_INCOMPATIBLE)
-                        {
-                            error_in_resolving(
-                                xprintf("Types do not match in assignment. Trying to assign %s to %s",
-                                    pretty_print_type_name(right->type, false),
-                                    pretty_print_type_name(left->type, false)),
-                                st->assign.assigned_var_expr->pos);
-                        }
-                        else
-                        {
-                            insert_cast_expr(st->assign.value_expr, null, cast);
-                        }
-                        return;
-                    //}
-                }
-            }
-            
-            if (false == left->is_lvalue)
-            {
-                error_in_resolving("Cannot assign to non-lvalue", st->pos);
-                return;
-            }            
+            resolve_assign_stmt(st);
         }
         break; 
         case STMT_EXPR:
