@@ -477,12 +477,15 @@ void push_local_symbol(const char *name, type *type)
     };
 }
 
+hashmap *enum_values_hashmaps;
+
 void complete_enum_type(type *type, hashmap values_map)
 {
     assert(type->kind == TYPE_COMPLETING);
     type->kind = TYPE_ENUM;
     type->size = 8;
     type->enumeration.values = values_map;
+    buf_push(enum_values_hashmaps, values_map);
 }
 
 void complete_aggregate_type(type *type, type_aggregate_field **fields, size_t fields_count, bool is_union)

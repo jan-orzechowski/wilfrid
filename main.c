@@ -261,6 +261,12 @@ void clear_memory(void)
 
     installed_types_initialized = false;
 
+    for (size_t i = 0; i < buf_len(enum_values_hashmaps); i++)
+    {
+        map_free(&enum_values_hashmaps[i]);
+    }
+    buf_free(enum_values_hashmaps);
+
     free_memory_arena(vm_global_memory);
     map_free(&global_identifiers);
 
