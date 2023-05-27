@@ -235,6 +235,9 @@ void allocate_memory(void)
 
     vm_global_memory = allocate_memory_arena(kilobytes(100));
     map_grow(&global_identifiers, 16);
+
+    xprintf_buf_size = string_arena->block_size + 1;
+    xprintf_buf = xmalloc(xprintf_buf_size);
 }
 
 void clear_memory(void)
@@ -261,21 +264,16 @@ void clear_memory(void)
 
     installed_types_initialized = false;
 
+    free_memory_arena(vm_global_memory);
+    map_free(&global_identifiers);
+
     for (size_t i = 0; i < buf_len(enum_values_hashmaps); i++)
     {
         map_free(&enum_values_hashmaps[i]);
     }
     buf_free(enum_values_hashmaps);
 
-    free_memory_arena(vm_global_memory);
-    map_free(&global_identifiers);
-
-    for (size_t i = 0; i < buf_len(global_xprintf_results); i++)
-    {
-        free(global_xprintf_results[i]);
-    }
-    buf_free(global_xprintf_results);
-
+    free(xprintf_buf);
     buf_free(errors);
     buf_free(ast_buf);
     buf_free(gen_buf);

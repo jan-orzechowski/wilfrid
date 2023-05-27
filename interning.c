@@ -44,3 +44,24 @@ const char *str_intern(const char *str)
 {
     return str_intern_range(str, str + strlen(str));
 }
+
+char *xprintf_buf;
+size_t xprintf_buf_size;
+
+char *xprintf(const char *format, ...)
+{ 
+    assert(xprintf_buf);
+
+    va_list args;
+    va_start(args, format);
+    int length = vsnprintf(xprintf_buf, xprintf_buf_size - 1, format, args);
+    va_end(args);
+
+    char *str = push_size(string_arena, length + 1);
+    for (size_t i = 0; i < length; i++)
+    {
+        str[i] = xprintf_buf[i];
+    }
+    str[length] = 0;
+    return str;    
+}
