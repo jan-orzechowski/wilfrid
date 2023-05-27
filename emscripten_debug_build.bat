@@ -9,7 +9,7 @@ set disable-warnings=-Wno-switch -Wno-unused-value -Wno-unused-variable -Wno-unu
 
 set warnings-options=-Wall -Wextra %disable-warnings%
 
-set general-options=-D_DEFAULT_SOURCE -sALLOW_MEMORY_GROWTH=1 -sINITIAL_MEMORY=48MB -sTOTAL_STACK=2MB -sNO_EXIT_RUNTIME=1 -sINVOKE_RUN=0 -sEXPORTED_FUNCTIONS="['_main', '_compile_input']" -sEXPORTED_RUNTIME_METHODS="['ccall', 'callMain']"
+set general-options=-D_DEFAULT_SOURCE -sALLOW_MEMORY_GROWTH=1 -sINITIAL_MEMORY=48MB -sTOTAL_STACK=2MB -sNO_EXIT_RUNTIME=1 -sINVOKE_RUN=0 -sEXPORTED_FUNCTIONS="['_main', '_compile_input']" -sEXPORTED_RUNTIME_METHODS="['ccall', 'callMain']" --preload-file include
 
 set debug-options=-DDEBUG_BUILD -sASSERTIONS=2 -o wasm/debug/index.html -O0 -g3 -gsource-map --source-map-base http://localhost:6931/ --emrun --memoryprofiler --shell-file emscripten_debug_shell.html
 
