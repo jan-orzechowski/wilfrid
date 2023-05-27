@@ -371,6 +371,11 @@ extern int main(int arg_count, char **args)
     return 0;
 }
 
+extern void reset_memory(void)
+{
+    clear_memory();
+}
+
 extern void compile_input(int64_t flags)
 {
     if (flags & COMPILER_OPTION_RUN)
@@ -388,6 +393,7 @@ extern void compile_input(int64_t flags)
     char **sources = null;
     buf_push(sources, emscripten_input_path);
     compile_sources(sources, true);
+    buf_free(sources);
 
     clear_memory();
 }
