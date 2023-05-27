@@ -30,6 +30,25 @@ size_t debug_print_buffer_size = 1000;
 #define debug_print_vm_value
 #endif
 
+void runtime_error(source_pos pos, const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+
+    char *message_buf = null;
+    buf_printf(message_buf, "RUNTIME ERROR ");
+    print_source_pos(&message_buf, pos);
+    buf_printf(message_buf, ": ");
+
+    printf("%s", message_buf);
+    vprintf(format, args);
+    printf("\n");
+    buf_free(message_buf);
+    
+    va_end(args);
+    exit(1);
+}
+
 typedef struct vm_value_meta
 {
     char *name;
@@ -242,13 +261,14 @@ memory_arena *vm_global_memory;
 hashmap global_identifiers;
 
 // const strings zrobić osobno
-byte *push_global_identifier(const char *name, byte* init_val, size_t val_size)
+byte *push_global_identifier(source_pos pos, const char *name, byte* init_val, size_t val_size)
 {
     assert(null == map_get(&global_identifiers, name));
     
-    if (val_size > vm_global_memory->first_block->max_size)
+    if (val_size > vm_global_memory->block_size)
     {
-        fatal("too large global allocation"); // przerobić na runtime błąd
+        runtime_error(pos, "Currently max size for global variables is %zu. Tried to allocate %zu for '%s' variable",
+            vm_global_memory->block_size, val_size, name);
     }
 
     byte *result = push_size(vm_global_memory, val_size);
@@ -341,8 +361,7 @@ byte *push_identifier_on_stack(const char *name, type *type)
     }
     else
     {
-        // tutaj powinniśmy rzucić błędem i przerwać program
-        fatal("stack overflow");
+        runtime_error((source_pos){ 0 }, "Stack overflow");
     }
 
     return result;
@@ -387,7 +406,7 @@ byte *get_vm_variable(const char *name)
 
     if (result == null)
     {
-        fatal("no variable with name '%s'", name);
+        runtime_error((source_pos){ 0 }, "Variable with name '%s' doesn't exist", name);
     }
 
     return result;
@@ -442,7 +461,7 @@ void eval_unary_op(byte *dest, token_kind operation, byte *operand, type *operan
     }
     else
     {
-        fatal("unsupported type");
+        illegal_op_flag = true;
     }
 }
 
@@ -485,14 +504,7 @@ void eval_binary_op(byte *dest, token_kind op, byte *left, byte *right, type *le
                 size_t type_size = get_type_size(right_t->pointer.base_type);
                 *(uint64_t *)dest = eval_ulong_binary_op(op, *(uint64_t *)left * type_size, (*(uint64_t *)right));
             }
-
-            //debug_vm_print(st->assign.assigned_var_expr->pos, "pointer arithmetic, result %s",
-            //    get_token_kind_name(op), debug_print_vm_value(new_val, new_val_t));
         }
-        //else
-        //{
-        //    fatal("this shouldn't happen");
-        //}
     }
     else if (left_t == type_int)
     {
@@ -516,24 +528,27 @@ void eval_binary_op(byte *dest, token_kind op, byte *left, byte *right, type *le
     }
     else 
     {
-        fatal("unsupported type");
+        illegal_op_flag = true;
     }
 }
 
-void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_type)
+void perform_cast(source_pos pos, byte *new_val, type* new_type, byte *old_val, type *old_type)
 {
     assert(new_val);
     assert(new_type);
     assert(old_val);
     assert(old_type);
 
-    switch (new_type)
+    bool invalid_cast = false;
+
+    switch (new_type->kind)
     {
         case TYPE_INCOMPLETE:
         case TYPE_COMPLETING:
         case TYPE_NONE:
         {
-            fatal("error");
+            fatal("this shouldn't happen");
+            invalid_cast = true;
         }
         break;
 
@@ -573,7 +588,7 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
             }
             else 
             { 
-                fatal("unimplemented");
+                invalid_cast = true;
             }
         } 
         break;
@@ -614,7 +629,7 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
             }
             else
             {
-                fatal("unimplemented");
+                invalid_cast = true;
             }
         }
         break;
@@ -656,7 +671,7 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
             }
             else
             {
-                fatal("unimplemented");
+                invalid_cast = true;
             }
         }
         break;
@@ -698,7 +713,7 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
             }
             else
             {
-                fatal("unimplemented");
+                invalid_cast = true;
             }
         }
         break;
@@ -738,7 +753,7 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
             }
             else
             {
-                fatal("unimplemented");
+                invalid_cast = true;
             }
         }
         break;
@@ -751,9 +766,16 @@ void perform_cast(byte *new_val, type_kind new_type, byte *old_val, type *old_ty
         
         default:
         {
-            fatal("runtime error - cast not allowed");
+            invalid_cast = true;
         }
         break;
+    }
+
+    if (invalid_cast)
+    {
+        runtime_error(pos, "Invalid cast. Tried to cast %s to %s",
+            pretty_print_type_name(old_type, false),
+            pretty_print_type_name(new_type, false));
     }
 }
 
@@ -776,6 +798,14 @@ byte *eval_binary_expression(expr *exp, byte *result)
     assert(left_size == right_size);
 
     eval_binary_op(result, exp->binary.operator, left, right, left_t, right_t);
+
+    if (illegal_op_flag)
+    {
+        runtime_error(exp->pos, "Illegal operation %s on %s and %s types",
+            get_token_kind_name(exp->binary.operator),
+            pretty_print_type_name(left_t, false),
+            pretty_print_type_name(right_t, false));
+    }
 
     debug_vm_print(exp->pos, "operation %s on %s and %s, result %s",
         get_token_kind_name(exp->binary.operator),
@@ -990,6 +1020,13 @@ byte *eval_expression(expr *exp)
             {
                 eval_unary_op(result, exp->unary.operator, operand, operand_t);
 
+                if (illegal_op_flag)
+                {
+                    runtime_error(exp->pos, "Illegal operation %s on %s type",
+                        get_token_kind_name(exp->binary.operator),
+                        pretty_print_type_name(operand_t, false));
+                }
+
                 debug_vm_print(exp->pos, "unary operation %s on %s, result is %s",
                     get_token_kind_name(exp->unary.operator),
                     debug_print_vm_value(operand, operand_t),
@@ -1049,7 +1086,7 @@ byte *eval_expression(expr *exp)
 
                 if (aggr == null)
                 {
-                    fatal("runtime error");
+                    runtime_error(exp->pos, "Tried to access value by a null pointer");
                     break;
                 }
 
@@ -1079,7 +1116,7 @@ byte *eval_expression(expr *exp)
 
             if (arr == null)
             {
-                fatal("runtime error");
+                runtime_error(exp->pos, "Tried to access value by a null pointer");
                 break;
             }
 
@@ -1172,7 +1209,7 @@ byte *eval_expression(expr *exp)
         case EXPR_CAST:
         {
             byte *old_val = eval_expression(exp->cast.expr);
-            perform_cast(result, exp->cast.resolved_type->kind, old_val, exp->cast.expr->resolved_type);
+            perform_cast(exp->pos, result, exp->cast.resolved_type, old_val, exp->cast.expr->resolved_type);
         }
         break;
         case EXPR_COMPOUND_LITERAL:
@@ -1248,7 +1285,7 @@ byte *eval_stub_expression(byte *result, expr *exp)
         case STUB_EXPR_CAST:
         {
             byte *old_val = eval_expression(orig_exp);
-            perform_cast(result, exp->resolved_type->kind, old_val, orig_exp->resolved_type);
+            perform_cast(orig_exp->pos, result, exp->resolved_type, old_val, orig_exp->resolved_type);
 
             debug_vm_print(exp->pos, "implicit cast %s (value: %s) to %s (result value: %s)",
                 pretty_print_type_name(orig_exp->resolved_type, false),
@@ -1277,7 +1314,7 @@ byte *eval_stub_expression(byte *result, expr *exp)
 
             uintptr_t old_ptr_val = *(uintptr_t*)ptr_val;
             int64_t int_operand = 0;
-            perform_cast((byte *)&int_operand, TYPE_LONG, int_val, int_type);
+            perform_cast(orig_exp->pos, (byte *)&int_operand, type_long, int_val, int_type);
             
             uintptr_t new_ptr_val = 0;
             assert(op == TOKEN_ADD || op == TOKEN_SUB);
@@ -1347,7 +1384,7 @@ byte *eval_stub_expression(byte *result, expr *exp)
             byte *receiver = eval_expression(list_expr);
             if (*(uintptr_t *)receiver == 0)
             {
-                fatal("runtime error: list uninitialized");
+                runtime_error(orig_exp->pos, "Tried to call method on a uninitialized list");
             }
 
             vm_list_header *hdr = *(vm_list_header **)receiver;
@@ -1364,7 +1401,7 @@ byte *eval_stub_expression(byte *result, expr *exp)
             byte *list = eval_expression(orig_exp);
             if (*(uintptr_t *)list == 0)
             {
-                fatal("runtime error: list uninitialized");
+                runtime_error(orig_exp->pos, "Tried to free a uninitialized list");
             }
 
             vm_list_header *hdr = *(vm_list_header **)list;
@@ -1418,7 +1455,7 @@ byte *eval_stub_expression(byte *result, expr *exp)
 
             if (*(uintptr_t *)receiver == 0)
             {
-                fatal("runtime error: list uninitialized");
+                runtime_error(orig_exp->pos, "Tried to add an element to a uninitialized list");
             }
             
             vm_list_header *hdr = *(vm_list_header **)receiver;
@@ -1562,16 +1599,10 @@ void eval_statement(stmt *st, byte *opt_ret_value)
 
             if (dec->variable.expr)
             {
-                //assert(compare_types(dec->variable.expr->resolved_type, dec->resolved_type));
-
                 byte *new_val = eval_expression(dec->variable.expr);
-
-                //if (false == is_on_stack(new_val))
-                //{
                 byte *stack_val = push_identifier_on_stack(dec->name, dec->resolved_type);
                 copy_vm_val(stack_val, new_val, get_type_size(dec->resolved_type));
                 new_val = stack_val;
-                //}
 
                 vm_value_meta *m = get_metadata_by_ptr(new_val);
                 m->name = dec->name;
@@ -1931,26 +1962,26 @@ void eval_global_declarations(symbol **syms)
     {
         symbol *sym = syms[i];
         size_t size = get_type_size(sym->type);
+        source_pos pos = sym->decl->pos;
         switch (sym->kind)
         {
             case SYMBOL_VARIABLE:
             {
                 assert(sym->decl->kind == DECL_VARIABLE);
-                
                 if (sym->decl->variable.expr)
                 {
                     byte *result = eval_expression(sym->decl->variable.expr);
-                    push_global_identifier(sym->name, result, size);
+                    push_global_identifier(pos, sym->name, result, size);
                 }
                 else
                 {
-                    push_global_identifier(sym->name, 0, size);
+                    push_global_identifier(pos, sym->name, 0, size);
                 }
             }
             break;
             case SYMBOL_CONST:
             {
-                push_global_identifier(sym->name, (byte *)&sym->val, size);
+                push_global_identifier(pos, sym->name, (byte *)&sym->val, size);
             }
             break;           
         }

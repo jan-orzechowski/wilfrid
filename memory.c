@@ -59,13 +59,14 @@ struct memory_arena
     size_t memory_block_count;
     memory_arena_block *first_block;
     memory_arena_block *last_block;
+    size_t block_size;
 };
 
-memory_arena_block *allocate_new_block(memory_arena *arena, size_t size)
+memory_arena_block *allocate_new_block(memory_arena *arena)
 {
-    memory_arena_block *new_block = xcalloc(size + sizeof(memory_arena_block));
+    memory_arena_block *new_block = xcalloc(arena->block_size + sizeof(memory_arena_block));
     new_block->base_address = (char *)new_block + sizeof(memory_arena_block);
-    new_block->max_size = size;
+    new_block->max_size = arena->block_size;
     new_block->current_size = 0;
    
     if (arena->last_block)
@@ -87,7 +88,8 @@ memory_arena_block *allocate_new_block(memory_arena *arena, size_t size)
 memory_arena *allocate_memory_arena(size_t block_size)
 {
     memory_arena *arena = xcalloc(sizeof(memory_arena));
-    allocate_new_block(arena, block_size);
+    arena->block_size = block_size;
+    allocate_new_block(arena);
     return arena;
 }
 
@@ -119,12 +121,15 @@ void free_memory_arena(memory_arena *arena)
 
 void *push_size(memory_arena *arena, size_t size)
 {
-    assert(size < arena->first_block->max_size);
+    if (size > arena->block_size)
+    {
+        fatal("allocation is too large");
+    }
 
     memory_arena_block *block = arena->last_block;
     if (block->max_size - block->current_size < size)
     {
-        block = allocate_new_block(arena, block->max_size);
+        block = allocate_new_block(arena);
     }
 
     void *result = (char *)block->base_address + block->current_size;
