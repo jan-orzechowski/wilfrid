@@ -67,7 +67,14 @@ void error_without_pos(const char *error_text)
     buf_push(errors, message);
 }
 
-bool shorten_source_pos = false;
+typedef enum source_pos_print_mode
+{
+    SOURCE_POS_PRINT_FULL = 0,
+    SOURCE_POS_PRINT_SHORTEN = 1,
+    SOURCE_POS_PRINT_WITHOUT_FILE = 2
+} source_pos_print_mode;
+
+source_pos_print_mode print_source_pos_mode = SOURCE_POS_PRINT_FULL;
 
 void print_source_pos(char **buffer, source_pos pos)
 {
@@ -76,13 +83,17 @@ void print_source_pos(char **buffer, source_pos pos)
         return;
     }
 
-    if (shorten_source_pos)
+    if (print_source_pos_mode == SOURCE_POS_PRINT_FULL)
+    {
+        buf_printf(*buffer, "(file '%s', line %zu, position %zu)", pos.filename, pos.line, pos.character);
+    }
+    else if (print_source_pos_mode == SOURCE_POS_PRINT_SHORTEN)
     {
         buf_printf(*buffer, "('%s':%04zu:%02zu)", pos.filename, pos.line, pos.character);
     }
-    else
+    else if (print_source_pos_mode == SOURCE_POS_PRINT_WITHOUT_FILE)
     {
-        buf_printf(*buffer, "(file '%s', line %zu, position %zu)", pos.filename, pos.line, pos.character);
+        buf_printf(*buffer, "(line %zu, position %zu)", pos.line, pos.character);
     }
 }
 

@@ -2011,8 +2011,6 @@ void run_interpreter(symbol **resolved_decls)
     
     map_chain_grow(&vm_all_allocations, 16);
 
-    shorten_source_pos = true;
-
     printf("\n=== TREEWALK INTERPRETER RUN ===\n\n");
 
     eval_global_declarations(resolved_decls);
@@ -2028,8 +2026,6 @@ void run_interpreter(symbol **resolved_decls)
 
     // main teoretycznie zwraca int - można tutaj to uszanować
     eval_function(main, null);
-
-    shorten_source_pos = false;
 
     printf("\n=== FINISHED INTERPRETER RUN ===\n\n");
 

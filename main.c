@@ -148,7 +148,10 @@ void compile_sources(char **sources, bool print_ast)
             run_interpreter(resolved);
 #else
             c_gen(resolved, "output/testcode.c", false);
+            
+            print_source_pos_mode = SOURCE_POS_PRINT_SHORTEN;
             run_interpreter(resolved);
+            print_source_pos_mode = SOURCE_POS_PRINT_FULL;
 #endif
         }
     }
@@ -282,6 +285,8 @@ void clear_memory(void)
 #ifndef __EMSCRIPTEN__
 int main(int arg_count, char **args)
 { 
+    print_source_pos_mode = SOURCE_POS_PRINT_FULL;
+
     cmd_arguments options = parse_cmd_arguments(arg_count, args);
     options.print_ast = true;
 #if 0
@@ -361,6 +366,7 @@ EM_JS(void, define_compiler_constants_in_js, (void), {
 
 extern int main(int arg_count, char **args)
 {
+    print_source_pos_mode = SOURCE_POS_PRINT_WITHOUT_FILE;
     define_compiler_constants_in_js();
     return 1;
 }
