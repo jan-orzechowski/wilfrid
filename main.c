@@ -335,7 +335,7 @@ int main(int arg_count, char **args)
 
     buf_free(options.sources);
 
-    return 1;
+    return 0;
 }
 
 #else 
@@ -368,7 +368,7 @@ extern int main(int arg_count, char **args)
 {
     print_source_pos_mode = SOURCE_POS_PRINT_WITHOUT_FILE;
     define_compiler_constants_in_js();
-    return 1;
+    return 0;
 }
 
 extern void compile_input(int64_t flags)
