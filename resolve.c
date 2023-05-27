@@ -2085,7 +2085,9 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
     // przyda nam się podczas generowania kodu
     if (result && result->type)
     {
-        assert(e->resolved_type == null || compare_types(e->resolved_type, result->type));
+        assert(e->resolved_type == null 
+            || e->resolved_type->kind == TYPE_NONE
+            || compare_types(e->resolved_type, result->type));
         e->resolved_type = result->type;
     }
 
@@ -2325,8 +2327,11 @@ void resolve_stmt_block(stmt_block st_block, type *opt_ret_type)
 
 void resolve_assign_stmt(stmt *st)
 {
-    assert(st->assign.value_expr);
-    assert(st->assign.assigned_var_expr);
+    if (st->assign.value_expr == null
+        || st->assign.assigned_var_expr == null)
+    {
+        return;
+    }
 
     resolved_expr *left = resolve_expr(st->assign.assigned_var_expr);
     if (false == check_resolved_expr(left))
