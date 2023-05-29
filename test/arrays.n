@@ -41,14 +41,6 @@ fn test_array(arr : test*, length : int)
     }
 }
 
-fn print_array(arr : test*, length : int)
-{
-    for (let i := 0, i < length, i++)
-    {
-        printf("%d", arr[i].val_int)
-    }
-}
-
 fn test_empty_array(arr : test*, length : int)
 {
     for (let i := 0, i < length, i++)
@@ -62,8 +54,6 @@ fn main()
     let x := new test[100]
     let y := new test[20]
     let z : test[20] = { }
-
-    //print_array(x, 100)
 
     test_empty_array(x, 100)
     test_empty_array(y, 20)

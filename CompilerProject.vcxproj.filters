@@ -20,10 +20,10 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="test\binary_tree.n" />
-    <Text Include="test\linked_lists.n" />
-    <Text Include="test\dynamic_lists.n" />
-    <Text Include="test\error_examples.n" />
+    <Text Include="test\binary_tree_test.n" />
+    <Text Include="examples\linked_lists.n" />
+    <Text Include="test\dynamic_lists_test.n" />
+    <Text Include="examples\error_examples.n" />
     <Text Include="test\method_overloading.n" />
     <Text Include="test\extern.n" />
     <Text Include="test\loops.n" />
@@ -54,8 +54,12 @@
     <Text Include="test\assign_operators.n" />
     <Text Include="include\common.n" />
     <Text Include="test\printf_test.n" />
+    <Text Include="examples\hello_world.n" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="examples\binary_tree.n" />
+    <None Include="examples\dynamic_lists.n" />
+    <None Include="test\linked_lists_test.n" />
     <None Include="examples\printf.n" />
   </ItemGroup>
 </Project>

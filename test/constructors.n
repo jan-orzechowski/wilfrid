@@ -1,38 +1,38 @@
 struct some_struct 
 { 
-    member: int 
+    value: int 
 } 
 
 fn main () 
 {
-    let s := new some_struct(1)    
-    printf("s value: %d", s.member)
+    let s := new some_struct(1)
+    assert(s.value == 1)
 
     let p := new some_struct(2, 3)
-    printf("p value: %d", p.member)
+    assert(p.value == 2 + 3)
 
     let q := new some_struct()
-    printf("q value: %d", q.member)
+    assert(q.value == 0)
 
     let r := new some_struct
-    printf("r value: %d", r.member)
+    assert(r.value == 0)
 }
 
 fn constructor () : some_struct 
 { 
-    printf("this constructor is never called")
+    assert(false) // shouldn't be called
 }
 
 fn constructor (val: int) : some_struct* 
 { 
     let s := new some_struct 
-    s.member = val 
+    s.value = val 
     return s 
 }
 
 fn constructor (val_a: int, val_b: int) : some_struct* 
 { 
     let s := new some_struct 
-    s.member = val_a + val_b
+    s.value = val_a + val_b
     return s 
 }

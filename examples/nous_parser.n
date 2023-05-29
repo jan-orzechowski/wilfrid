@@ -29,6 +29,12 @@ let first_keyword: char*
 let last_keyword: char*
 let keywords_list: char**
 
+fn main()
+{
+
+}
+
+/*
 fn intern_keyword(keyword: char*) : char*
 {
     let interned := str_intern(keyword) 
@@ -248,3 +254,4 @@ fn get_token_kind_name(kind: token_kind): char*
         return 0
     }
 }
+*/

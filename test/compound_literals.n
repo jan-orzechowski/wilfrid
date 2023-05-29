@@ -1,24 +1,4 @@
-﻿/*
-struct external_struct
-{
-    percentage: float
-}
-
-struct struct_within_struct 
-{
-    something_struct : struct
-    {
-        highest_score : int,
-    },
-    struct // anonymous struct
-    {
-        lowest_score: int,
-    },
-    external_struct
-}
-*/
-
-struct simple_struct 
+﻿struct simple_struct 
 {
     int_val: int,
     long_val: long,
@@ -101,21 +81,4 @@ fn main()
     }
     assert(arr_h[0] == 1)
     assert(arr_h[1] == 0)
-
-/*
-    let a : test_union = { is_a_version = true, a_fields = { 1, 2 } }
-    let b : test_union = { is_a_version = false, b_version = { 3.0 } }
-
-    a.a_version = { 4, 5 }
-
-    let c : test_union = { 1 }
-    c.val_float = 5.0
-    c.val_bool = true
-
-    let d : struct_within_struct = 
-    {
-        { 13 }, { 11 }, { 6.7 }
-    }
-*/
-
 }

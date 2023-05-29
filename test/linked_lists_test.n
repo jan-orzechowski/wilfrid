@@ -24,37 +24,73 @@ fn main()
     let list2 : linked_list* = null
 
     add_at_tail(list, 4)
+
+    assert(get_value_at_index(list, 0) == 4)
+
     add_at_tail(list, 5)
+    
+    assert(get_value_at_index(list, 0) == 4)
+    assert(get_value_at_index(list, 1) == 5)
+
     add_at_tail(list, 6)
+
+    assert(get_value_at_index(list, 0) == 4)
+    assert(get_value_at_index(list, 1) == 5)
+    assert(get_value_at_index(list, 2) == 6)
+
     add_at_head(list, 3)
     add_at_head(list, 2)
     add_at_head(list, 1)
 
-    print_linked_list(list)
-
+    assert(get_value_at_index(list, 0) == 1)
+    assert(get_value_at_index(list, 1) == 2)
+    assert(get_value_at_index(list, 2) == 3)
+    assert(get_value_at_index(list, 3) == 4)
+    assert(get_value_at_index(list, 4) == 5)
+    assert(get_value_at_index(list, 5) == 6)
+    
     remove_head(list)
     remove_tail(list)
 
-    print_linked_list(list)
+    assert(get_value_at_index(list, 0) == 2)
+    assert(get_value_at_index(list, 1) == 3)
+    assert(get_value_at_index(list, 2) == 4)
+    assert(get_value_at_index(list, 3) == 5)
 
     add_at_position(list, 3, 9)
     add_at_position(list, 3, 8)
     remove_at_position(list, 4)
 
-    print_linked_list(list)
+    assert(get_value_at_index(list, 0) == 2)
+    assert(get_value_at_index(list, 1) == 3)
+    assert(get_value_at_index(list, 2) == 4)
+    assert(get_value_at_index(list, 3) == 8)
+    assert(get_value_at_index(list, 4) == 5)
 
     reverse(list)
-    
-    print_linked_list(list)
+
+    assert(get_value_at_index(list, 0) == 5)
+    assert(get_value_at_index(list, 1) == 8)
+    assert(get_value_at_index(list, 2) == 4)
+    assert(get_value_at_index(list, 3) == 3)
+    assert(get_value_at_index(list, 4) == 2)
 }
 
-fn print_linked_list(list: linked_list*) {
-    let n := list.head
-    printf("\nlist: ", 0)
-    while (n)
+fn get_value_at_index(list: linked_list*, index: int) : int
+{
+    let n : node* = list.head
+    for (let i = 0, i < index, i++)
     {
-        printf("%d ", n.value)
-        n = n.next
+        n = n.next 
+    }
+
+    if (n != null)
+    {
+        return n.value
+    } 
+    else
+    {
+        return 0
     }
 }
 

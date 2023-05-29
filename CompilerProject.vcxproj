@@ -147,6 +147,7 @@
     <ClCompile Include="main.c" />
   </ItemGroup>
   <ItemGroup>
+    <Text Include="examples\hello_world.n" />
     <Text Include="examples\memory_arena.n" />
     <Text Include="examples\stack_vm.n" />
     <Text Include="include\common.n" />
@@ -167,23 +168,26 @@
     <Text Include="test\casts.n" />
     <Text Include="test\compound_literals.n" />
     <Text Include="test\constructors.n" />
-    <Text Include="test\dynamic_lists.n" />
+    <Text Include="test\dynamic_lists_test.n" />
     <Text Include="test\extern.n" />
-    <Text Include="test\linked_lists.n" />
+    <Text Include="examples\linked_lists.n" />
     <Text Include="test\loops.n" />
     <Text Include="test\method_overloading.n" />
     <Text Include="test\parsing_tests.n" />
-    <Text Include="test\binary_tree.n" />
+    <Text Include="test\binary_tree_test.n" />
     <Text Include="test\switch.n" />
     <Text Include="test\new_and_delete.n" />
     <Text Include="test\unions.n" />
-    <Text Include="test\error_examples.n" />
+    <Text Include="examples\error_examples.n" />
     <Text Include="examples\hashmap.n" />
     <Text Include="test\address_of.n" />
     <Text Include="test\null.n" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="examples\binary_tree.n" />
+    <None Include="examples\dynamic_lists.n" />
     <None Include="examples\printf.n" />
+    <None Include="test\linked_lists_test.n" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

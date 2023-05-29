@@ -60,12 +60,12 @@ fn main ()
 
     if (some_list.add(4))
     {
-        printf("\ntest if", 0)
+        printf("\ntest if")
     }
 
     for (let x := new int[], x.capacity() < 5, x.add(2))
     {
-        printf("\ntest for", 0)
+        printf("\ntest for")
     }
 
     let auto_list := auto int[]

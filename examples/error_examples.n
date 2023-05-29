@@ -1,5 +1,7 @@
 ﻿fn main ()
 {
+
+    /*
     let sum := null
     for (let i := 0 i < 10, j++)
     {
@@ -46,4 +48,6 @@
     const = const
 
     let y / x
+
+    */
 }

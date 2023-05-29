@@ -1,4 +1,69 @@
-﻿struct tree
+﻿fn main()
+{
+    let a : node = { 1 }
+    let b : node = { 2 }
+    let c : node = { 3 }
+    let d : node = { 4 }
+    let e : node = { 5 }
+    let f : node = { 6 }
+    let g : node = { 7 }
+    let h : node = { 8 }
+
+    a.left = &b
+    a.right = &c
+    b.left = &d
+    b.right = &e
+    d.left = &g
+    d.right = &h
+    c.right = &f
+
+    let t: tree = { }
+    t.root = &a
+
+    /*
+               a
+              /  \
+             b    c
+            / \    \
+           d   e    f
+          / \
+         g   h
+    */
+
+    push_node(t.root)
+    let result: node* = pop_node()
+    assert(result == t.root)
+
+    push_to_queue(&a)
+    push_to_queue(&b)
+    push_to_queue(&c)
+    assert(pop_from_queue() == &a)
+    assert(pop_from_queue() == &b)
+    assert(pop_from_queue() == &c)
+
+    printf(" // binary tree test // ")
+
+    breadth_first_search(&t)
+    
+    depth_first_traversal(&t)
+
+    assert(0 != search_for_value(t.root, 7))
+    assert(0 == search_for_value(t.root, 9))
+    assert(0 == search_for_value(t.root, 0))
+    
+    let depth: int = get_tree_depth(&t)
+    assert(depth == 3)
+
+    let sum: int = get_max_path_sum(&t)
+
+    printf("\noriginal tree:")
+    print_tree(&t)
+    invert_binary_tree(&t)
+    printf("\ninverted tree:")
+    print_tree(&t)
+}
+
+struct tree
 {
     root: node*
 }
@@ -72,7 +137,7 @@ fn depth_first_traversal(t: tree*)
 {    
     push_node(t.root)
 
-    printf("\ntree depth first traversal: ", 0)
+    printf("\ntree depth first traversal: ")
 
     _depth_first_rec(t.root)
 }
@@ -117,11 +182,9 @@ fn pop_from_queue(): node*
 fn _breadth_first()
 {
     let n: node* = pop_from_queue()
-    //printf("%d ", n.value)
+    printf("%d ", n.value)
     if (n)
     {
-
-            // tutaj leci błąd
         if (n.left)
         {
             push_to_queue(n.left)
@@ -137,7 +200,7 @@ fn breadth_first_search(t: tree*)
 {
     push_to_queue(t.root)
 
-    printf("\ntree breadth first traversal: ", 0)
+    printf("\ntree breadth first traversal: ")
     while (element_count > 0)
     {
         _breadth_first()
@@ -150,7 +213,6 @@ fn search_for_value(n: node*, value: int): int
     {
         return 0
     }
-        // wcześniej leciał tutaj...
     else if (n.value == value)
     {
         return 1
@@ -272,76 +334,11 @@ fn print_node(n: node*)
     {
         print_node(n.right)
     }
-    printf(")", 0)
+    printf(")")
 }
 
 fn print_tree(t: tree*)
 {
-    printf("\n", 0)
+    printf("\n")
     print_node(t.root)
-}
-
-fn main()
-{
-    let a : node = { 1 }
-    let b : node = { 2 }
-    let c : node = { 3 }
-    let d : node = { 4 }
-    let e : node = { 5 }
-    let f : node = { 6 }
-    let g : node = { 7 }
-    let h : node = { 8 }
-
-    a.left = &b
-    a.right = &c
-    b.left = &d
-    b.right = &e
-    d.left = &g
-    d.right = &h
-    c.right = &f
-
-    let t: tree = { }
-    t.root = &a
-
-    /*
-               a
-              /  \
-             b    c
-            / \    \
-           d   e    f
-          / \
-         g   h
-    */
-
-    push_node(t.root)
-    let result: node* = pop_node()
-    assert(result == t.root)
-
-    push_to_queue(&a)
-    push_to_queue(&b)
-    push_to_queue(&c)
-    assert(pop_from_queue() == &a)
-    assert(pop_from_queue() == &b)
-    assert(pop_from_queue() == &c)
-
-    printf(" // binary tree test // ", 0)
-
-    breadth_first_search(&t)
-    
-    depth_first_traversal(&t)
-
-    assert(0 != search_for_value(t.root, 7))
-    assert(0 == search_for_value(t.root, 9))
-    assert(0 == search_for_value(t.root, 0))
-    
-    let depth: int = get_tree_depth(&t)
-    assert(depth == 3)
-
-    let sum: int = get_max_path_sum(&t)
-
-    printf("\noriginal tree:", 0)
-    print_tree(&t)
-    invert_binary_tree(&t)
-    printf("\ninverted tree:", 0)
-    print_tree(&t)
 }

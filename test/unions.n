@@ -1,42 +1,4 @@
-﻿/*
-struct union_test
-{
-    is_a_version: bool,	
-    fields: union // czy potrzebna jest nazwa?
-    {
-        a_version : struct
-        {
-            val_1 : int,
-            val_2 : int,
-        }, 
-        b_version : struct
-        {
-            val_2 : float
-        },
-    },
-}
-*/
-
-/*
-struct test_union
-{
-    is_a_version: bool,	
-    fields: union // czy potrzebna jest nazwa?
-    {
-        a_version : struct
-        {
-            val_1 : int,
-            val_2 : int,
-        }, 
-        b_version : struct
-        {
-            val_f : float // czy nazwy mogą się powtarzać?
-        },
-    },
-}
-*/
-
-union basic_union_test
+﻿union basic_union_test
 {
     val_int : int,
     val_float1 : float,

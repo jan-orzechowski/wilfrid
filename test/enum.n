@@ -38,16 +38,16 @@ fn main()
         let el := &data[i]
         if (el.kind == element_kind.A)
         {
+            let old_val = el.value
             el.kind = element_kind.C
             el.value *= 10
-            //printf("result of multiplication: %d", data[i].value)
+            assert(el.value == old_val * 10)
         }
     }
 
     assert(data[1].kind == element_kind.C)
     
-    // to trzeba jeszcze poprawić
-    //assert(data[2].kind == 0 as element_kind)
+    assert(data[2].kind == 2 as element_kind)
     assert(data[3].kind == element_kind.B)
     
     assert(data[0].value == 0)

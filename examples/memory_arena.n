@@ -1,3 +1,4 @@
+﻿struct dummy
 {
     data: char[512]
 }
@@ -56,7 +57,7 @@ fn allocate_new_block(arena: memory_arena*, size: ulong): memory_arena_block*
     let new_block : memory_arena_block* = allocate(size + size_of_type(memory_arena_block) as ulong) as memory_arena_block*
     assert(new_block != null)
 
-    new_block.base_address = (new_block as char* + size_of_type(memory_arena_block) as char*) as void*
+    new_block.base_address = (new_block as char* + size_of_type(memory_arena_block)) as void*
     new_block.max_size = size
     new_block.current_size = 0
    
@@ -182,7 +183,7 @@ fn zero_memory(from_address : void*, to_address : void*, value : char)
 {
     let from := from_address as char*
     let to := to_address as char*
-    for (let addr := from, addr < to, addr = addr + 1 as char*)
+    for (let addr := from, addr < to, addr = addr + 1)
     {
         *addr = 0
     }

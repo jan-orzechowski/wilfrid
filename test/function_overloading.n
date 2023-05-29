@@ -4,19 +4,19 @@ extern fn max(a: int, b: ulong) : ulong
 
 fn do_something(arg : ulong) : ulong
 {
-	printf("something done with a unsigned long integer", 1)
+	printf("something done with a unsigned long integer")
 	return arg * 2
 }
 
 fn do_something(arg : long) : long
 {
-	printf("something done with an long integer", 1)
+	printf("something done with an long integer")
 	return arg * -2
 }
 
 fn do_something() 
 {
-	printf("something done", 1)
+	printf("something done")
 }
 
 fn main()

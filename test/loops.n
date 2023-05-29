@@ -9,18 +9,12 @@ fn sub_loop(sum: int*, start: int, end: int)
 fn main()
 {
     let sum := 0
-    sub_loop(&sum, 25, 35)
-    sub_loop(&sum, 10, 15)
-    printf("sum: %d", sum)
-}
-
-fn main2()
-{
-    let sum := 0
     for (let i := 0, i < 10, i++)
     {
         sum++
     }
+
+    assert(sum == 10)
 
     let loop := true
     while (loop)
@@ -32,8 +26,12 @@ fn main2()
         }
     }
 
+    assert(sum == 20)
+
     sub_loop(&sum, 25, 35)
     sub_loop(&sum, 10, 15)
+
+    assert(sum == 35)
 
     loop = true
     do 
@@ -47,11 +45,13 @@ fn main2()
     }
     while (loop)
 
+    assert(sum == 45)
+
     while (true)
     {
         sum++
 
-        if (sum > 39)
+        if (sum > 49)
         {
             break
         } 
@@ -61,5 +61,5 @@ fn main2()
         }
     }
 
-    printf("sum: %d", sum)
+    assert(sum == 50)
 }

@@ -75,7 +75,7 @@ fn run_vm()
     let opcode := vm_code[ip] as instruction
     assert(opcode as instruction == instruction.PUSH)
 
-    printf("%d", vm_code[ip] as instruction)
+    printf("%d", vm_code[ip])
     printf("%d", instruction.PUSH as int)
     
     while (opcode != instruction.HALT && ip < vm_code.length())

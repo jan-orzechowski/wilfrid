@@ -1,19 +1,17 @@
 ﻿fn main()
 {
-    /*
     let map : hashmap = { }
     
-    for (let i := 1, i < 2048, i++)
+    for (let i := 1, i < 64, i++)
     {
         map_put(&map, i as void*, (i + 1) as void*)
     }
 
-    for (let i := 1, i < 2048, i++)
+    for (let i := 1, i < 64, i++)
     {
         let val := map_get(&map, i as void*)
         assert(val == (i + 1) as void*)
     }
-    */
 }
 
 fn is_power_of_2(val: ulong) : bool
@@ -28,7 +26,6 @@ fn is_power_of_2(val: ulong) : bool
     }
 }
 
-/*
 struct hashmap
 {
     keys: void**
@@ -55,7 +52,7 @@ fn map_get(map: hashmap*, key: void*): void*
         {
             return map.values[index]
         }
-        else if (0 == map.keys[index])
+        else if (map.keys[index] == null)
         {
             return null
         }
@@ -66,7 +63,9 @@ fn map_get(map: hashmap*, key: void*): void*
 
 fn map_grow(map: hashmap*, new_capacity: ulong)
 {
-    new_capacity = max(16, new_capacity)
+    new_capacity = max(16 as ulong, new_capacity)
+    assert(new_capacity >= 16)
+
     let new_map : hashmap = 
     {
         keys = allocate(new_capacity * size_of_type(void*)) as void**,
@@ -94,17 +93,19 @@ fn map_put(map: hashmap*, key: void*, val: void*)
 
     if (2 * map.count >= map.capacity)
     {
-        map_grow(map, (2 * map.capacity) as ulong)
+        map_grow(map, 2 * map.capacity)
     }
-
+    
+    assert(map.capacity > 0)
     assert(2 * map.count < map.capacity)
     assert(is_power_of_2(map.capacity))
 
-    let index := hash_ptr(key) as ulong
+    let index := hash_ptr(key)
     while (true)
     {
         index &= map.capacity - 1
-        if (0 == map.keys[index])
+        assert(index <= map.capacity)
+        if (map.keys[index] == null)
         {
             map.count++
             map.keys[index] = key
@@ -120,29 +121,27 @@ fn map_put(map: hashmap*, key: void*, val: void*)
     }
 }
 
-fn hash_uint64(x: ulong) : ulong
-{
-    x *= 0xff51afd7ed558ccd
+fn hash_ulong(x: ulong) : ulong
+{    
+    x *= 0xff51afd7ed558ccd as ulong
     x ^= x >> 32
     return x
 }
 
 fn hash_ptr(ptr: void*) : ulong
 {
-    return hash_uint64(ptr as ulong)
+    return hash_ulong(ptr as ulong)
 }
 
 fn hash_bytes(buf: char*, len: ulong) : ulong
 {
     // FNV hash
     let x : ulong = 0xcbf29ce484222325
-    for (let i := 0, i < len, i++)
+    for (let i : ulong = 0, i < len, i++)
     {
-        x ^= buf[i] as int
+        x ^= buf[i] as ulong
         x *= 0x01000193
         x ^= x >> 32
     }
     return x
 }
-
-*/
