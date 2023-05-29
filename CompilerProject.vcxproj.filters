@@ -53,5 +53,9 @@
     <Text Include="test\bitwise_operators.n" />
     <Text Include="test\assign_operators.n" />
     <Text Include="include\common.n" />
+    <Text Include="test\printf_test.n" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="examples\printf.n" />
   </ItemGroup>
 </Project>

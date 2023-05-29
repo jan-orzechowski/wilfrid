@@ -161,6 +161,7 @@
     <Text Include="test\globals.n" />
     <Text Include="test\implicit_type_conversions.n" />
     <Text Include="test\pointer_arithmetic.n" />
+    <Text Include="test\printf_test.n" />
     <Text Include="test\size_of.n" />
     <Text Include="test\structs.n" />
     <Text Include="test\casts.n" />
@@ -180,6 +181,9 @@
     <Text Include="examples\hashmap.n" />
     <Text Include="test\address_of.n" />
     <Text Include="test\null.n" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="examples\printf.n" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
