@@ -8,6 +8,11 @@
 
 #define SOURCEFILE_EXTENSION "n"
 
+#ifdef _MSC_VER
+// wyłącz ostrzeżenie o użyciu strncpy
+#pragma warning(disable:4996)
+#endif
+
 #include "lexing.c"
 #include "ast_print.c"
 #include "parsing.c"

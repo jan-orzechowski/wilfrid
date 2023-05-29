@@ -116,13 +116,13 @@ char *_debug_print_vm_value(byte *val, type *typ)
     {
         case TYPE_INT:
         {
-            snprintf(debug_print_buffer, debug_print_buffer_size, "%i", *(int32_t*)val);
+            snprintf(debug_print_buffer, debug_print_buffer_size, "%i", *(int32_t *)val);
         }
         break;
         case TYPE_ENUM:
         case TYPE_LONG:
         {
-            snprintf(debug_print_buffer, debug_print_buffer_size, "%lld", *(int64_t*)val);
+            snprintf(debug_print_buffer, debug_print_buffer_size, "%lld", *(int64_t *)val);
         }
         break;
         case TYPE_CHAR:
@@ -818,24 +818,305 @@ byte *eval_binary_expression(expr *exp, byte *result)
 
 byte *eval_stub_expression(byte *result, expr *exp);
 
+#if 1 //__EMSCRIPTEN__
+#define optional_newline "\n"
+#else
+#define optional_newline
+#endif
+
+// przenieść tutaj potem
+byte *eval_printf_call(expr *exp, byte *result)
+{
+    assert(exp->kind == EXPR_CALL);
+    assert(exp->call.resolved_function->name == str_intern("printf"));
+
+    assert(exp->call.args_num >= 1);
+    assert(exp->call.args[0]->kind);
+    char *format = exp->call.args[0]->string_value;
+    char *orig_format = format;
+
+    byte **arg_vals = null;
+    type **arg_types = null;
+    for (size_t i = 1; i < exp->call.args_num; i++)
+    {
+        expr *arg_expr = exp->call.args[i];
+        byte *arg_val = eval_expression(arg_expr);
+        buf_push(arg_vals, arg_val);
+        buf_push(arg_types, arg_expr->resolved_type);
+    }
+
+    char *output = null;
+
+    size_t current_arg_index = 0;
+    size_t spec_start_index = 0;
+    size_t spec_end_index = 0;
+
+    bool not_enough_arguments = false;
+    type *mismatching_type = null;
+    type *expected_type = null;
+    bool unknown_specifier = false;
+
+    int64_t index = -1;
+    while (*format)
+    {
+        index++;
+        if (*format != '%')
+        {
+            buf_printf(output, "%c", *format);
+            format++;
+            continue;
+        }         
+
+        spec_start_index = index + 1;
+        if (*(format + 1) == 0)
+        {
+            unknown_specifier = true;
+            spec_end_index = spec_start_index;
+            break;
+        }
+        else if (*(format + 1) == '%')
+        {
+            buf_printf(output, "%%");
+            format += 2;
+        }
+        else if (*(format + 1) == 'i' || *(format + 1) == 'd')
+        {
+            if (current_arg_index + 1 > buf_len(arg_types))
+            {
+                not_enough_arguments = true;
+                break;
+            }
+
+            type *t = arg_types[current_arg_index];
+            if (t->kind == TYPE_INT)
+            {
+                byte *val = arg_vals[current_arg_index];
+                buf_printf(output, "%i", *(int32_t *)val);
+            }
+            else
+            {
+                mismatching_type = t;
+                expected_type = type_int;
+            }
+            current_arg_index++;
+            format += 2;
+        }
+        else if (*(format + 1) == 'u')
+        {
+            if (current_arg_index + 1 > buf_len(arg_types))
+            {
+                not_enough_arguments = true;
+                break;
+            }
+
+            type *t = arg_types[current_arg_index];
+            if (t->kind == TYPE_CHAR)
+            {
+                byte *val = arg_vals[current_arg_index];
+                buf_printf(output, "%u", *(uint8_t *)val);
+            }
+            else if (t->kind == TYPE_BOOL)
+            {
+                byte *val = arg_vals[current_arg_index];
+                buf_printf(output, "%s", (*(uint32_t *)val) ? "true" : "false");
+            }
+            else if (t->kind == TYPE_NULL || t->kind == TYPE_UINT)
+            {
+                byte *val = arg_vals[current_arg_index];                
+                buf_printf(output, "%u", *(uint32_t *)val);
+            }
+            else
+            {
+                mismatching_type = t;
+                expected_type = type_uint;
+            }
+            current_arg_index++;
+            format += 2;
+        }
+        else if (*(format + 1) == 'p')
+        {
+            if (current_arg_index + 1 > buf_len(arg_types))
+            {
+                not_enough_arguments = true;
+                break;
+            }
+
+            type *t = arg_types[current_arg_index];
+            if (t->kind == TYPE_NULL || t->kind == TYPE_POINTER)
+            {
+                byte *val = arg_vals[current_arg_index];
+                buf_printf(output, "%p", (void *)val);
+            }
+            else
+            {
+                mismatching_type = t;
+                expected_type = type_void;
+            }
+            current_arg_index++;
+            format += 2;
+        }
+        else if (*(format + 2) == 0)
+        {
+            unknown_specifier = true;
+            spec_end_index = spec_start_index + 1;
+            break;
+        }
+        else if (*(format + 1) == 'f' && *(format + 2) == 'f')
+        {
+            if (current_arg_index + 1 > buf_len(arg_types))
+            {
+                not_enough_arguments = true;
+                break;
+            }
+
+            type *t = arg_types[current_arg_index];
+            if (t->kind == TYPE_FLOAT)
+            {
+                byte *val = arg_vals[current_arg_index];
+                buf_printf(output, "ff", *(float *)val);
+            }
+            else
+            {
+                mismatching_type = t;
+                expected_type = type_float;
+            }
+            current_arg_index++;
+            format += 3;
+        }
+        else if (*(format + 3) == 0)
+        {
+            unknown_specifier = true;
+            spec_end_index = spec_start_index + 2;
+            break;
+        }
+        else if (*(format + 1) == 'l' && *(format + 2) == 'l' && *(format + 3) == 'd')
+        {
+            if (current_arg_index + 1 > buf_len(arg_types))
+            {
+                not_enough_arguments = true;
+                break;
+            }
+
+            type *t = arg_types[current_arg_index];
+            if (t->kind == TYPE_LONG || t->kind == TYPE_ENUM)
+            {
+                byte *val = arg_vals[current_arg_index];
+                buf_printf(output, "%lld", *(int64_t *)val); 
+            }
+            else
+            {
+                mismatching_type = t;
+                expected_type = type_long;
+            }
+            current_arg_index++;
+            format += 4;
+        }
+        else if (*(format + 1) == 'l' && *(format + 2) == 'l' && *(format + 3) == 'u')
+        {
+            if (current_arg_index + 1 > buf_len(arg_types))
+            {
+                not_enough_arguments = true;
+                break;
+            }
+
+            type *t = arg_types[current_arg_index];
+            if (t->kind == TYPE_ULONG)
+            {
+                byte *val = arg_vals[current_arg_index];
+                buf_printf(output, "%lld", *(uint64_t *)val);                
+            }
+            else
+            {
+                mismatching_type = t;
+                expected_type = type_ulong;
+            }
+            current_arg_index++;
+            format += 4;
+        }
+        else
+        {
+            unknown_specifier = true;
+            spec_end_index = spec_start_index + 3;
+            break;
+        }
+    }
+
+    bool too_many_arguments = false;
+    if (buf_len(arg_types) > current_arg_index)
+    {
+        too_many_arguments = true;
+    }
+
+    buf_free(arg_vals);
+    buf_free(arg_types);
+
+    result = push_identifier_on_stack(null, exp->resolved_type);
+
+    if (false == (unknown_specifier || too_many_arguments || not_enough_arguments || mismatching_type))
+    {
+        int32_t characters_written = buf_len(output);
+        assert(exp->resolved_type == type_int);
+        copy_vm_val(result, (byte *)&characters_written, sizeof(int32_t));
+
+#if DEBUG_BUILD
+        debug_vm_simple_print("--------------------------- PRINTF CALL: format: %s, output: %s\n", orig_format, output);
+        debug_breakpoint;
+#else
+        printf("%s" optional_newline, output);
+#endif
+        buf_free(output);
+        return result;
+    }
+    else
+    {
+        buf_free(output);
+    }
+
+    if (unknown_specifier)
+    {
+        assert(spec_start_index > 0);
+        assert(spec_end_index >= spec_start_index);
+        size_t length = spec_end_index - spec_start_index;
+        assert(length <= 3);
+        if (length == 0)
+        {
+            runtime_error(exp->pos, "Singular '%%' in printf is not allowed. Use '%%%%' or type specifier instead");
+        }
+        else
+        {
+            char buffer[5] = { 0 };
+            strncpy((char *)buffer, orig_format + spec_start_index, length);
+            buffer[4] = 0;
+            runtime_error(exp->pos, "Unrecognized type specifer in the printf call: %%%s", buffer);
+        }        
+    }
+    else if (too_many_arguments)
+    {
+        runtime_error(exp->pos, "There are more arguments passed to the printf call than type specifiers");
+    }
+    else if (not_enough_arguments)
+    {
+        runtime_error(exp->pos, "There are more type specifiers in the printf call than passed arguments");
+    }
+    else if (mismatching_type)
+    {        
+        runtime_error(exp->pos, 
+            "A type specifier in the printf call doesn't match the passed argument: expected %s, got %s",
+            expected_type == type_void ? "pointer" : pretty_print_type_name(expected_type, false),
+            pretty_print_type_name(mismatching_type, false));
+    }
+
+    return result;
+}
+
+
 byte *eval_function_call(expr *exp, byte *result)
 {
     assert(exp->kind == EXPR_CALL);
 
-    // specjalny przypadek na razie
     if (exp->call.resolved_function->name == str_intern("printf"))
     {
-        // na razie tylko w debug, ponieważ opiera się na debug_print_vm_value
-#if DEBUG_BUILD
-        assert(exp->call.args_num >= 2);
-        char *format = exp->call.args[0]->string_value;
-
-        assert(exp->call.args[1]->resolved_type);
-        byte *val = eval_expression(exp->call.args[1]);
-        char *val_str = debug_print_vm_value(val, exp->call.args[1]->resolved_type);
-
-        debug_vm_simple_print("--------------------------- PRINTF CALL: format: %s, vals: %s\n", format, val_str);
-#endif
+        eval_printf_call(exp, result);
     }
     else if (exp->call.resolved_function->name == str_intern("assert"))
     {
