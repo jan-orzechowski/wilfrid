@@ -196,7 +196,8 @@ typedef enum cast_kind
     CAST_NO_CAST_NEEDED,
     CAST_TYPES_INCOMPATIBLE,
     CAST_LEFT,
-    CAST_RIGHT
+    CAST_RIGHT,
+    CAST_BOTH
 } cast_kind;
 
 typedef struct cast_info

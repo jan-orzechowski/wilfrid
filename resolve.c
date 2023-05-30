@@ -334,6 +334,17 @@ void insert_cast_expr(expr *left_expr, expr *right_expr, cast_info cast)
             right_expr->stub.cast_kind = cast.kind;
         }
         break;
+        case CAST_BOTH:
+        {
+            assert(left_expr);
+            assert(right_expr);
+            assert(cast.type);
+            plug_stub_expr(left_expr, STUB_EXPR_CAST, cast.type);
+            left_expr->stub.cast_kind = cast.kind;
+            plug_stub_expr(right_expr, STUB_EXPR_CAST, cast.type);
+            right_expr->stub.cast_kind = cast.kind;
+        }
+        break;
         case CAST_NO_CAST_NEEDED:
         {
             return;
@@ -1086,20 +1097,26 @@ resolved_expr *resolve_expr_binary(expr *expr)
         }
     }
     
-    if (left->type->kind == TYPE_POINTER && right->type->kind == TYPE_POINTER
-        && op != TOKEN_SUB && false == is_comparison_operation(op))
-    {
-        // zabraniamy, tak jak w C
-        error_in_resolving(xprintf(
-            "Two pointers can be only compared or subtracted. Tried to perform %s on %s and %s",
-            get_token_kind_name(op),
-            pretty_print_type_name(right->type, false),
-            pretty_print_type_name(left->type, false)), expr->pos);
-        return resolved_expr_invalid;
-    }
-
     cast_info cast = { .kind = CAST_NO_CAST_NEEDED };
-    if (left->is_const && false == right->is_const)
+
+    if (left->type->kind == TYPE_POINTER && right->type->kind == TYPE_POINTER
+        && false == is_comparison_operation(op))
+    {
+        if (op == TOKEN_SUB)
+        {            
+            cast = (cast_info){ .kind = CAST_BOTH, .type = type_long };
+        }
+        else
+        {
+            error_in_resolving(xprintf(
+                "Two pointers can be only compared or subtracted. Tried to perform %s on %s and %s",
+                get_token_kind_name(op),
+                pretty_print_type_name(right->type, false),
+                pretty_print_type_name(left->type, false)), expr->pos);
+            return resolved_expr_invalid;
+        }
+    }
+    else if (left->is_const && false == right->is_const)
     {        
         bool allow_forcing = (left->val >= 0 && get_type_size(right->type) >= get_type_size(left->type));
         cast = check_if_cast_needed(left->type, right->type, false, allow_forcing);
@@ -1138,7 +1155,7 @@ resolved_expr *resolve_expr_binary(expr *expr)
     }
 
     type *result_type = left->type;
-    if (cast.kind == CAST_LEFT || cast.kind == CAST_RIGHT)
+    if (cast.kind == CAST_LEFT || cast.kind == CAST_RIGHT || cast.kind == CAST_BOTH)
     {
         result_type = cast.type;
     }
