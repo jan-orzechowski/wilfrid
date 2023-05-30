@@ -1845,15 +1845,19 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
         break;
         case EXPR_BOOL:
         {
-            type *t = type_bool;
-            result = get_resolved_rvalue_expr(t);
+            result = get_resolved_rvalue_expr(type_bool);
             result->is_const = true;
         }
         break;
         case EXPR_NULL:
         {
-            type *t = type_null;
-            result = get_resolved_rvalue_expr(t);
+            result = get_resolved_rvalue_expr(type_null);
+            result->is_const = true;
+        }
+        break;
+        case EXPR_CHAR:
+        {
+            result = get_resolved_rvalue_expr(type_char);
             result->is_const = true;
         }
         break;
