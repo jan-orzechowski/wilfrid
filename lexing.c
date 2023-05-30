@@ -269,6 +269,14 @@ bool lex_next_token(void)
             for (;;)
             {
                 stream++;
+
+                if (*stream == '\n')
+                {
+                    current_line_beginning = stream;
+                    tok.pos.line++;
+                    continue;
+                }
+
                 if (*(stream) == 0 || *(stream) == '"')
                 {
                     tok.string_val = str_intern_range(tok.start + 1, stream);
