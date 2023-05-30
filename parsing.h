@@ -212,7 +212,6 @@ typedef struct stub_expr
     expr *original_expr;
     union
     {
-        cast_kind cast_kind; // gdy STUB_EXPR_CAST
         bool left_is_pointer; // gdy STUB_EXPR_POINTER_ARITHMETIC
         bool is_inc; // gdy STUB_EXPR_POINTER_ARITHMETIC_INC
     };

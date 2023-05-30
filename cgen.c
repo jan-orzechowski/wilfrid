@@ -550,10 +550,7 @@ void gen_expr_stub(expr *exp)
     {
         case STUB_EXPR_CAST:
         {
-            assert(exp->stub.cast_kind != CAST_NO_CAST_NEEDED);
-            assert(exp->stub.cast_kind != CAST_TYPES_INCOMPATIBLE);
             assert(exp->resolved_type);
-
             gen_printf("(%s)(", type_to_cdecl(exp->resolved_type, null));
             gen_expr(exp->stub.original_expr);
             gen_printf(")");
