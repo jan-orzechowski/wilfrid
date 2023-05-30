@@ -1232,6 +1232,11 @@ byte *eval_expression(expr *exp)
         }
         break;
         case EXPR_CHAR:
+        {
+            assert(sizeof(char) == sizeof(exp->string_value[0]));
+            *((char *)result) = (char)exp->string_value[0];
+        }
+        break;
         case EXPR_STRING:
         {
             assert(sizeof(uintptr_t) == sizeof(exp->string_value));
