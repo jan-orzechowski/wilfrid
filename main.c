@@ -171,7 +171,7 @@ void test_directory(char *path)
     {
         allocate_memory();
         char *test_file = source_files[i];
-        if (0 != strcmp(test_file, "test/parsing_tests.n") && 0 != strcmp(test_file, "test/error_examples.n"))
+        if (0 != strcmp(test_file, "test/parsing_tests.n"))
         {
             char **temp_buf = null;
             buf_push(temp_buf, test_file);

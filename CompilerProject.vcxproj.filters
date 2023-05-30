@@ -23,7 +23,6 @@
     <Text Include="test\binary_tree_test.n" />
     <Text Include="examples\linked_lists.n" />
     <Text Include="test\dynamic_lists_test.n" />
-    <Text Include="examples\error_examples.n" />
     <Text Include="test\method_overloading.n" />
     <Text Include="test\extern.n" />
     <Text Include="test\loops.n" />

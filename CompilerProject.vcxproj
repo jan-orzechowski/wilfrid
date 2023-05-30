@@ -178,7 +178,6 @@
     <Text Include="test\switch.n" />
     <Text Include="test\new_and_delete.n" />
     <Text Include="test\unions.n" />
-    <Text Include="examples\error_examples.n" />
     <Text Include="examples\hashmap.n" />
     <Text Include="test\address_of.n" />
     <Text Include="test\null.n" />
