@@ -155,7 +155,7 @@ void test_parsing_single_case(void)
     if (buf_len(errors) > 0)
     {
         print_errors_to_console();
-        debug_breakpoint;
+        fatal("Parsing error!");
     }
 
     buf_free(decls);

@@ -27,14 +27,21 @@ bool lex_next_token(void)
                 uint64_t val = 0;
                 while (true)
                 {
-                    uint8_t digit = char_to_digit[(unsigned char)*stream];
-                    if (digit == 0 && *stream != '0')
+                    if (*stream == '_')
                     {
-                        break;
+                        stream++;
                     }
-                    val *= 16;
-                    val += digit;
-                    stream++;
+                    else
+                    {
+                        uint8_t digit = char_to_digit[(unsigned char)*stream];
+                        if (digit == 0 && *stream != '0')
+                        {
+                            break;
+                        }
+                        val *= 16;
+                        val += digit;
+                        stream++;
+                    }
                 }
                 tok.kind = TOKEN_INT;
                 tok.uint_val = val;
@@ -46,16 +53,23 @@ bool lex_next_token(void)
             {
                 stream += 2;
                 uint64_t val = 0;
-                while (true)
+                while (*stream == '0' || *stream == '1' || *stream == '_')
                 {
-                    uint8_t digit = char_to_digit[(unsigned char)*stream];
-                    if (digit == 0 && *stream != '0')
+                    if (*stream == '_')
                     {
-                        break;
+                        stream++;
                     }
-                    val *= 2;
-                    val += digit;
-                    stream++;
+                    else
+                    {
+                        uint8_t digit = char_to_digit[(unsigned char)*stream];
+                        if (digit == 0 && *stream != '0')
+                        {
+                            break;
+                        }
+                        val *= 2;
+                        val += digit;
+                        stream++;
+                    }
                 }
                 tok.kind = TOKEN_INT;
                 tok.uint_val = val;
@@ -67,12 +81,20 @@ bool lex_next_token(void)
         case '6': case '7': case '8': case '9':
         {
             uint64_t val = 0;
-            while (isdigit(*stream))
+
+            while (isdigit(*stream) || *stream == '_')
             {
-                uint8_t digit = char_to_digit[(uint8_t)*stream];
-                val *= 10;
-                val += digit;
-                stream++;
+                if (*stream == '_')
+                {
+                    stream++;
+                }
+                else
+                {
+                    uint8_t digit = char_to_digit[(uint8_t)*stream];
+                    val *= 10;
+                    val += digit;
+                    stream++;
+                }
             }
 
             if (*stream == '.')
@@ -80,13 +102,20 @@ bool lex_next_token(void)
                 stream++;
                 double float_val = (double)val;
                 size_t decimal_place = 0;
-                while (isdigit(*stream))
+                while (isdigit(*stream) || *stream == '_')
                 {
-                    decimal_place++;
-                    double digit = (double)char_to_digit[(uint8_t)*stream];
-                    digit /= pow(10, decimal_place);
-                    float_val += digit;
-                    stream++;
+                    if (*stream == '_')
+                    {
+                        stream++;
+                    }
+                    else
+                    {
+                        decimal_place++;
+                        double digit = (double)char_to_digit[(uint8_t)*stream];
+                        digit /= pow(10, decimal_place);
+                        float_val += digit;
+                        stream++;
+                    }
                 }
                 tok.kind = TOKEN_FLOAT;
                 tok.float_val = float_val;

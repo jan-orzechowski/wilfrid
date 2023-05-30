@@ -413,3 +413,18 @@ TEST:(fn-decl main
   ((assert (!= (pointer-dereference arena) null)))
   (= (pointer-dereference arena) null)
 ):END
+
+CASE:let num := 1_000__500_100:END
+TEST:(var-decl num 1000500100):END
+
+CASE:let num := 1_0._5_2__:END
+TEST:(var-decl num 10.520000f):END
+
+CASE:let num := 0b1_011_101__100:END
+TEST:(var-decl num 748):END
+
+CASE:let num := 0x_fafa_10_baba_:END
+TEST:(var-decl num 1077937224378):END
+
+CASE:let num := 1___500_100__:END
+TEST:(var-decl num 1500100):END
