@@ -818,13 +818,6 @@ byte *eval_binary_expression(expr *exp, byte *result)
 
 byte *eval_stub_expression(byte *result, expr *exp);
 
-#if 1 //__EMSCRIPTEN__
-#define optional_newline "\n"
-#else
-#define optional_newline
-#endif
-
-// przenieść tutaj potem
 byte *eval_printf_call(expr *exp, byte *result)
 {
     assert(exp->kind == EXPR_CALL);
@@ -860,6 +853,33 @@ byte *eval_printf_call(expr *exp, byte *result)
     while (*format)
     {
         index++;
+
+        if (*format == '\\' && *(format + 1) != 0)
+        {
+            char escaped_char = *(format + 1);
+            char char_to_print = 0;
+            switch (escaped_char)
+            {
+                case 't': char_to_print = '\t'; break;
+                case 'n': char_to_print = '\n'; break;
+                case 'r': char_to_print = '\r'; break;
+                case 'v': char_to_print = '\v'; break;
+                case 'a': char_to_print = '\a'; break;
+                default: char_to_print = 0; break;
+            }
+
+            if (char_to_print)
+            {
+                buf_printf(output, "%c", char_to_print);
+            }
+            else
+            {
+                buf_printf(output, "\\%c", escaped_char);
+            }
+            format += 2;
+            continue;
+        }
+
         if (*format != '%')
         {
             buf_printf(output, "%c", *format);
@@ -995,7 +1015,7 @@ byte *eval_printf_call(expr *exp, byte *result)
             if (t->kind == TYPE_FLOAT)
             {
                 byte *val = arg_vals[current_arg_index];
-                buf_printf(output, "ff", *(float *)val);
+                buf_printf(output, "%ff", *(float *)val);
             }
             else
             {
@@ -1084,7 +1104,7 @@ byte *eval_printf_call(expr *exp, byte *result)
         debug_vm_simple_print("--------------------------- PRINTF CALL: format: %s, output: %s\n", orig_format, output);
         debug_breakpoint;
 #else
-        printf("%s" optional_newline, output);
+        printf("%s", output);
 #endif
         buf_free(output);
         return result;
