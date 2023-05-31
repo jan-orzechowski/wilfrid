@@ -1,0 +1,165 @@
+/*
+    Here are flow control constructs in Wilfrid:
+*/
+
+fn main()
+{
+    let a := 10
+    let b := 20
+    let counter : int
+
+/*
+    If-else statements:
+*/
+
+    if (a != b)
+    {
+        printf("a and b are not equal\\n")
+    }
+
+    if (a > b)
+    {
+        printf("a is greater\\n")
+    }
+    else if (a == b)
+    {
+        printf("a and b are equal\\n")
+    }
+    else 
+    {
+        printf("b is greater\\n")
+    }
+
+/*
+    While and do while loops:
+*/
+
+    while (counter < 10) // Evaluated before each iteration
+    {
+        counter = counter + 1
+    }
+
+    do 
+    {
+        counter = counter - 1
+    }
+    while (counter > 0) // Evaluated after each iteration
+
+    printf("Counter after while and do while loops: %d\\n", counter)
+
+/*
+    For loops consists of three statements:
+    the one on the left is executed once at the start,
+    the middle one is evaluated before each iteration,
+    and the right one is executed after each iteration.
+*/
+    for (let i := 0, i < 100, i++)
+    {
+        if (i >= 50)
+        {
+            break // Quits the loop early
+        }
+        
+        counter++
+    }
+
+    printf("Counter after the for loop: %d\\n", counter)
+
+/*
+    Break and continue statements are supported 
+    in each type of loop.
+*/
+    
+/* 
+    Switch statement:
+*/
+    switch (counter)
+    {
+        case 1:
+        {
+            printf("Counter is one\\n")		
+        }
+        break
+
+        case 0:
+        {
+            printf("Counter is zero\\n")		
+        }
+        
+        /*
+            Since there is no break statement, 
+            we fall through to the label below:
+        */ 
+        
+        default:
+        {
+            printf("Counter is not one\\n")		
+        }
+        break
+    }
+
+/*
+    Here is a more complicated example:
+*/
+
+    let enum_values : some_enum[4] =
+    {
+        some_enum.ENUM_VALUE_THREE,
+        some_enum.ENUM_VALUE_TWO,
+        some_enum.ENUM_VALUE_THREE,
+        10 as some_enum
+    }
+
+    for (let index := 0, index < 4, index++)
+    {
+        switch (enum_values[index])
+        {
+            case some_enum.ENUM_VALUE_ONE: 
+            { 
+                continue
+            }
+            break
+            case some_enum.ENUM_VALUE_TWO: 
+            { 
+                while(true)
+                {
+                    counter++
+                    printf("Increased counter once!\\n")
+                    if (counter > 2)
+                    {
+                        break
+                    }
+                }
+            }
+            break
+            case some_enum.ENUM_VALUE_THREE: 
+            { 
+                for (let print_index := 0, 
+                    print_index < 3, 
+                    print_index++)
+                {
+                    if (print_index == 1)
+                    {
+                        break
+                    }
+                    printf("Print zero value once: %d\\n", 
+                        print_index)
+                }
+            }
+            break
+            default: 
+            { 
+                printf("Unknown value: %lld\\n", 
+                    enum_values[index])
+                break
+            }
+        }
+    }
+}
+
+enum some_enum
+{
+    ENUM_VALUE_ONE,
+    ENUM_VALUE_TWO,
+    ENUM_VALUE_THREE
+}

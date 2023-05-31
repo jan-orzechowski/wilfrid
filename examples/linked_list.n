@@ -1,8 +1,11 @@
-﻿struct node
-{
-    value: int
-    next: node*,
-}
+﻿/* 
+    This is a simple linked list implementation.
+
+    Operations:
+    - adding at head, tail, or chosen position
+    - removing at head, tail, or chosen position
+    - reversing
+*/
 
 struct linked_list
 {
@@ -11,10 +14,10 @@ struct linked_list
     count: int,
 }
 
-struct memory 
+struct node
 {
-    address: void*,
-    size: int
+    value: int
+    next: node*,
 }
 
 fn main()
@@ -30,30 +33,41 @@ fn main()
     add_at_head(list, 2)
     add_at_head(list, 1)
 
+    printf("The list after additions:\\n")
     print_linked_list(list)
 
     remove_head(list)
     remove_tail(list)
 
+    printf("\\nThe list after removals:\\n")
     print_linked_list(list)
 
     add_at_position(list, 3, 9)
     add_at_position(list, 3, 8)
     remove_at_position(list, 4)
 
+    printf("\\nThe list after changing specific positions:\\n")
     print_linked_list(list)
 
     reverse(list)
     
+    printf("\\nThe list after a reversal:\\n")
     print_linked_list(list)
 }
 
-fn print_linked_list(list: linked_list*) {
+fn print_linked_list(list: linked_list*)
+{
     let n := list.head
-    printf("\nlist: ")
     while (n)
     {
-        printf("%d ", n.value)
+        if (n.next != null)
+        {
+            printf("%d, ", n.value)
+        } 
+        else
+        {
+            printf("%d", n.value)
+        }
         n = n.next
     }
 }

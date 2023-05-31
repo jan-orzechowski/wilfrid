@@ -1,0 +1,150 @@
+/* 
+    Wilfrid supports user-defined types: structs, unions, 
+    and enumerations (enums).
+
+    Structs are just collections of fields, allocated 
+    in the memory sequentially. Fields can be of any type.
+    By default, they are padded to be aligned on 8-byte 
+    boundaries.
+
+    This is a declaration of a struct:
+*/
+
+struct some_struct
+{
+    first_var : int,
+    second_var : long,
+    third_var : bool
+}
+
+/* 
+    Structs can be initialized by passing initial values:
+*/ 
+
+let initialized_struct : some_struct = 
+{ 
+    first_var = 10, 
+    second_var = 1000, 
+    third_var = true 
+}
+
+/*
+    Names can be omitted in initialization. 
+    In this case, values are assigned to a struct's fields 
+    in the order of their appearance:
+*/
+
+let same_as_above : some_struct = 
+{ 
+    10, 
+    1000, 
+    true 
+}
+
+/*
+    Fields without provided initialization values are
+    always initialized to zero.
+
+    Two notations given below are equivalent:
+*/
+
+let zeroed_struct : some_struct
+let other_zeroed_struct : some_struct = { }
+
+/* 
+    Arrays can be initialized similarly:
+*/
+
+let initialized_array : int[5] = { 5, 4, 3, 2, 1 }
+let zeroed_array : int[10] = { }
+
+/* 
+    Unions allow to store different values in the same 
+    location in memory. The size of a union is the size 
+    of its largest field.
+
+    For example, this union can be interpreted either as 
+    a float or a long integer, and has a size of 64 bits.
+*/
+
+union some_union
+{
+    long_val : long,
+    float_val : float
+}
+
+let some_union_val : some_union = { long_val = 6040 }
+
+/* 
+    We can check the size using built-in functions 'size_of'
+    and 'size_of_type'. 'size_of' expects a variable instance, 
+    and 'size_of_type' expects a type.
+*/
+
+let some_union_size = size_of_type(some_union)
+
+/* 
+    There are also enumerations. Enumerations are just 
+    constants that are accessible by name.
+    
+    Under the hood, enumerations are always of long integer type.
+*/
+
+enum some_enum
+{
+    ENUM_VALUE_ONE,
+    ENUM_VALUE_TWO,
+    ENUM_VALUE_THREE
+}
+
+/* 
+    Unlike in C, enum values are scoped. 
+    To use them, we must pass an enum name first.
+*/
+
+let some_enum_example = some_enum.ENUM_VALUE_TWO
+
+/* 
+    We can provide custom values to enum labels.
+    Enum values can also depend on each other.
+*/
+
+enum some_other_enum
+{
+    ENUM_VALUE_ZERO = 0,
+    ENUM_VALUE_TWO = 2,
+    ENUM_VALUE_OTHER_TWO = 2,
+    ENUM_VALUE_OTHER_ZERO = ENUM_VALUE_ZERO
+}
+
+fn main()
+{
+/*
+    Here we allocate two structs on the stack:
+*/
+    let x : some_struct = { }
+    let y : some_struct = { 10 }
+
+/* 
+    To pass them to this function, we must take their
+    addresses using the '&' operator:
+*/
+
+    copy_some_struct(&x, &y)
+
+    printf("Value of first_var field after the copy: %d", x.first_var)     
+}
+
+fn copy_some_struct(from: some_struct*, to: some_struct*)
+{
+/*
+    When accessing the struct or union fields,
+    pointers to structs are automatically dereferenced.
+    This means we can use the dot operator no matter whether
+    we have struct/union or just a pointer to it.
+*/
+
+    to.first_var = from.first_var 
+    to.second_var = from.second_var
+    to.third_var = from.third_var 
+}

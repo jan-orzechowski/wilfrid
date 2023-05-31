@@ -1,29 +1,32 @@
-﻿fn main()
+﻿/*
+    Here is a simple hash table implementation.
+    It uses the Fowler-Noll-Vo hash function and 
+    stores 64-bit values. Hash collision is resolved 
+    by open addressing.
+
+    The same hashmap is used in the "Self-hosted 
+    Wilfrid parser" example for string interning.
+*/
+
+fn main()
 {
     let map : hashmap = { }
-    
-    for (let i := 1, i < 64, i++)
+        
+    for (let i := 1, i <= 50, i++)
     {
-        map_put(&map, i as void*, (i + 1) as void*)
+        let key : void* = i as void*
+        let value = (i + 10) as void*
+        map_put(&map, key, value)
     }
 
-    for (let i := 1, i < 64, i++)
-    {
-        let val := map_get(&map, i as void*)
-        assert(val == (i + 1) as void*)
-    }
-}
+    printf("Value for the key %llu is %llu\\n", 
+        10 as ulong, map_get(&map, 10 as void*) as ulong)
 
-fn is_power_of_2(val: ulong) : bool
-{
-    if (val != 0)
-    {
-        return ((val & (val - 1)) == 0)
-    } 
-    else
-    {
-        return false
-    }
+    printf("Value for the key %llu is %llu\\n", 
+        20 as ulong, map_get(&map, 20 as void*) as ulong)
+
+    printf("Value for the key %llu is %llu\\n", 
+        100 as ulong, map_get(&map, 100 as void*) as ulong)
 }
 
 struct hashmap
@@ -41,10 +44,7 @@ fn map_get(map: hashmap*, key: void*): void*
         return null
     }
 
-    assert(is_power_of_2(map.capacity))
-
     let index := hash_ptr(key) as ulong
-    assert(map.count < map.capacity)
     while (true)
     {
         index &= map.capacity - 1
@@ -64,7 +64,8 @@ fn map_get(map: hashmap*, key: void*): void*
 fn map_grow(map: hashmap*, new_capacity: ulong)
 {
     new_capacity = max(16 as ulong, new_capacity)
-    assert(new_capacity >= 16)
+
+    printf("Map grown from %llu to %llu\\n", map.capacity, new_capacity as ulong)
 
     let new_map : hashmap = 
     {
@@ -73,6 +74,7 @@ fn map_grow(map: hashmap*, new_capacity: ulong)
         capacity = new_capacity,
     }
 
+    print_stores = false
     for (let i : ulong = 0, i < map.capacity,  i++)
     {        
         if (map.keys[i])
@@ -80,44 +82,50 @@ fn map_grow(map: hashmap*, new_capacity: ulong)
             map_put(&new_map, map.keys[i], map.values[i])
         }
     }
+    print_stores = true
 
     delete map.keys
     delete map.values
     *map = new_map
 }
 
+let print_stores := true
+
 fn map_put(map: hashmap*, key: void*, val: void*)
 {
-    assert(key)
-    assert(val)
-
+    if (key == null || val == null)
+    {
+        return
+    }
+    
     if (2 * map.count >= map.capacity)
     {
         map_grow(map, 2 * map.capacity)
     }
-    
-    assert(map.capacity > 0)
-    assert(2 * map.count < map.capacity)
-    assert(is_power_of_2(map.capacity))
-
+        
     let index := hash_ptr(key)
     while (true)
     {
         index &= map.capacity - 1
-        assert(index <= map.capacity)
         if (map.keys[index] == null)
         {
             map.count++
             map.keys[index] = key
-            map.values[index] = val
-            return
+            map.values[index] = val            
+            break
         }
         else if (map.keys[index] == key)
         {
             map.values[index] = val
-            return
+            break
         }
         index++
+    }
+
+    if (print_stores)
+    {
+        printf("Value %llu for key %llu stored, total keys: %llu\\n", 
+            val as ulong, key as ulong, map.count)           
     }
 }
 

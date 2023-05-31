@@ -1,0 +1,146 @@
+/*
+    Variable declarations begin with 'let', followed by 
+    an identifier, and then followed by either a type 
+    specification or an initial value, or both.
+*/
+
+let int_var : int = 1
+let float_var : float = 3.6
+let char_var : char = 'c'
+
+/*
+    If the type specification is omitted, a type is 
+    inferred from the initial value.
+    
+    If the initial value is omitted, the variable is 
+    initialized to zero.
+*/ 
+
+let bool_var = true // inferred type: bool
+let long_var : long // initialized to zero
+
+/* 
+    Since in Wilfrid, every variable must have a definitive 
+    type, omitting both type and value in a variable declaration 
+    is not allowed.
+*/
+
+/*
+    Legal variable identifiers consist of letters, numbers, 
+    and underscores, and cannot begin with a number.
+*/
+
+let _weird_name42 = 0
+
+/*
+    Number literals can be expressed in decimal, 
+    binary, or hexadecimal form:
+*/
+
+let decimal_val : ulong = 2014144115
+let binary_val : ulong = 0b1111000000011010110011001110011
+let hexadecimal_val : ulong = 0x780D6673
+
+/*
+    Number literals can also use '_' as a separator 
+    for better readability:
+*/
+
+let other_decimal_val : ulong = 1_141_151_568
+let other_binary_val : ulong = 0b_11110000_00001101_11101110_01110001
+
+/*
+    Primitive numeric types in Wilfrid are:
+    int, uint, ulong, long, and float.
+
+    Int means 32-bit integer, and long means 64-bit integer.
+    Uint and ulong are their unsigned versions.
+    Floating point values are always 32-bit.
+
+    There is also a 32-bit bool, holding either 'true' or 'false'.
+*/
+
+/*
+    String, as in C, are implemented as pointers to characters.
+    Strings are delimited by '"' and can span multiple lines:
+*/
+
+let string_var : char* = 
+"example
+of a multiline
+string"
+
+/*
+    Wilfrid allows for low-level memory manipulation via pointers.
+    A pointer is just an address in memory. We can perform 
+    arithmetic operations on it: addition and subtraction.
+
+    Pointers are always 64-bit in Wilfrid.
+*/
+
+//  Pointer to a variable of type long:
+let pointer : long*
+
+//  Pointer to a pointer to a pointer to int:
+let other_pointer : int***
+
+//  For more examples see "Pointer operations"
+
+/*
+    Arrays in Wilfrid are defined by writing the size of an array 
+    in square brackets after some other type, like this:
+*/
+
+let array_of_ints : int[10] 
+
+/* 
+    Array elements can be accessed using square brackets 
+    and an index:
+*/
+
+let int_from_array := array_of_ints[4]
+
+/*    
+    More complex types are also supported.
+    Here is an array of pointers to arrays of pointers to integers:
+*/
+
+let complex_array : int*[10]*[10]
+
+/*
+    Values can be also declared as const.
+    Unlike in C, they are true constants and can be 
+    used as array sizes or in cases in switch statements.
+
+    Const values are always of long integer type.
+*/
+
+const some_constant = 42
+
+let array_of_floats : float[some_constant]
+
+/* 
+    Each Wilfrid program has to have a main function declared.
+*/
+
+fn main() 
+{
+
+/* 
+    Declaring local variables looks the same as 
+    declaring global ones. The only exception is that 
+    inside functions we cannot declare const variables.
+*/
+
+    let local_var := 12
+     
+/*
+    Let's print some values using the built-in printf function:
+*/
+
+    printf("Bool value example: %u\\n", bool_var)
+    printf("Float value example: %ff\\n", float_var)
+    printf("Character value example: %c\\n", char_var)
+    printf("Integer value example: %i\\n", local_var)
+    printf("Pointer to long value example: %p\\n", pointer)
+}

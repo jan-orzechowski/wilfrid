@@ -21,7 +21,7 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="test\binary_tree_test.n" />
-    <Text Include="examples\linked_lists.n" />
+    <Text Include="examples\linked_list.n" />
     <Text Include="test\dynamic_lists_test.n" />
     <Text Include="test\method_overloading.n" />
     <Text Include="test\extern.n" />
@@ -54,11 +54,13 @@
     <Text Include="include\common.n" />
     <Text Include="test\printf_test.n" />
     <Text Include="examples\hello_world.n" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="examples\binary_tree.n" />
-    <None Include="examples\dynamic_lists.n" />
-    <None Include="test\linked_lists_test.n" />
-    <None Include="examples\printf.n" />
+    <Text Include="examples\control_flow.n" />
+    <Text Include="examples\binary_tree.n" />
+    <Text Include="examples\dynamic_lists.n" />
+    <Text Include="test\linked_lists_test.n" />
+    <Text Include="examples\printf.n" />
+    <Text Include="examples\variables.n" />
+    <Text Include="examples\functions_and_methods.n" />
+    <Text Include="examples\structs_and_unions.n" />
   </ItemGroup>
 </Project>

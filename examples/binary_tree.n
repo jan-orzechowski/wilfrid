@@ -1,67 +1,8 @@
-﻿fn main()
-{
-    let a : node = { 1 }
-    let b : node = { 2 }
-    let c : node = { 3 }
-    let d : node = { 4 }
-    let e : node = { 5 }
-    let f : node = { 6 }
-    let g : node = { 7 }
-    let h : node = { 8 }
-
-    a.left = &b
-    a.right = &c
-    b.left = &d
-    b.right = &e
-    d.left = &g
-    d.right = &h
-    c.right = &f
-
-    let t: tree = { }
-    t.root = &a
-
-    /*
-               a
-              /  \
-             b    c
-            / \    \
-           d   e    f
-          / \
-         g   h
-    */
-
-    push_node(t.root)
-    let result: node* = pop_node()
-    assert(result == t.root)
-
-    push_to_queue(&a)
-    push_to_queue(&b)
-    push_to_queue(&c)
-    assert(pop_from_queue() == &a)
-    assert(pop_from_queue() == &b)
-    assert(pop_from_queue() == &c)
-
-    printf(" // binary tree test // ")
-
-    breadth_first_search(&t)
-    
-    depth_first_traversal(&t)
-
-    assert(0 != search_for_value(t.root, 7))
-    assert(0 == search_for_value(t.root, 9))
-    assert(0 == search_for_value(t.root, 0))
-    
-    let depth: int = get_tree_depth(&t)
-    assert(depth == 3)
-
-    let sum: int = get_max_path_sum(&t)
-
-    printf("\noriginal tree:")
-    print_tree(&t)
-    invert_binary_tree(&t)
-    printf("\ninverted tree:")
-    print_tree(&t)
-}
+﻿/* 
+    This is a binary tree implementation. 
+    We construct a simple example tree and then 
+    perform some basic operations on it.
+*/
 
 struct tree
 {
@@ -73,6 +14,89 @@ struct node
     value: int 
     left: node* 
     right: node* 
+}
+
+fn main()
+{
+/*
+    We allocate nodes on the stack 
+    and assign values to them:
+*/
+    let a : node = { 1 }
+    let b : node = { 2 }
+    let c : node = { 3 }
+    let d : node = { 4 }
+    let e : node = { 5 }
+    let f : node = { 6 }
+    let g : node = { 7 }
+    let h : node = { 8 }
+
+/* 
+    We connect nodes to each other by pointers:
+*/
+    a.left = &b
+    a.right = &c
+    b.left = &d
+    b.right = &e
+    d.left = &g
+    d.right = &h
+    c.right = &f
+
+    let example: tree = { root = &a }
+
+/*
+    The constructed tree looks like this:
+
+               a
+              / \\
+             b   c
+            / \\   \\
+           d   e   f
+          / \\
+         g   h
+
+     Or, in terms of values:
+
+               1
+              / \\
+             2   3
+            / \\   \\
+           4   5   6
+          / \\
+         7   8
+*/
+
+    let depth := get_tree_depth(&example)
+    printf("Tree depth is %d\\n", depth)
+
+    let max_sum: int = get_max_path_sum(&example)
+    printf("Largest sum of a path is: %d\\n", max_sum)
+
+    printf("Breadth-first traversal:\\n")
+    breadth_first_traversal(&example)
+
+    printf("\\nDepth-first traversal:\\n")
+    depth_first_traversal(&example)
+
+    printf("\\nIs %d value present? %s", 3, 
+        search_depth_first(&example, 3) ? "Yes" : "No")
+
+    printf("\\nIs %d value present? %s", 0, 
+        search_depth_first(&example, 0) ? "Yes" : "No")
+
+    printf("\\nIs %d value present? %s", 7, 
+        search_depth_first(&example, 7) ? "Yes" : "No")
+
+    printf("\\nIs %d value present? %s", 10, 
+        search_depth_first(&example, 10) ? "Yes" : "No")
+
+    printf("\\nThe original tree:\\n")
+    print_tree(&example)
+
+    invert_binary_tree(&example)
+
+    printf("\\nThe inverted tree:\\n")
+    print_tree(&example)
 }
 
 const MAX_STACK = 1024
@@ -103,43 +127,24 @@ fn pop_node(): node*
     }
 }
 
-fn _depth_first()
+fn go_depth_first(n: node*)
 {
-    let n : node* = pop_node()
-    if (n)
-    {
-        if (n.right)
-        {
-            push_node(n.right)
-        }
-        if (n.left)
-        {
-            push_node(n.left)
-        }       
-        printf("%d ", n.value)
-    }
-}
+    printf("%d ", n.value)
 
-fn _depth_first_rec(n: node*)
-{
-    printf("%d ", n.value)    
     if (n.left)
     {
-        _depth_first_rec(n.left)
+        go_depth_first(n.left)
     }
+
     if (n.right)
     {
-        _depth_first_rec(n.right)
+        go_depth_first(n.right)
     }
 }
 
 fn depth_first_traversal(t: tree*)
 {    
-    push_node(t.root)
-
-    printf("\ntree depth first traversal: ")
-
-    _depth_first_rec(t.root)
+    go_depth_first(t.root)
 }
 
 let cirular_queue : node*[MAX_STACK]
@@ -179,7 +184,7 @@ fn pop_from_queue(): node*
     return result
 }
 
-fn _breadth_first()
+fn breadth_first_next()
 {
     let n: node* = pop_from_queue()
     printf("%d ", n.value)
@@ -196,39 +201,42 @@ fn _breadth_first()
     }
 }
 
-fn breadth_first_search(t: tree*)
+fn breadth_first_traversal(t: tree*)
 {
     push_to_queue(t.root)
-
-    printf("\ntree breadth first traversal: ")
     while (element_count > 0)
     {
-        _breadth_first()
+        breadth_first_next()
     }
 }
 
-fn search_for_value(n: node*, value: int): int
+fn search_for_value(n: node*, value: int): bool
 {
     if (n == null)
     {
-        return 0
+        return false
     }
     else if (n.value == value)
     {
-        return 1
+        return true
     }
     else if (search_for_value(n.left, value))
     {
-        return 1
+        return true
     }
     else if (search_for_value(n.right, value))
     {
-        return 1
+        return true
     }
     else
     {
-        return 0
+        return false
     }
+}
+
+fn search_depth_first(t: tree*, value: int) : bool
+{
+    return search_for_value(t.root, value)
 }
 
 let max_depth: int
@@ -237,14 +245,17 @@ let current_depth: int
 fn check_depth(n : node*)
 {
     current_depth++
+
     if (n.left)
     {        
         check_depth(n.left)
     }
+
     if (n.right)
     {
         check_depth(n.right)        
     }
+
     current_depth--
 
     if (current_depth > max_depth)
@@ -259,7 +270,6 @@ fn get_tree_depth(t: tree*): int
     current_depth = 0
 
     check_depth(t.root)
-    printf("\ntree depth: %d", max_depth)
 
     return max_depth
 }
@@ -275,10 +285,12 @@ fn check_path_sum(n: node*)
     }
 
     current_path_sum += n.value
+
     if (n.left)
     {
         check_path_sum(n.left)
     }
+
     if (n.right)
     {
         check_path_sum(n.right)
@@ -291,6 +303,7 @@ fn check_path_sum(n: node*)
             max_path_sum = current_path_sum
         }
     }
+
     current_path_sum -= n.value
 }
 
@@ -300,7 +313,6 @@ fn get_max_path_sum(t: tree*): int
     current_path_sum = 0
 
     check_path_sum(t.root)
-    printf("\ntree max path sum: %d", max_path_sum)
 
     return max_path_sum
 }
@@ -326,19 +338,21 @@ fn invert_binary_tree(t: tree*)
 fn print_node(n: node*)
 {
     printf("( %d ", n.value)
+    
     if (n.left)
     {
         print_node(n.left)
     }
+
     if (n.right)
     {
         print_node(n.right)
     }
+    
     printf(")")
 }
 
 fn print_tree(t: tree*)
 {
-    printf("\n")
     print_node(t.root)
 }

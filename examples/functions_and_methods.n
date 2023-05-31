@@ -1,0 +1,163 @@
+/* 
+    In Wilfrid functions are declared with a 'fn' keyword, 
+    followed by a function name and optional parameters 
+    list within parentheses. A function body is delimited by braces.
+*/
+
+fn some_function()
+{
+    // This function has no statements
+}
+
+/*
+    Function parameters are defined by a name followed by a colon and a type.
+*/
+
+fn other_function(param_a: int, param_b: int)
+{
+
+/*
+    Here we can call a function that we defined previously. 
+    Since it accepts no parameters, we invoke it by name and empty parentheses.
+*/
+
+    some_function()
+
+/*
+    Printf is a special built-in function. It accepts a variable 
+    amount of parameters. 
+   
+    Note that the string literal passed to the printf contains formatting 
+    specifiers. '%d' means that we want to print an integer value.
+    If there is any mismatch between passed values and the formatting string,
+    there will be a runtime error.
+
+    Formatting specifiers are the same as in C. Some other values are:
+    '%u' for unsigned integers (uint), '%lld' for long integers (long),
+    '%llu' for unsigned long integers (ulong), '%p% for pointers.
+*/
+
+    printf("Passed params: %d and %d\n", param_a, param_b)
+}
+
+/*
+    A function can also have a return type. 
+    Example of a function returning a boolean value:
+*/
+
+fn compare_numbers (a: int, b : int) : bool
+{
+    return a > b
+}
+
+/* 
+    Each Wilfrid program has to have a main function declared.
+*/
+
+fn main()
+{
+/*
+    Both newlines and whitespace don't matter in Wilfrid.
+    Here we have two declarations on the same line:
+*/
+    let a := 10 let b := 20
+
+    let comparison_result = compare_numbers(a, b)
+
+    printf("Result of comparison is: %u\\n", comparison_result)
+
+/*
+    This function will be declared later. Unlike in C, the order
+    of declarations doesn't matter in Wilfrid.
+*/
+    method_example()
+}
+
+/* 
+    Aside from functions, we have also methods. 
+    Methods differ from functions in the fact that they 
+    have a receiver. A receiver is written similarly to a parameter, 
+    but it occurs before the function name.
+    
+    Here is an example declaration:
+*/
+
+fn (a: rectangle) add (b: rectangle) : rectangle
+{
+    let result : rectangle = { x = a.x + b.x, y = a.y + b.y }
+    return result
+}
+
+struct rectangle 
+{
+    x: int,
+    y: int
+}
+
+/*
+    Each method can have only one receiver.
+
+    There is no difference in how functions and methods work. 
+    The only difference is the syntax of a call. Methods
+    require an instance of a variable that has the type of the receiver.
+
+    Here is an example usage of the previously defined method:
+*/
+
+fn method_example()
+{
+    let a : rectangle = { 1, 2 }
+    let b : rectangle = { 3, 4 }
+
+    a.add(b)
+
+    printf("Summed rectangle has sides %d and %d\\n", a.x, a.y)
+}
+
+/* 
+    Functions and methods can be overloaded. 
+    For example, here is a different method called 'add',
+    defined for cuboids.
+*/
+
+fn (a: cuboid) add(b: cuboid) : cuboid
+{
+    let result : cuboid = 
+    { 
+        x = a.x + b.x, 
+        y = a.y + b.y, 
+        z = a.z + b.z 
+    }
+
+    return result
+}
+
+struct cuboid
+{
+    x: int,
+    y: int,
+    z: int
+}
+
+/* 
+    The 'extern' keyword allows for easy interoperability with C code.
+    To use code from C standard library, you have to define an extern
+    function with the same name and signature. 
+
+    Extern functions don't have a body. 
+    
+    Unfortunately, extern function invocation doesn't work 
+    in the interpreter, which runs this interactive demo.
+    For now, extern functions work only when Wilfrid is 
+    compiled to C.
+
+    Here are two examples:
+*/
+
+extern fn strncpy(destination: char*, source: char*, length: ulong) : char*
+extern fn snprintf(buffer: char*, buffer_size: ulong, fmt: char*, variadic) : int
+
+/* 
+    The 'variadic' keyword is provided for interoperability with C.
+    It isn't allowed to be used in functions that are not extern.
+*/

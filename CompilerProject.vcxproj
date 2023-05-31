@@ -147,6 +147,7 @@
     <ClCompile Include="main.c" />
   </ItemGroup>
   <ItemGroup>
+    <Text Include="examples\control_flow.n" />
     <Text Include="examples\hello_world.n" />
     <Text Include="examples\memory_arena.n" />
     <Text Include="examples\stack_vm.n" />
@@ -170,7 +171,7 @@
     <Text Include="test\constructors.n" />
     <Text Include="test\dynamic_lists_test.n" />
     <Text Include="test\extern.n" />
-    <Text Include="examples\linked_lists.n" />
+    <Text Include="examples\linked_list.n" />
     <Text Include="test\loops.n" />
     <Text Include="test\method_overloading.n" />
     <Text Include="test\parsing_tests.n" />
@@ -181,12 +182,13 @@
     <Text Include="examples\hashmap.n" />
     <Text Include="test\address_of.n" />
     <Text Include="test\null.n" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="examples\binary_tree.n" />
-    <None Include="examples\dynamic_lists.n" />
-    <None Include="examples\printf.n" />
-    <None Include="test\linked_lists_test.n" />
+    <Text Include="examples\binary_tree.n" />
+    <Text Include="examples\dynamic_lists.n" />
+    <Text Include="examples\functions_and_methods.n" />
+    <Text Include="examples\printf.n" />
+    <Text Include="examples\structs_and_unions.n" />
+    <Text Include="examples\variables.n" />
+    <Text Include="test\linked_lists_test.n" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
