@@ -1179,12 +1179,15 @@ byte *eval_printf_call(expr *exp, byte *result)
 byte *eval_function_call(expr *exp, byte *result)
 {
     assert(exp->kind == EXPR_CALL);
+    assert(exp->call.resolved_function);
+    
+    symbol *function = exp->call.resolved_function;
 
-    if (exp->call.resolved_function->name == str_intern("printf"))
+    if (function->name == str_intern("printf"))
     {
         eval_printf_call(exp, result);
     }
-    else if (exp->call.resolved_function->name == str_intern("assert"))
+    else if (function->name == str_intern("assert"))
     {
         assert(exp->call.args_num == 1);
         assert(exp->call.args[0]->resolved_type);
@@ -1196,7 +1199,7 @@ byte *eval_function_call(expr *exp, byte *result)
             failed_asserts++;
         }
     }
-    else if (exp->call.resolved_function->name == str_intern("allocate"))
+    else if (function->name == str_intern("allocate"))
     {
         assert(exp->call.args_num == 1);
         assert(exp->call.args[0]->resolved_type);
@@ -1212,12 +1215,18 @@ byte *eval_function_call(expr *exp, byte *result)
         debug_vm_print(exp->pos, "allocation at %p, via 'allocate', size %zu",
             (void *)ptr, size);
     }
+    else if (function->decl->function.is_extern)
+    {
+        runtime_error(exp->pos, 
+            "Extern functions are not supported in the interpreter. Tried to call '%s'", 
+            function->name);
+    }
     else
     {
-        assert(exp->call.resolved_function);
-        assert(exp->call.resolved_function->type);
+        assert(function);
+        assert(function->type);
 
-        debug_vm_print(exp->pos, "FUNCTION CALL - %s - enter", exp->call.resolved_function->name);
+        debug_vm_print(exp->pos, "FUNCTION CALL - %s - enter", function->name);
 
         byte **arg_vals = null;
         type **arg_types = null;
@@ -1227,7 +1236,7 @@ byte *eval_function_call(expr *exp, byte *result)
             byte *arg_val = eval_expression(exp->call.method_receiver);
             buf_push(arg_vals, arg_val);
             buf_push(arg_types, exp->call.method_receiver->resolved_type);
-            buf_push(arg_names, exp->call.resolved_function->decl->function.method_receiver->name);
+            buf_push(arg_names, function->decl->function.method_receiver->name);
         }
 
         for (size_t i = 0; i < exp->call.args_num; i++)
@@ -1235,12 +1244,12 @@ byte *eval_function_call(expr *exp, byte *result)
             expr *arg_expr = exp->call.args[i];
             byte *arg_val = eval_expression(arg_expr);
             buf_push(arg_vals, arg_val);
-            buf_push(arg_types, exp->call.resolved_function->type->function.param_types[i]);
-            buf_push(arg_names, exp->call.resolved_function->decl->function.params.params[i].name);
+            buf_push(arg_types, function->type->function.param_types[i]);
+            buf_push(arg_names, function->decl->function.params.params[i].name);
         }
 
         assert(buf_len(arg_vals) == exp->call.args_num + (exp->call.method_receiver ? 1 : 0));
-        assert(exp->call.args_num == exp->call.resolved_function->type->function.param_count);
+        assert(exp->call.args_num == function->type->function.param_count);
 
         result = push_identifier_on_stack(null, exp->resolved_type);
 
@@ -1254,7 +1263,7 @@ byte *eval_function_call(expr *exp, byte *result)
                 copy_vm_val(arg_val, arg_vals[i], get_type_size(type));
             }
 
-            eval_function(exp->call.resolved_function, result);
+            eval_function(function, result);
         }
         leave_vm_stack_scope(marker);
 
@@ -1262,7 +1271,7 @@ byte *eval_function_call(expr *exp, byte *result)
         buf_free(arg_types);
         buf_free(arg_names);
 
-        debug_vm_print(exp->pos, "FUNCTION CALL - %s - exit", exp->call.resolved_function->name);
+        debug_vm_print(exp->pos, "FUNCTION CALL - %s - exit", function->name);
         debug_vm_print(exp->pos, "returned value from function call: %s", debug_print_vm_value(result, exp->resolved_type));
     }
 
