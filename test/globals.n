@@ -30,7 +30,7 @@ fn main()
     copy.int_val = 4
     assert(glob_struct.int_val == 3)
 
-    let alias := &glob_struct
+    let alias := @glob_struct
     alias.int_val = 4
     assert(glob_struct.int_val == 4)
 

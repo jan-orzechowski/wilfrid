@@ -83,16 +83,7 @@ void ast_print_expr(expr *e)
         case EXPR_UNARY:
         {
             ast_printf("(");
-
-            if (e->unary.operator == TOKEN_MUL)
-            {
-                ast_printf("pointer-dereference");
-            }
-            else
-            {
-                ast_print_token_kind(e->unary.operator);
-            }
-
+            ast_print_token_kind(e->unary.operator);
             ast_printf(" ");
             ast_print_expr(e->unary.operand);
             ast_printf(")");

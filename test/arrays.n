@@ -5,7 +5,7 @@
     val_bool: bool,
 }
 
-fn modify_20_only (arr : test*)
+fn modify_20_only (arr : test^)
 {
     for (let i := 0, i < 20, i++)
     {
@@ -13,7 +13,7 @@ fn modify_20_only (arr : test*)
     }
 }
 
-fn modify (arr : test*, length : int)
+fn modify (arr : test^, length : int)
 {
     for (let i := 0, i < length, i++)
     {
@@ -21,7 +21,7 @@ fn modify (arr : test*, length : int)
     }
 }
 
-fn modify_copy(arr : test*, length : int) : test*
+fn modify_copy(arr : test^, length : int) : test^
 {
     let copy := new test[length]
     for (let i := 0, i < length, i++)
@@ -29,11 +29,11 @@ fn modify_copy(arr : test*, length : int) : test*
         copy[i] = arr[i]
     }
 
-    modify(copy as test*, length)
+    modify(copy as test^, length)
     return copy
 }
 
-fn test_array(arr : test*, length : int)
+fn test_array(arr : test^, length : int)
 {
     for (let i := 0, i < length, i++)
     {
@@ -41,7 +41,7 @@ fn test_array(arr : test*, length : int)
     }
 }
 
-fn test_empty_array(arr : test*, length : int)
+fn test_empty_array(arr : test^, length : int)
 {
     for (let i := 0, i < length, i++)
     {
@@ -57,7 +57,7 @@ fn main()
 
     test_empty_array(x, 100)
     test_empty_array(y, 20)
-    test_empty_array(&z as test*, 20)
+    test_empty_array(@z as test^, 20)
 
     x[1].val_int = 6
     y[1].val_int = 6
@@ -66,7 +66,7 @@ fn main()
     
     modify_20_only(x)
     
-    modify(x as test*, 100)    
+    modify(x as test^, 100)    
     
-    test_array(x as test*, 100)
+    test_array(x as test^, 100)
 }

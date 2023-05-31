@@ -1,5 +1,5 @@
 extern fn assert(condition: int)
-extern fn assert(condition: void*)
+extern fn assert(condition: void^)
 extern fn max(a: int, b: ulong) : ulong
 
 fn do_something(arg : ulong) : ulong

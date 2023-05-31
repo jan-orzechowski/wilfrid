@@ -1,21 +1,21 @@
 fn main()
 {
 	assert(false == null as bool)
-	assert(0 as void* == null)
+	assert(0 as void^ == null)
 
-	let a_ptr : long* = 0 as long*
-	let b_ptr : long* = null
+	let a_ptr : long^ = 0 as long^
+	let b_ptr : long^ = null
 	
 	assert(a_ptr == b_ptr)
-    assert(b_ptr == 0 as long*)
+    assert(b_ptr == 0 as long^)
     assert(a_ptr == null)
 
-	check_pointers(&a_ptr as long*, &b_ptr as long*)
+	check_pointers(@a_ptr as long^, @b_ptr as long^)
 	check_pointers(a_ptr, null)
 	check_pointers(b_ptr, null)
 }
 
-fn check_pointers(ptr1 : long*, ptr2 : long*)
+fn check_pointers(ptr1 : long^, ptr2 : long^)
 {
 	if (ptr1)
 	{

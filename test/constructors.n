@@ -23,14 +23,14 @@ fn constructor () : some_struct
     assert(false) // shouldn't be called
 }
 
-fn constructor (val: int) : some_struct* 
+fn constructor (val: int) : some_struct^
 { 
     let s := new some_struct 
     s.value = val 
     return s 
 }
 
-fn constructor (val_a: int, val_b: int) : some_struct* 
+fn constructor (val_a: int, val_b: int) : some_struct^
 { 
     let s := new some_struct 
     s.value = val_a + val_b

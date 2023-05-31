@@ -2,21 +2,21 @@
 {
     let arr_int = new int[100]
     let arr_long = new long[100]
-    let arr_bool = allocate((size_of_type(bool) as ulong) * (100 as ulong)) as bool*
+    let arr_bool = allocate((size_of_type(bool) as ulong) * (100 as ulong)) as bool^
     
     let counter = 0
-    for (let a := arr_int as int*, a < arr_int as int* + 100, a++)
+    for (let a := arr_int as int^, a < arr_int as int^ + 100, a++)
     {
-        let val : int = *a
+        let val : int = #a
         assert(val == 0)
-        (*a) = counter
+        (#a) = counter
         counter++
     }
     counter--
     
-    for (let a := arr_int as int* + 99, a >= arr_int as int*, a--)
+    for (let a := arr_int as int^ + 99, a >= arr_int as int^, a--)
     {
-        let val : int = *a
+        let val : int = #a
         assert(val == counter)
         counter--
     }
@@ -24,18 +24,18 @@
 
     assert(counter == 0)
     
-    for (let a := arr_long as long*, a < arr_long as long* + 100, a = a + 10)
+    for (let a := arr_long as long^, a < arr_long as long^ + 100, a = a + 10)
     {
-        let val : long = *a
+        let val : long = #a
         assert(val == 0)
-        (*a) = counter
+        #a = counter
         counter++
     }
     counter--
     
-    for (let a := arr_long as long* + 90, a >= arr_long as long*, a = a - 10)
+    for (let a := arr_long as long^ + 90, a >= arr_long as long^, a = a - 10)
     {
-        let val : long = *a
+        let val : long = #a
         assert(val == counter)
         counter--
     }
@@ -43,18 +43,18 @@
 
     assert(counter == 0)
 
-    for (let a := arr_bool as bool*, a < arr_bool as bool* + 100, a = a + 5)
+    for (let a := arr_bool as bool^, a < arr_bool as bool^ + 100, a = a + 5)
     {
-        let val : bool = *a
+        let val : bool = #a
         assert(val == false)
-        (*a) = (counter % 2) as bool
+        #a = (counter % 2) as bool
         counter++
     }
     counter--
     
-    for (let a := arr_bool as bool* + 95, a >= arr_bool as bool*, a = a - 5)
+    for (let a := arr_bool as bool^ + 95, a >= arr_bool as bool^, a = a - 5)
     {
-        let val : bool = *a
+        let val : bool = #a
         assert(val == (counter % 2) as bool)
         counter--
     }

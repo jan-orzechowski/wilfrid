@@ -407,6 +407,20 @@ bool lex_next_token(void)
             }
         }      
         break;
+        case '#':
+        {
+            stream++;
+            tok.kind = TOKEN_DEREFERENCE;
+            tok.name = str_intern_range(tok.start, stream);
+        }
+        break;
+        case '@':
+        {
+            stream++;
+            tok.kind = TOKEN_ADDRESS_OF;
+            tok.name = str_intern_range(tok.start, stream);
+        }
+        break;
         case '[':
         {
             stream++;

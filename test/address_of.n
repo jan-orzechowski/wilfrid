@@ -1,8 +1,8 @@
 ﻿struct node
 {
     value: int 
-    left: node* 
-    right: node* 
+    left: node^
+    right: node^ 
 }
 
 fn main()
@@ -12,31 +12,31 @@ fn main()
     assert(a.value == 1)
     assert(b.value == 2)
 
-    a.left = &b
+    a.left = @b
     assert(a.left.value == b.value)
-    assert(a.left == &b)
-    assert((*a.left).value == b.value)
+    assert(a.left == @b)
+    assert((#a.left).value == b.value)
 
-    a.right = &b
+    a.right = @b
     assert(a.left == a.right)
     assert(a.right.value == b.value)
-    assert(a.right == *(&a.right))
+    assert(a.right == #(@a.right))
     
-    let c : node* = new node
+    let c : node^ = new node
     c.value = 3
 
-    check_pointers(&a, &b, 2)
-    check_pointers(&b, &a, 1)
-    check_pointers(&a, c, 3)
+    check_pointers(@a, @b, 2)
+    check_pointers(@b, @a, 1)
+    check_pointers(@a, c, 3)
     check_pointers(c, c, 3)
     
-    check_pointers_equality(&a, &a)
+    check_pointers_equality(@a, @a)
     check_pointers_equality(null, null)
 
     check_pointers(null, c, 3)
 }
 
-fn check_pointers(adr1: node*, adr2: node*, value: int)
+fn check_pointers(adr1: node^, adr2: node^, value: int)
 {   
     if (adr1 == null) 
     {
@@ -56,7 +56,7 @@ fn check_pointers(adr1: node*, adr2: node*, value: int)
     }   
 }
 
-fn check_pointers_equality(adr1: node*, adr2: node*)
+fn check_pointers_equality(adr1: node^, adr2: node^)
 {
     assert(adr1 == adr2)
 }

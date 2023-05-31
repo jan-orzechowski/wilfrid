@@ -1,6 +1,6 @@
-﻿fn printf(str: char*, i: int) : int { return -1 }
+﻿fn printf(str: char^, i: int) : int { return -1 }
 
-fn printf(str: char*, i1: int, i2: int) : int { return -1 }
+fn printf(str: char^, i1: int, i2: int) : int { return -1 }
 
 fn main()
 {

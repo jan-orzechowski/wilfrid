@@ -981,7 +981,7 @@ resolved_expr *resolve_expr_unary(expr *expr)
     type *type = operand->type;
     switch (expr->unary.operator)
     {
-        case TOKEN_MUL:
+        case TOKEN_DEREFERENCE:
         {
             operand = array_to_pointer_decay(operand);
             if (type->kind != TYPE_POINTER)
@@ -994,7 +994,7 @@ resolved_expr *resolve_expr_unary(expr *expr)
             result = get_resolved_lvalue_expr(type->pointer.base_type);
         }
         break;
-        case TOKEN_BITWISE_AND:
+        case TOKEN_ADDRESS_OF:
         {
             if (false == operand->is_lvalue)
             {
@@ -1003,7 +1003,7 @@ resolved_expr *resolve_expr_unary(expr *expr)
             }
             result = get_resolved_rvalue_expr(get_pointer_type(type));
         }
-        break;       
+        break;
         case TOKEN_BITWISE_NOT:
         case TOKEN_NOT:
         {
@@ -1077,6 +1077,7 @@ resolved_expr *resolve_expr_binary(expr *expr)
     resolved_expr *result = null;
 
     assert(expr->kind == EXPR_BINARY);
+
     resolved_expr *left = resolve_expr(expr->binary.left);
     resolved_expr *right = resolve_expr(expr->binary.right);
     token_kind op = expr->binary.operator;
@@ -2374,23 +2375,7 @@ void resolve_assign_stmt(stmt *st)
         return;
     }
 
-    token_kind op = TOKEN_ASSIGN;
-    switch (st->assign.operation)
-    {
-        case TOKEN_ASSIGN: op = TOKEN_ASSIGN; break;
-        case TOKEN_ADD_ASSIGN: op = TOKEN_ADD; break;
-        case TOKEN_SUB_ASSIGN: op = TOKEN_SUB; break;
-        case TOKEN_OR_ASSIGN: op = TOKEN_OR; break;
-        case TOKEN_AND_ASSIGN: op = TOKEN_AND; break;
-        case TOKEN_BITWISE_OR_ASSIGN: op = TOKEN_BITWISE_OR; break;
-        case TOKEN_BITWISE_AND_ASSIGN: op = TOKEN_BITWISE_AND; break;
-        case TOKEN_XOR_ASSIGN: op = TOKEN_XOR; break;
-        case TOKEN_MUL_ASSIGN: op = TOKEN_MUL; break;
-        case TOKEN_DIV_ASSIGN: op = TOKEN_DIV; break;
-        case TOKEN_MOD_ASSIGN: op = TOKEN_MOD; break;
-        case TOKEN_LEFT_SHIFT_ASSIGN: op = TOKEN_LEFT_SHIFT; break;
-        case TOKEN_RIGHT_SHIFT_ASSIGN: op = TOKEN_RIGHT_SHIFT; break;
-    }
+    token_kind op = get_assignment_operation_token(st->assign.operation);
 
     if (op != TOKEN_ASSIGN)
     {

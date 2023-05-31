@@ -1355,7 +1355,7 @@ byte *eval_expression(expr *exp)
             byte *operand = eval_expression(exp->unary.operand);
             type *operand_t = exp->unary.operand->resolved_type;
 
-            if (exp->unary.operator == TOKEN_MUL)
+            if (exp->unary.operator == TOKEN_DEREFERENCE)
             {       
                 assert(operand_t->kind == TYPE_POINTER);
                 assert(operand_t->pointer.base_type);
@@ -1366,7 +1366,7 @@ byte *eval_expression(expr *exp)
                     debug_print_vm_value(operand, operand_t),
                     debug_print_vm_value(result, exp->resolved_type));                
             }
-            else if (exp->unary.operator == TOKEN_BITWISE_AND)
+            else if (exp->unary.operator == TOKEN_ADDRESS_OF)
             {
                 assert(exp->resolved_type->kind == TYPE_POINTER);
                 assert(exp->resolved_type->pointer.base_type);

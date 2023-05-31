@@ -1,14 +1,14 @@
 CASE:const x = a + -b << c + -d + e >> f:END
 TEST:(const-decl x (+ (+ (+ a (<< (- b) c)) (- d)) (>> e f))):END
 
-CASE:let x := a ^ *b + c * -d + e | -f & g:END
-TEST:(var-decl x (| (+ (+ (^ a (pointer-dereference b)) (* c (- d))) e) (& (- f) g))):END
+CASE:let x := a ^ #b + c * -d + e | -f & g:END
+TEST:(var-decl x (| (+ (+ (^ a (# b)) (* c (- d))) e) (& (- f) g))):END
 
 CASE:let x := a >= b || -c * d < e && -f:END
 TEST:(var-decl x (|| (>= a b) (&& (< (* (- c) d) e) (- f)))):END
 
-CASE:let x := (&a - &b) + (*c ^ d):END
-TEST:(var-decl x (+ (- (& a) (& b)) (^ (pointer-dereference c) d))):END
+CASE:let x := (@a - @b) + (#c ^ d):END
+TEST:(var-decl x (+ (- (@ a) (@ b)) (^ (# c) d))):END
 
 CASE:let x : bool = (a == -b):END
 TEST:(var-decl x (type bool) (== a (- b))):END
@@ -112,9 +112,9 @@ TEST:(fn-decl f (type int)
   (return (* y z))
 ):END
 
-CASE:fn f() { if (*x == 1) { return y } else { return z } }:END
+CASE:fn f() { if (#x == 1) { return y } else { return z } }:END
 TEST:(fn-decl f
-  (if (== (pointer-dereference x) 1)
+  (if (== (# x) 1)
     (return y)
     else(
       (return z)
@@ -165,7 +165,7 @@ TEST:(fn-decl f
   (return (size-of-type (type int)))
 ):END
 
-CASE:let x := size_of_type(int[16]*[12]) + size_of_type(int***):END
+CASE:let x := size_of_type(int[16]^[12]) + size_of_type(int^^^):END
 TEST:(var-decl x (+ (size-of-type (array (pointer (array (type int) 16)) 12)) (size-of-type (pointer (pointer (pointer (type int))))))):END
 
 CASE:fn f() { while (x > y) { x = x + 1 } }:END
@@ -224,25 +224,25 @@ TEST:(fn-decl f
   )
 ):END
 
-CASE:fn f(x: int*, y: int[25], z: char*[25], w: int**[20] ) : int** { let x : int[256] = 0 } :END
+CASE:fn f(x: int^, y: int[25], z: char^[25], w: int^^[20] ) : int^^ { let x : int[256] = 0 } :END
 TEST:(fn-decl f (x (pointer (type int))) (y (array (type int) 25)) (z (array (pointer (type char)) 25)) (w (array (pointer (pointer (type int))) 20)) (pointer (pointer (type int)))
   (var-decl x (array (type int) 256) 0)
 ):END
 
-CASE:struct x { a: int[20], b: float**, c: int*[20]* } :END
+CASE:struct x { a: int[20], b: float^^, c: int^[20]^ } :END
 TEST:(struct-decl x
   (a (array (type int) 20))
   (b (pointer (pointer (type float))))
   (c (pointer (array (pointer (type int)) 20)))
 ):END
 
-CASE:let x = y == z ? *y : 20:END
+CASE:let x = y == z ? #y : 20:END
 TEST:(var-decl x (? (== y z)
-  (pointer-dereference y)
+  (# y)
   20
 )):END
 
-CASE:fn fc(x: some_struct*) : other_struct { x.member = {1, 2} let y = func(12, a, {2, 3, x, x.member}) return y }:END
+CASE:fn fc(x: some_struct^) : other_struct { x.member = {1, 2} let y = func(12, a, {2, 3, x, x.member}) return y }:END
 TEST:(fn-decl fc (x (pointer (type some_struct))) (type other_struct)
   (= (access-field member x) (compound 1 2))
   (var-decl y (func 12 a (compound 2 3 x (access-field member x))))
@@ -277,9 +277,9 @@ TEST:(var-decl x (cast (type float) (+ 12 (/ 1 (cast (type float) z))))):END
 CASE:let x := var1 as bool && var2 as bool || (var3 as uint & var4 as uint) as bool:END
 TEST:(var-decl x (|| (&& (cast (type bool) var1) (cast (type bool) var2)) (cast (type bool) (& (cast (type uint) var3) (cast (type uint) var4))))):END
 
-CASE:fn f1 (x : int[16]*) { f2(&map as int, i as void*, (i + 1) as void*, x as int[8]*) }:END
+CASE:fn f1 (x : int[16]^) { f2(@map as int, i as void^, (i + 1) as void^, x as int[8]^) }:END
 TEST:(fn-decl f1 (x (pointer (array (type int) 16)))
-  ((f2 (cast (type int) (& map)) (cast (pointer (type void)) i) (cast (pointer (type void)) (+ i 1)) (cast (pointer (array (type int) 8)) x)))
+  ((f2 (cast (type int) (@ map)) (cast (pointer (type void)) i) (cast (pointer (type void)) (+ i 1)) (cast (pointer (array (type int) 8)) x)))
 ):END
 
 CASE:fn f() { delete x }:END
@@ -287,10 +287,10 @@ TEST:(fn-decl f
   (delete x)
 ):END
 
-CASE:let x : node* = null:END
+CASE:let x : node^ = null:END
 TEST:(var-decl x (pointer (type node)) null):END
 
-CASE:fn f(x: node*): bool { if (x == null) { return true } else { return false } }:END
+CASE:fn f(x: node^): bool { if (x == null) { return true } else { return false } }:END
 TEST:(fn-decl f (x (pointer (type node))) (type bool)
   (if (== x null)
     (return true)
@@ -314,11 +314,11 @@ TEST:(fn-decl method (receiver (s (type some_struct))) (i (type int))
   (+= (access-field x s) i)
 ):END
 
-CASE:fn (this: int[16]*[12]) method () {  } :END
+CASE:fn (this: int[16]^[12]) method () {  } :END
 TEST:(fn-decl method (receiver (this (array (pointer (array (type int) 16)) 12)))
 ):END
 
-CASE:fn (x: some_struct*) method () : some_struct* { return x } :END
+CASE:fn (x: some_struct^) method () : some_struct^ { return x } :END
 TEST:(fn-decl method (receiver (x (pointer (type some_struct)))) (pointer (type some_struct))
   (return x)
 ):END
@@ -326,11 +326,11 @@ TEST:(fn-decl method (receiver (x (pointer (type some_struct)))) (pointer (type 
 CASE:let x := some_var.method() :END
 TEST:(var-decl x (method (receiver some_var) )):END
 
-CASE:let x := (*some_var_ptr).method(1, 2, 3):END
-TEST:(var-decl x (method (receiver (pointer-dereference some_var_ptr)) 1 2 3)):END
+CASE:let x := (#some_var_ptr).method(1, 2, 3):END
+TEST:(var-decl x (method (receiver (# some_var_ptr)) 1 2 3)):END
 
-CASE:let x := some_array[12].method(*other_var):END
-TEST:(var-decl x (method (receiver (access-index 12 some_array)) (pointer-dereference other_var))):END
+CASE:let x := some_array[12].method(#other_var):END
+TEST:(var-decl x (method (receiver (access-index 12 some_array)) (# other_var))):END
 
 CASE:let x := one_object.other_object.method(one_object):END
 TEST:(var-decl x (method (receiver (access-field other_object one_object)) one_object)):END
@@ -341,10 +341,10 @@ TEST:(var-decl x (method (receiver (access-field one_other_object (access-field 
 CASE:let chain := some_object.method().other_method().yet_other_method():END
 TEST:(var-decl chain (yet_other_method (receiver (other_method (receiver (method (receiver some_object) )) )) )):END
 
-CASE:extern fn strlen(str: char*) : int:END
+CASE:extern fn strlen(str: char^) : int:END
 TEST:(fn-decl extern strlen (str (pointer (type char))) (type int)):END
 
-CASE:extern fn printf(str: char*, variadic) : int:END
+CASE:extern fn printf(str: char^, variadic) : int:END
 TEST:(fn-decl extern printf (str (pointer (type char))) (variadic ) (type int)):END
 
 CASE:
@@ -367,9 +367,9 @@ TEST:(var-decl x ((new (type memory)) 1000)):END
 CASE:let x = auto memory(100):END
 TEST:(var-decl x ((auto (type memory)) 100)):END
 
-CASE:fn push_node(n: node *) { *last_node = *n } :END
+CASE:fn push_node(n: node ^) { #last_node = #n } :END
 TEST:(fn-decl push_node (n (pointer (type node)))
-  (= (pointer-dereference last_node) (pointer-dereference n))
+  (= (# last_node) (# n))
 ):END
 
 CASE:let x := 0xff51afd:END
@@ -397,21 +397,21 @@ TEST:(fn-decl f
 
 CASE:fn f(){
   let x : test_struct[20] = { }
-  (*x)[1].val_int = 6
+  (#x)[1].val_int = 6
 }:END
 TEST:(fn-decl f
   (var-decl x (array (type test_struct) 20) (compound ))
-  (= (access-field val_int (access-index 1 (pointer-dereference x))) 6)
+  (= (access-field val_int (access-index 1 (# x))) 6)
 ):END
 
 CASE:fn main()
 {
-    assert(*arena != null)
-    (*arena) = null
+    assert(#arena != null)
+    #arena = null
 }:END
 TEST:(fn-decl main
-  ((assert (!= (pointer-dereference arena) null)))
-  (= (pointer-dereference arena) null)
+  ((assert (!= (# arena) null)))
+  (= (# arena) null)
 ):END
 
 CASE:let num := 1_000__500_100:END

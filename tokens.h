@@ -73,11 +73,13 @@ typedef enum token_kind
     TOKEN_MOD_ASSIGN,
     TOKEN_LAST_ASSIGN_OPERATOR = TOKEN_MOD_ASSIGN,
 
-    // inne
+    // other
     TOKEN_COLON_ASSIGN, // :=
     TOKEN_INC, // ++
     TOKEN_DEC, // --
-
+    TOKEN_ADDRESS_OF, // @
+    TOKEN_DEREFERENCE, // #
+    TOKEN_POINTER = TOKEN_XOR, // ^
 } token_kind;
 
 const char *token_kind_names[] = {
@@ -96,6 +98,8 @@ const char *token_kind_names[] = {
     [TOKEN_QUESTION] = "?",
     [TOKEN_NOT] = "!",
     [TOKEN_BITWISE_NOT] = "~",
+    [TOKEN_ADDRESS_OF] = "@",
+    [TOKEN_DEREFERENCE] = "#",
 
     [TOKEN_KEYWORD] = "keyword",
     [TOKEN_INT] = "int",
@@ -199,6 +203,7 @@ token_kind get_assignment_operation_token(token_kind assignment)
     assert(assignment <= TOKEN_LAST_ASSIGN_OPERATOR);
     switch (assignment)
     {
+        case TOKEN_ASSIGN: return TOKEN_ASSIGN;
         case TOKEN_ADD_ASSIGN: return TOKEN_ADD;
         case TOKEN_SUB_ASSIGN: return TOKEN_SUB;
         case TOKEN_OR_ASSIGN: return TOKEN_OR;

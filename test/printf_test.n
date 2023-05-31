@@ -5,8 +5,8 @@ fn main()
     let long_val : long = -1001    
     let uint_val : uint = 22   
     let ulong_val : ulong = 2002    
-    let ptr : void* = 0xbababababababa as void*    
-    let ptr_null : void* = null
+    let ptr : void^ = 0xbababababababa as void^
+    let ptr_null : void^ = null
     let bool_val : bool = true    
 
     printf("hello world") 

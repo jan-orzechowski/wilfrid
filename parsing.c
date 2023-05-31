@@ -311,9 +311,9 @@ typespec *parse_basic_typespec(void)
 typespec *parse_typespec(void)
 {
     typespec *t = parse_basic_typespec();
-    while (is_token_kind(TOKEN_MUL) || is_token_kind(TOKEN_LEFT_BRACKET))
+    while (is_token_kind(TOKEN_POINTER) || is_token_kind(TOKEN_LEFT_BRACKET))
     {
-        if (is_token_kind(TOKEN_MUL))
+        if (is_token_kind(TOKEN_POINTER))
         {
             typespec *base_t = t;
             t = push_struct(arena, typespec);
@@ -487,7 +487,7 @@ expr *parse_base_expr(void)
             }
             else
             {
-                parsing_error("Expected a type in the size_of_type expression");
+                parsing_error("Expected a type passed to the size_of_type call.");
             }           
             expect_token_kind(TOKEN_RIGHT_PAREN);
         }
@@ -502,7 +502,7 @@ expr *parse_base_expr(void)
             }
             else
             {
-                parsing_error("Expected an expression in the size_of_type expression");
+                parsing_error("Expected an expression passed to the size_of_type call.");
             }
             expect_token_kind(TOKEN_RIGHT_PAREN);
         }
@@ -690,15 +690,15 @@ expr *parse_unary_expr(void)
         {
             e = push_unary_expr(pos, TOKEN_BITWISE_NOT, parse_base_expr());
         }
-        else if (match_token_kind(TOKEN_MUL)) // pointer dereference
+        else if (match_token_kind(TOKEN_DEREFERENCE))
         {
-            e = push_unary_expr(pos, TOKEN_MUL, parse_unary_expr());
+            e = push_unary_expr(pos, TOKEN_DEREFERENCE, parse_unary_expr());
         }
-        else if (match_token_kind(TOKEN_BITWISE_AND)) // address of
+        else if (match_token_kind(TOKEN_ADDRESS_OF))
         {
             // tutaj musimy mieć "greedy parsing" w prawo
-            // np. &a[10] to adres 10. elementu, a nie 10 element w tabeli adresów
-            e = push_unary_expr(pos, TOKEN_BITWISE_AND, parse_unary_expr());
+            // np. @a[10] to adres 10. elementu, a nie 10 element w tabeli adresów
+            e = push_unary_expr(pos, TOKEN_ADDRESS_OF, parse_unary_expr());
         }
     }
     return e;
@@ -730,15 +730,22 @@ expr *parse_multiplicative_expr(void)
     expr *e = parse_cast_expr();
     while (is_multiplicative_operation(tok.kind))
     {
+        token_kind op = tok.kind;
         source_pos pos = tok.pos;
         expr *left_expr = e;
-        token_kind op = tok.kind;
+
+        if (left_expr == null)
+        {
+            parsing_error(xprintf("Missing the left operand of the %s binary operator", get_token_kind_name(op)));
+            return null;
+        }
+       
         next_token();
         expr *right_expr = parse_cast_expr();
 
         if (right_expr == null)
         {
-            parsing_error(xprintf("Missing the second operand of %s operation", get_token_kind_name(op)));
+            parsing_error(xprintf("Missing the right operand of the %s binary operator", get_token_kind_name(op)));
             return null;
         }
 
@@ -1201,7 +1208,7 @@ stmt *parse_statement(void)
             s->pos = pos;
         }
     }
-    else if (is_token_kind(TOKEN_MUL)) // pointer dereference
+    else if (is_token_kind(TOKEN_DEREFERENCE))
     {
         s = parse_simple_statement();
         s->pos = pos;

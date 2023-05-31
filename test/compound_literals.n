@@ -66,18 +66,18 @@ fn main()
     let arr_e : long[5] = { 10 as long }
     assert(arr_e[0] == 10 as long)
 
-    let arr_f : long*[5] = { &arr_e[0], &arr_e[1] }
-    assert(*arr_f[0] == 10 as long)
-    assert(*arr_f[1] == 0 as long)
+    let arr_f : long^[5] = { @arr_e[0], @arr_e[1] }
+    assert(#arr_f[0] == 10 as long)
+    assert(#arr_f[1] == 0 as long)
     
-    let arr_g : long*[5] = { 2 = &arr_e[0], 4 = &arr_e[1] }
-    assert(*arr_g[2] == 10 as long)
-    assert(*arr_g[4] == 0 as long)
+    let arr_g : long^[5] = { 2 = @arr_e[0], 4 = @arr_e[1] }
+    assert(#arr_g[2] == 10 as long)
+    assert(#arr_g[4] == 0 as long)
 
     let arr_h : int[2] = 
     {
-        1 = *arr_g[2] == 0 as long ? 1 : 0
-        0 = *arr_g[2] == 2 as long ? 0 : 1
+        1 = #arr_g[2] == 0 as long ? 1 : 0
+        0 = #arr_g[2] == 2 as long ? 0 : 1
     }
     assert(arr_h[0] == 1)
     assert(arr_h[1] == 0)

@@ -31,7 +31,7 @@ fn main()
 
     for (let i := 0, i < 15, i++)
     {
-        let el := &data[i]
+        let el := @data[i]
         switch (el.kind)
         {
             case element_kind.A:

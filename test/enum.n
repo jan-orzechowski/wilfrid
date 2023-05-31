@@ -58,7 +58,7 @@ fn main()
 
     for (let i := 0, i < 15, i++)
     {
-        let el := &data[i]
+        let el := @data[i]
         if (el.kind == element_kind.A)
         {
             let old_val = el.value

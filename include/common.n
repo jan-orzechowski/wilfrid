@@ -1,7 +1,7 @@
 extern fn assert(condition: bool)
-extern fn printf(str: char*, variadic) : int
-extern fn allocate(num_bytes: ulong) : void*
-extern fn reallocate(ptr : void*, num_bytes: ulong) : void*
+extern fn printf(str: char^, variadic) : int
+extern fn allocate(num_bytes: ulong) : void^
+extern fn reallocate(ptr : void^, num_bytes: ulong) : void^
 
 fn max(a : ulong, b : ulong) : ulong
 {
@@ -11,4 +11,28 @@ fn max(a : ulong, b : ulong) : ulong
 fn max(a : long, b : long) : long
 {
 	return (a > b ? a : b)
+}
+
+fn is_power_of_2(val: long) : bool
+{
+    if (val != 0)
+    {
+        return ((val as ulong & (val as ulong - 1)) == 0)
+    } 
+    else
+    {
+        return false
+    }
+}
+
+fn is_power_of_2(val: ulong) : bool
+{
+    if (val != 0)
+    {
+        return ((val & (val - 1)) == 0)
+    } 
+    else
+    {
+        return false
+    }
 }

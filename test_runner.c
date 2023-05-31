@@ -78,8 +78,7 @@ void test_file_parsing_test(string_ref source, bool print_results)
                     if (0 != strcmp(test_str, ast))
                     {
                         passed = false;
-                        buf_printf(output, "Generated AST doesn't match the test case:\n");
-                        buf_printf(output, case_str);
+                        buf_printf(output, "Generated AST doesn't match the test case!\n");
                         buf_printf(output, "\nExpected:\n'%s'\n", test_str);
                         buf_printf(output, "Got:\n'%s'\n", ast);
                     }
@@ -140,7 +139,7 @@ void test_file_parsing_test(string_ref source, bool print_results)
 
 void test_parsing_single_case(void)
 {
-    char *test = "let x := xcalloc(new_capacity * size_of_type(void*))";
+    char *test = "let x := xcalloc(new_capacity * size_of_type(void^))";
 
     printf("\nParsing test case 0:\n%s\n", test);
     
@@ -262,16 +261,15 @@ void resolve_test(void)
     char *test_strs[] = {
         "let f := g[1 + 3]",
         "let g: int[10]",
-        "let e = *b",
-        "let d = b[0]",
+        "let e = #b",
         "let c: int[4]",
-        "let b = &a[0]",
+        "let b = @a[0]",
         "let y1: int = 1",
         "let i1 = n+m",
         "let z: Z",
         "const m = size_of_type(int)",
         "const n = size_of_type(float)",
-        "struct Z { s: S, t: T *}",
+        "struct Z { s: S, t: T ^}",
         "struct T { i: int }",
         "let a: int[3] = {1, 2, 3}",
         "struct S { t: int, c: char }",
@@ -301,9 +299,9 @@ void resolve_test(void)
         "let y3 = auto v2()",
         "fn deletetest1() { let x = new v2 x.x = 2 delete x }",
         "fn deletetest2() { let x = auto v2 x.x = 2 delete x }",
-        "let x4 : node* = null",
-        "fn ft(x: node*): bool { if (x == null) { return true } else { return false } }",
-        "struct node { value: int, next: node *}",
+        "let x4 : node^ = null",
+        "fn ft(x: node^): bool { if (x == null) { return true } else { return false } }",
+        "struct node { value: int, next: node ^}",
         "let b1 : bool = true",
         "let b2 : bool = (b1 == false)",
         "let list1 := new int[]",
@@ -312,11 +310,11 @@ void resolve_test(void)
         "let printed_chars1 := printf(\"numbers: %d\", 1)",
         "let printed_chars2 := printf(\"numbers: %d, %d\", 1, 2)",
         "let printed_chars3 := printf(\"numbers: %d, %d, %d\", 1, 2, 3)",
-        "extern fn printf(str: char*, variadic) : int",
+        "extern fn printf(str: char^, variadic) : int",
         "fn test () { let s := new some_struct(1) }",
         "struct some_struct { member: int } ",
         "fn constructor () : some_struct { /* empty constructor */ }",
-        "fn constructor (val: int) : some_struct* { let s := new some_struct s.member = val return s }",
+        "fn constructor (val: int) : some_struct^ { let s := new some_struct s.member = val return s }",
     };
     size_t str_count = sizeof(test_strs) / sizeof(test_strs[0]);
 
@@ -331,15 +329,15 @@ void mangled_names_test(void)
     // uwaga: reordering podczas resolve może zepsuć test
     char *test_strs[] = {
         "struct tee { i: int }",
-        "union zet { s: tee, t: zet* }",
+        "union zet { s: tee, t: zet^ }",
         "fn funkcja (x: int, y: int) { return } ",
-        "fn funkcja ( t: tee, z: zet, i: int[16]*) { return }",
-        "fn funkcja ( t: tee, z: zet*, i: int[16]*) { return }",
-        "fn funkcja ( t: tee*, z: zet, i: int[16]*) { return }",
-        "fn funkcja ( t: tee*, z: zet, i: int[16]*) : int { return 1 }",
-        "fn funkcja ( t: zet, z: zet, i: int[17]*) { return }",
-        "fn funkcja ( t: zet*, z: int[17]*, i: zet*) { return }",
-        "fn funkcja ( t: tee*, z: zet, i: int[]) { return }",
+        "fn funkcja ( t: tee, z: zet, i: int[16]^) { return }",
+        "fn funkcja ( t: tee, z: zet^, i: int[16]^) { return }",
+        "fn funkcja ( t: tee^, z: zet, i: int[16]^) { return }",
+        "fn funkcja ( t: tee^, z: zet, i: int[16]^) : int { return 1 }",
+        "fn funkcja ( t: zet, z: zet, i: int[17]^) { return }",
+        "fn funkcja ( t: zet^, z: int[17]^, i: zet^) { return }",
+        "fn funkcja ( t: tee^, z: zet, i: int[]) { return }",
         "fn (i: int) funkcja (o: int) { return }",
         "fn (s: int) funkcja () : int { return s }",
         "fn (x: int) funkcja () : { }",
