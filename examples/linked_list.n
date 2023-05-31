@@ -9,22 +9,22 @@
 
 struct linked_list
 {
-    head: node*,
-    tail: node*,
+    head: node^,
+    tail: node^,
     count: int,
 }
 
 struct node
 {
     value: int
-    next: node*,
+    next: node^,
 }
 
 fn main()
 {
     let list := new linked_list
     
-    let list2 : linked_list* = null
+    let list2 : linked_list^ = null
 
     add_at_tail(list, 4)
     add_at_tail(list, 5)
@@ -55,7 +55,7 @@ fn main()
     print_linked_list(list)
 }
 
-fn print_linked_list(list: linked_list*)
+fn print_linked_list(list: linked_list^)
 {
     let n := list.head
     while (n)
@@ -72,7 +72,7 @@ fn print_linked_list(list: linked_list*)
     }
 }
 
-fn add_at_tail(list: linked_list*, value: int)
+fn add_at_tail(list: linked_list^, value: int)
 {	
     if (list.tail)
     {
@@ -91,7 +91,7 @@ fn add_at_tail(list: linked_list*, value: int)
     }
 }
 
-fn add_at_head(list: linked_list*, value: int)
+fn add_at_head(list: linked_list^, value: int)
 {
     if (list.head)
     {
@@ -110,7 +110,7 @@ fn add_at_head(list: linked_list*, value: int)
     }
 }
 
-fn add_at_position(list: linked_list*, position: int, value: int)
+fn add_at_position(list: linked_list^, position: int, value: int)
 {
     if (position < list.count)
     {
@@ -130,13 +130,13 @@ fn add_at_position(list: linked_list*, position: int, value: int)
     }
 }
 
-fn remove_at_position(list: linked_list*, position: int)
+fn remove_at_position(list: linked_list^, position: int)
 {
     if (position < list.count)
     {
         let counter := 0
         let n := list.head
-        let node_before : node*
+        let node_before : node^
         while (counter < position)
         {
             node_before = n
@@ -151,7 +151,7 @@ fn remove_at_position(list: linked_list*, position: int)
     }
 }
 
-fn remove_head(list: linked_list*)
+fn remove_head(list: linked_list^)
 {
     if (list.count == 0)
     {
@@ -174,7 +174,7 @@ fn remove_head(list: linked_list*)
     }
 }
 
-fn remove_tail(list: linked_list*)
+fn remove_tail(list: linked_list^)
 {
     if (list.count == 0)
     {
@@ -205,16 +205,16 @@ fn remove_tail(list: linked_list*)
     }	
 }
 
-fn reverse(list: linked_list*) 
+fn reverse(list: linked_list^) 
 {
     if (list.count < 2)
     {
         return
     }
 
-    let prev : node* = null
-    let curr : node* = list.head
-    let next : node* = null
+    let prev : node^ = null
+    let curr : node^ = list.head
+    let next : node^ = null
 
     list.head = list.tail
     list.tail = curr

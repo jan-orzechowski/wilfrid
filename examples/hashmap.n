@@ -14,30 +14,30 @@ fn main()
         
     for (let i := 1, i <= 50, i++)
     {
-        let key : void* = i as void*
-        let value = (i + 10) as void*
-        map_put(&map, key, value)
+        let key : void^ = i as void^
+        let value = (i + 10) as void^
+        map_put(@map, key, value)
     }
 
     printf("Value for the key %llu is %llu\\n", 
-        10 as ulong, map_get(&map, 10 as void*) as ulong)
+        10 as ulong, map_get(@map, 10 as void^) as ulong)
 
     printf("Value for the key %llu is %llu\\n", 
-        20 as ulong, map_get(&map, 20 as void*) as ulong)
+        20 as ulong, map_get(@map, 20 as void^) as ulong)
 
     printf("Value for the key %llu is %llu\\n", 
-        100 as ulong, map_get(&map, 100 as void*) as ulong)
+        100 as ulong, map_get(@map, 100 as void^) as ulong)
 }
 
 struct hashmap
 {
-    keys: void**
-    values: void**
+    keys: void^^
+    values: void^^
     count: ulong
     capacity: ulong
 }
 
-fn map_get(map: hashmap*, key: void*): void*
+fn map_get(map: hashmap^, key: void^): void^
 {
     if (map.count == 0)
     {
@@ -61,7 +61,7 @@ fn map_get(map: hashmap*, key: void*): void*
     return null
 }
 
-fn map_grow(map: hashmap*, new_capacity: ulong)
+fn map_grow(map: hashmap^, new_capacity: ulong)
 {
     new_capacity = max(16 as ulong, new_capacity)
 
@@ -69,8 +69,8 @@ fn map_grow(map: hashmap*, new_capacity: ulong)
 
     let new_map : hashmap = 
     {
-        keys = allocate(new_capacity * size_of_type(void*)) as void**,
-        values = allocate(new_capacity * size_of_type(void*)) as void**,
+        keys = allocate(new_capacity * size_of_type(void^)) as void^^,
+        values = allocate(new_capacity * size_of_type(void^)) as void^^,
         capacity = new_capacity,
     }
 
@@ -79,19 +79,19 @@ fn map_grow(map: hashmap*, new_capacity: ulong)
     {        
         if (map.keys[i])
         {
-            map_put(&new_map, map.keys[i], map.values[i])
+            map_put(@new_map, map.keys[i], map.values[i])
         }
     }
     print_stores = true
 
     delete map.keys
     delete map.values
-    *map = new_map
+    #map = new_map
 }
 
 let print_stores := true
 
-fn map_put(map: hashmap*, key: void*, val: void*)
+fn map_put(map: hashmap^, key: void^, val: void^)
 {
     if (key == null || val == null)
     {
@@ -136,12 +136,12 @@ fn hash_ulong(x: ulong) : ulong
     return x
 }
 
-fn hash_ptr(ptr: void*) : ulong
+fn hash_ptr(ptr: void^) : ulong
 {
     return hash_ulong(ptr as ulong)
 }
 
-fn hash_bytes(buf: char*, len: ulong) : ulong
+fn hash_bytes(buf: char^, len: ulong) : ulong
 {
     // FNV hash
     let x : ulong = 0xcbf29ce484222325

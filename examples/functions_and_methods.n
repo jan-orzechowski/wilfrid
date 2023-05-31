@@ -154,8 +154,8 @@ struct cuboid
     Here are two examples:
 */
 
-extern fn strncpy(destination: char*, source: char*, length: ulong) : char*
-extern fn snprintf(buffer: char*, buffer_size: ulong, fmt: char*, variadic) : int
+extern fn strncpy(destination: char^, source: char^, length: ulong) : char^
+extern fn snprintf(buffer: char^, buffer_size: ulong, fmt: char^, variadic) : int
 
 /* 
     The 'variadic' keyword is provided for interoperability with C.

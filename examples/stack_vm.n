@@ -44,7 +44,7 @@ enum instruction
 let vm_code: int[]
 let vm_output: int[]
 
-let stack: int*
+let stack: int^
 let stack_size: int
 let ip: int
 let sp: int

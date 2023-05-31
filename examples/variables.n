@@ -65,7 +65,7 @@ let other_binary_val : ulong = 0b_11110000_00001101_11101110_01110001
     Strings are delimited by '"' and can span multiple lines:
 */
 
-let string_var : char* = 
+let string_var : char^ = 
 "example
 of a multiline
 string"
@@ -79,10 +79,10 @@ string"
 */
 
 //  Pointer to a variable of type long:
-let pointer : long*
+let pointer : long^
 
 //  Pointer to a pointer to a pointer to int:
-let other_pointer : int***
+let other_pointer : int^^^
 
 //  For more examples see "Pointer operations"
 
@@ -105,7 +105,7 @@ let int_from_array := array_of_ints[4]
     Here is an array of pointers to arrays of pointers to integers:
 */
 
-let complex_array : int*[10]*[10]
+let complex_array : int^[10]^[10]
 
 /*
     Values can be also declared as const.

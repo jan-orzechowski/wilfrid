@@ -127,15 +127,15 @@ fn main()
 
 /* 
     To pass them to this function, we must take their
-    addresses using the '&' operator:
+    addresses using the '@' (at) operator:
 */
 
-    copy_some_struct(&x, &y)
+    copy_some_struct(@x, @y)
 
     printf("Value of first_var field after the copy: %d", x.first_var)     
 }
 
-fn copy_some_struct(from: some_struct*, to: some_struct*)
+fn copy_some_struct(from: some_struct^, to: some_struct^)
 {
 /*
     When accessing the struct or union fields,
