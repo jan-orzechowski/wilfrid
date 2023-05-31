@@ -414,17 +414,19 @@ typedef struct function_decl
     bool is_extern;
 } function_decl;
 
-typedef struct enum_value
+typedef struct enum_value enum_value;
+struct enum_value
 {
     const char *name;
     bool value_set;
     int64_t value;
     source_pos pos;
-} enum_value;
+    enum_value *depending_on;
+};
 
 typedef struct enum_decl
 {
-    enum_value *values;
+    enum_value **values;
     size_t values_count;
 } enum_decl;
 

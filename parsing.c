@@ -1405,50 +1405,81 @@ void parse_aggregate_fields(aggregate_decl *decl)
     }
 }
 
-enum_value parse_enum_value(void)
+enum_value *parse_enum_value(enum_value **defined_values)
 {
-    enum_value result = { 0 };
+    enum_value *result = null;
     if (is_token_kind(TOKEN_NAME))
     {
-        result.pos = tok.pos;
-        result.name = parse_identifier();
+        result = push_struct(arena, enum_value);
+        result->pos = tok.pos;
+        result->name = parse_identifier();
 
-        if (is_token_kind(TOKEN_ASSIGN))
+        if (match_token_kind(TOKEN_ASSIGN))
         {
-            next_token();
             if (is_token_kind(TOKEN_INT))
             {
-                result.value_set = true;
-                result.value = tok.uint_val;
+                result->value_set = true;
+                result->value = tok.uint_val;
                 next_token();
+            }
+            else if (is_token_kind(TOKEN_NAME))
+            {
+                bool found = false;
+                for (size_t i = 0; i < buf_len(defined_values); i++)
+                {
+                    enum_value *val = defined_values[i];
+                    if (val->name == tok.name)
+                    {
+                        result->depending_on = val;
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (false == found)
+                {
+                    parsing_error(xprintf(
+                        "'%s' is not a declared enum label. (The order of declarations matters here).",
+                        tok.name));
+                }
+                
+                next_token();
+            }
+            else
+            {
+                parsing_error(xprintf(
+                    "Expected an integer literal or a previously defined enum label, got %s",
+                    get_token_kind_name(tok.kind)));
             }
         }
 
-        if (is_token_kind(TOKEN_COMMA))
-        {
-            next_token();
-        }
+        match_token_kind(TOKEN_COMMA);
     }
     return result;
 }
 
 void parse_enum(enum_decl *decl)
 {
-    enum_value *values = null;
+    enum_value **values = null;
 
-    enum_value new_value = parse_enum_value();
-    while (new_value.name)
+    enum_value *new_value = parse_enum_value(values);
+    while (new_value)
     {
         buf_push(values, new_value);
-        new_value = parse_enum_value();
+        new_value = parse_enum_value(values);
     }
 
     decl->values_count = buf_len(values);
     if (decl->values_count > 0)
     {
         decl->values = copy_buf_to_arena(arena, values);
-        buf_free(values);
     }
+    else
+    {
+        parsing_error("Enum declarations should have at least one label defined.");
+    }
+
+    buf_free(values);
 }
 
 decl *parse_declaration(bool error_on_no_declaration)

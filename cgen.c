@@ -769,10 +769,10 @@ void gen_expr(expr *e)
                 decl *d = e->field.expr->resolved_type->symbol->decl;
                 for (size_t i = 0; i < d->enum_decl.values_count; i++)
                 {
-                    enum_value v = d->enum_decl.values[i];
-                    if (v.name == e->field.field_name)
+                    enum_value *v = d->enum_decl.values[i];
+                    if (v->name == e->field.field_name)
                     {
-                        assert(v.value == val);
+                        assert(v->value == val);
                         found = true;
                         break;
                     }

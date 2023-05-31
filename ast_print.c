@@ -677,12 +677,19 @@ void ast_print_decl(decl *d)
                 index++)
             {
                 ast_print_newline();
-                enum_value *value = &d->enum_decl.values[index];
+                enum_value *value = d->enum_decl.values[index];
                 ast_printf("(%s", value->name);
+                
                 if (value->value_set)
                 {
                     ast_printf(" %lld", value->value);
                 }
+                
+                if (value->depending_on)
+                {
+                    ast_printf(" (%s)", value->depending_on->name);
+                }
+
                 ast_printf(")");
             }
 

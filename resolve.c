@@ -773,23 +773,42 @@ void complete_type(type *t)
 
     if (d->kind == DECL_ENUM)
     {
-        hashmap values = {0};
+        hashmap values = { 0 };
         map_grow(&values, 4);
 
-        int64_t largest_value = 0;
+        int64_t largest_value = -1;
         for (size_t i = 0; i < d->enum_decl.values_count; i++)
         {
-            enum_value *val = &d->enum_decl.values[i];
-            if (val->value_set && val->value > largest_value)
+            enum_value *val = d->enum_decl.values[i];
+            assert_is_interned(val->name);
+            assert(false == (val->value_set && val->depending_on));
+            if (val->value_set)
             {
-                largest_value = val->value_set;
+                if (val->value > largest_value)
+                {
+                    largest_value = val->value;
+                }
             }
-        }
-
-        for (size_t i = 0; i < d->enum_decl.values_count; i++)
-        {
-            enum_value *val = &d->enum_decl.values[i];
-            if (false == val->value_set)
+            else if (val->depending_on)
+            {
+                enum_value *other = val->depending_on;
+                while (true)
+                {
+                    assert(map_get(&values, other->name) != 0);
+                    if (other->depending_on)
+                    {
+                        other = other->depending_on;
+                        continue;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                assert(other);
+                val->value = other->value;
+            }
+            else
             {
                 if (largest_value >= INT64_MAX - 1)
                 {
@@ -799,18 +818,11 @@ void complete_type(type *t)
                 }
                 else
                 {
-                    val->value = largest_value++;
+                    val->value = ++largest_value;
                 }
             }
-        }
-        
-        for (size_t i = 0; i < d->enum_decl.values_count; i++)
-        {
-            enum_value *val = &d->enum_decl.values[i];            
-            assert_is_interned(val->name);
-            void *val_ptr = push_size(arena, sizeof(int64_t));
-            *(int64_t *)val_ptr = val->value;
-            map_put(&values, val->name, val_ptr);
+            
+            map_put(&values, val->name, &val->value);
         }
 
         complete_enum_type(t, values);

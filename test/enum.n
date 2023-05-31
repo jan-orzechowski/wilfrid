@@ -18,8 +18,31 @@ enum all_ones
     third = 1,
 }
 
+enum dependent_values
+{
+    FIRST_VAL,
+    SECOND_VAL
+    THIRD_VAL = FIRST_VAL
+    FOURTH_VAL = 10,
+    FIFTH_VAL,
+}
+
 fn main()
 {
+    assert(element_kind.A == 0)
+    assert(element_kind.B == 1)
+    assert(element_kind.C == 2)
+    
+    assert(all_ones.first == 1)
+    assert(all_ones.second == 1)
+    assert(all_ones.third == 1)
+
+    assert(dependent_values.FIRST_VAL == 0)
+    assert(dependent_values.SECOND_VAL == 1)
+    assert(dependent_values.THIRD_VAL == dependent_values.THIRD_VAL)
+    assert(dependent_values.FOURTH_VAL == 10)
+    assert(dependent_values.FIFTH_VAL == 11)
+
     let test := 1
 
     let data : element[15] = 
@@ -55,3 +78,4 @@ fn main()
     assert(data[7].value == 7)
     assert((data[3].value - 1) == element_kind.C as int)
 }
+

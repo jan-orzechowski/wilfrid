@@ -428,3 +428,31 @@ TEST:(var-decl num 1077937224378):END
 
 CASE:let num := 1___500_100__:END
 TEST:(var-decl num 1500100):END
+
+CASE:enum dependent_values
+{
+    FIRST_VAL,
+    SECOND_VAL
+    THIRD_VAL = FIRST_VAL
+}:END
+TEST:(enum-decl
+  (FIRST_VAL)
+  (SECOND_VAL)
+  (THIRD_VAL (FIRST_VAL))
+):END
+
+CASE:enum dependent_and_set_values
+{
+    FIRST_VAL,
+    SECOND_VAL
+    THIRD_VAL = FIRST_VAL,
+    FOURTH_VAL = 0,
+    FIFTH_VAL = THIRD_VAL,
+}:END
+TEST:(enum-decl
+  (FIRST_VAL)
+  (SECOND_VAL)
+  (THIRD_VAL (FIRST_VAL))
+  (FOURTH_VAL 0)
+  (FIFTH_VAL (THIRD_VAL))
+):END
