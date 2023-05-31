@@ -40,7 +40,7 @@ void runtime_error(source_pos pos, const char *format, ...)
     print_source_pos(&message_buf, pos);
     buf_printf(message_buf, ": ");
 
-    printf("%s", message_buf);
+    printf("\n\n%s", message_buf);
     vprintf(format, args);
     printf("\n");
     buf_free(message_buf);
@@ -1052,7 +1052,7 @@ byte *eval_printf_call(expr *exp, byte *result)
         else if (*(format + 3) == 0)
         {
             unknown_specifier = true;
-            spec_end_index = spec_start_index + 2;
+            spec_end_index = spec_start_index + 1;
             break;
         }
         else if (*(format + 1) == 'l' && *(format + 2) == 'l' && *(format + 3) == 'd')
@@ -1102,7 +1102,7 @@ byte *eval_printf_call(expr *exp, byte *result)
         else
         {
             unknown_specifier = true;
-            spec_end_index = spec_start_index + 3;
+            spec_end_index = spec_start_index + 1;
             break;
         }
     }
