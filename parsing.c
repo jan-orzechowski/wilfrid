@@ -589,13 +589,17 @@ expr *parse_complex_expr(void)
         expr *left_side = result;
         if (is_token_kind(TOKEN_LEFT_PAREN))
         {
+            if (was_previous_token_newline())
+            {
+                return left_side;
+            }
+            next_token();
+
             // nie ma to sensu po poprzednim wezwaniu funkcji
             if (left_side && left_side->kind == EXPR_CALL)
             {
                 return left_side;
             }
-
-            next_token();
 
             result = push_struct(arena, expr);
             result->kind = EXPR_CALL;
@@ -614,10 +618,8 @@ expr *parse_complex_expr(void)
                 result = result->call.function_expr;
             }
         }
-        else if (is_token_kind(TOKEN_LEFT_BRACKET))
+        else if (match_token_kind(TOKEN_LEFT_BRACKET))
         {
-            next_token();
-
             result = push_struct(arena, expr);
             result->kind = EXPR_INDEX;
             result->index.array_expr = left_side;
@@ -628,14 +630,19 @@ expr *parse_complex_expr(void)
 
             expect_token_kind(TOKEN_RIGHT_BRACKET);
         } 
-        else if (is_token_kind(TOKEN_DOT))
-        {
-            next_token();           
-            const char *identifier = tok.name;
-            
-            next_token();                       
-            if (match_token_kind(TOKEN_LEFT_PAREN))
+        else if (match_token_kind(TOKEN_DOT))
+        {          
+            const char *identifier = tok.name;            
+            next_token();
+
+            if (is_token_kind(TOKEN_LEFT_PAREN))
             {
+                if (was_previous_token_newline())
+                {
+                    return left_side;
+                }
+                next_token();
+
                 // method call
                 result = push_struct(arena, expr);
                 result->kind = EXPR_CALL;

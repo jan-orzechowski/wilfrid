@@ -719,6 +719,19 @@ void next_token(void)
     }
 }
 
+bool was_previous_token_newline(void)
+{
+    if (lexed_token_index > 2)
+    {
+        bool result = (all_tokens[lexed_token_index - 2].kind == TOKEN_NEWLINE);
+        return result;
+    }
+    else
+    {
+        return false;
+    }
+}
+
 void ignore_tokens_until_newline(void)
 {
     while (lexed_token_index + 1 < buf_len(all_tokens))
