@@ -943,6 +943,30 @@ byte *eval_printf_call(expr *exp, byte *result)
             current_arg_index++;
             format += 2;
         }
+        else if (*(format + 1) == 's')
+        {
+            if (current_arg_index + 1 > buf_len(arg_types))
+            {
+                not_enough_arguments = true;
+                break;
+            }
+
+            type *t = arg_types[current_arg_index];
+            if (t->kind == TYPE_POINTER 
+                && t->pointer.base_type
+                && t->pointer.base_type->kind == TYPE_CHAR)
+            {
+                byte *val = arg_vals[current_arg_index];
+                buf_printf(output, "%s", *(char **)val);
+            }
+            else
+            {
+                mismatching_type = t;
+                expected_type = type_void;
+            }
+            current_arg_index++;
+            format += 2;
+        }
         else if (*(format + 1) == 'u')
         {
             if (current_arg_index + 1 > buf_len(arg_types))
