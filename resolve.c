@@ -1494,7 +1494,14 @@ resolved_expr *resolve_special_case_methods(expr *e)
                 plug_stub_expr(e, stub_kind, resolved_type);
             }
 
-            result = get_resolved_rvalue_expr(resolved_type);
+            if (resolved_type)
+            {
+                result = get_resolved_rvalue_expr(resolved_type);
+            }
+            else
+            {
+                return null;
+            }
         }
     }
 
