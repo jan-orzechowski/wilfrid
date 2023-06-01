@@ -720,6 +720,12 @@ expr *parse_cast_expr(void)
             return e;
         }
 
+        if (e == null)
+        {
+            parsing_error("Cast without an expression specified");
+            return null;
+        }
+
         e = push_cast_expr(pos, t, e);
     }
     return e;
