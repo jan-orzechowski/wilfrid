@@ -28,7 +28,6 @@
     <Text Include="test\loops.n" />
     <Text Include="test\constructors.n" />
     <Text Include="test\parsing_tests.n" />
-    <Text Include="examples\nous_parser.n" />
     <Text Include="test\hashmap_test.n" />
     <Text Include="test\compound_literals.n" />
     <Text Include="test\casts.n" />
