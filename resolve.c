@@ -1082,7 +1082,7 @@ resolved_expr *resolve_expr_binary(expr *expr)
     resolved_expr *right = resolve_expr(expr->binary.right);
     token_kind op = expr->binary.operator;
 
-    if (false == (check_resolved_expr(left) && check_resolved_expr(left)))
+    if (false == (check_resolved_expr(left) && check_resolved_expr(right)))
     {
         return resolved_expr_invalid;
     }
