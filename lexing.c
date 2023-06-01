@@ -296,24 +296,37 @@ bool lex_next_token(void)
             stream++;
             tok.kind = TOKEN_STRING;
             for (;;)
-            {
-                stream++;
-
-                if (*stream == '\n')
+            {                
+                if (*(stream) == '\n')
                 {
+                    stream++;
                     current_line_beginning = stream;
                     tok.pos.line++;
                     continue;
                 }
-
-                if (*(stream) == 0 || *(stream) == '"')
+                else if (*(stream) == 0)
                 {
                     tok.string_val = str_intern_range(tok.start + 1, stream);
-                    if (*(stream) == '"')
+                    break;
+                }
+                else if (*(stream) == '"')
+                {
+                    if (*(stream - 1) == '\\')
                     {
                         stream++;
+                        continue;
                     }
-                    break;
+                    else
+                    {
+                        tok.string_val = str_intern_range(tok.start + 1, stream);
+                        stream++;
+                        break;
+                    }
+                }
+                else
+                {
+                    stream++;
+                    continue;
                 }
             }
         }

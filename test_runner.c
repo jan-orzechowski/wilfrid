@@ -139,7 +139,7 @@ void test_file_parsing_test(string_ref source, bool print_results)
 
 void test_parsing_single_case(void)
 {
-    char *test = "let x := xcalloc(new_capacity * size_of_type(void^))";
+    char *test = "let str := \"<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?>\"";
 
     printf("\nParsing test case 0:\n%s\n", test);
     

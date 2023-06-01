@@ -456,3 +456,6 @@ TEST:(enum-decl
   (FOURTH_VAL 0)
   (FIFTH_VAL (THIRD_VAL))
 ):END
+
+CASE:let str := "<?xml version=\"1.0\" encoding=\"UTF-8\"?>":END
+TEST:(var-decl str "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"):END
