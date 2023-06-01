@@ -186,6 +186,7 @@
     <Text Include="examples\functions_and_methods.n" />
     <Text Include="examples\pointers.n" />
     <Text Include="examples\printf.n" />
+    <Text Include="examples\operators.n" />
     <Text Include="examples\structs_and_unions.n" />
     <Text Include="examples\variables.n" />
     <Text Include="test\linked_lists_test.n" />
