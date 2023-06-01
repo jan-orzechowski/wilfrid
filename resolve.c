@@ -1895,7 +1895,10 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
         case EXPR_CAST:
         {
             type *t = resolve_typespec(e->cast.type);
+            on_invalid_type_return(t);
+            
             resolved_expr *expr = resolve_expr(e->cast.expr);
+            on_invalid_expr_return(expr);
 
             e->cast.resolved_type = t;            
 
