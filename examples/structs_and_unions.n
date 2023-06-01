@@ -138,7 +138,7 @@ fn main()
 fn copy_some_struct(from: some_struct^, to: some_struct^)
 {
 /*
-    When accessing the struct or union fields,
+    When accessing a struct or union fields,
     pointers to structs are automatically dereferenced.
     This means we can use the dot operator no matter whether
     we have struct/union or just a pointer to it.
@@ -147,4 +147,10 @@ fn copy_some_struct(from: some_struct^, to: some_struct^)
     to.first_var = from.first_var 
     to.second_var = from.second_var
     to.third_var = from.third_var 
+
+/* 
+    The code above could be also written more succinctly 
+    by using pointer dereference:
+*/
+    #to = #from
 }
