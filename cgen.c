@@ -1068,8 +1068,6 @@ void gen_forward_decls(symbol **resolved)
 
 void gen_symbol_decl(symbol *sym)
 {
-    // zakładamy, że forward declarations zostały już wygenerowane
-
     assert(sym);
 
     decl *decl = sym->decl;
@@ -1078,6 +1076,7 @@ void gen_symbol_decl(symbol *sym)
         return;
     }
 
+    gen_printf("\n");
     gen_line_hint(decl->pos);
     switch (decl->kind)
     {
@@ -1109,6 +1108,7 @@ void gen_symbol_decl(symbol *sym)
             if (decl->function.is_extern == false)
             {
                 gen_func_decl(decl, sym->mangled_name);
+                gen_printf(" ");
                 gen_stmt_block(decl->function.stmts);
                 gen_printf(";");
             }
@@ -1167,7 +1167,7 @@ void gen_entry_point(symbol **resolved)
 
 void gen_common_includes(void)
 {
-    gen_printf("#pragma pack(push, 1)");
+    gen_printf("#pragma pack(push, 1)\n\n");
     
     char *common_include_file = "include/common.c";
     string_ref file_buf = read_file(common_include_file);
@@ -1177,18 +1177,6 @@ void gen_common_includes(void)
 "#undef offsetof\n\
 #undef NULL\n\
 #define char unsigned char\n");
-
-#if 0
-    gen_printf(
-"#include <stddef.h>\n\
-#include <stdlib.h>\n\
-#include <stdio.h>\n\
-#include <stdarg.h>\n\
-#include <string.h>\n\
-#include <stdint.h>\n\
-#include <stdbool.h>"
-);
-#endif
 
     free(file_buf.str);
 }
@@ -1465,7 +1453,6 @@ const char *pretty_print_type_name(type *ty, bool plural)
         case TYPE_FUNCTION:
         {
             assert(ty->symbol);
-            // tutaj można dopisać jeszcze przyjmowane argumenty i zwracaną wartość
             result = xprintf("function %s", ty->symbol->name);
         }
         break;
