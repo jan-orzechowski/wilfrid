@@ -36,3 +36,328 @@ fn is_power_of_2(val: ulong) : bool
         return false
     }
 }
+
+fn get_string_length(str: char^) : uint
+{
+    let result : uint = 0
+    let str_temp := str
+
+    while (#str_temp)
+    {
+        str_temp++
+        result++
+    }
+
+    return result
+}
+
+/*
+    STRINGS
+*/
+
+struct string_ref
+{
+    string_size: ulong,
+    ptr: char^,
+}
+
+struct string_builder
+{
+    ptr: char^,
+    current_size: ulong,
+    max_size: ulong,
+}
+
+fn is_empty_string(str: string_ref) : bool
+{
+    let result := (str.ptr == null || str.string_size == 0)
+    return result
+}
+
+fn equals_string_ref(a: string_ref, b: string_ref) : bool
+{
+    if (is_empty_string(a) || is_empty_string(b))
+    {
+        return true
+    }
+
+    if (a.string_size != b.string_size)
+    {
+        return false
+    }
+    else
+    {
+        for (let char_index : ulong = 0,
+            char_index < a.string_size,
+            char_index++)
+        {
+            let a_char := #(a.ptr + char_index)
+            let b_char := #(b.ptr + char_index)
+            if (a_char != b_char)
+            {
+                return false
+            }
+        }
+    }
+
+    return true
+}
+
+fn compare_to_c_string(my_str: string_ref, c_str: char^) : bool
+{    
+    if (my_str.ptr == null && c_str == null)
+    {
+        return true
+    }
+
+    if (my_str.ptr == null || c_str == null)
+    {
+        return false
+    }
+
+    let my_str_char_index : ulong = 0
+    while (#c_str)
+    {
+        if (my_str_char_index == my_str.string_size)
+        {
+            return false
+        }
+
+        let my_char := #(my_str.ptr + my_str_char_index)
+        let c_char := #c_str
+        if (my_char != c_char)
+        {
+            return false
+        }
+
+        my_str_char_index++
+        c_str++
+    }
+
+    if (my_str_char_index < my_str.string_size)
+    {
+        return false
+    }
+
+    return true
+}
+
+fn is_whitespace(c: char) : bool
+{
+    let result = (c == ' ' || c == '\r' || c == '\t' || c == '\n')
+    return result
+}
+
+fn is_digit(c: char) : bool
+{
+    let result = (c >= '0' && c <= '9')
+    return result
+}
+
+fn is_letter(c: char) : bool
+{
+    let code : uint = c as uint
+    let result = (code >= 33 && code <= 126)
+    return result
+}
+
+fn is_all_digits(str: string_ref) : bool
+{
+    let result := true
+    for (let char_index : ulong = 0,
+        char_index < str.string_size,
+        char_index++)
+    {
+        let c := #(str.ptr + char_index)
+        if (false == is_digit(c))
+        {
+            result = false
+            break
+        }
+    }
+    return result
+}
+
+fn check_if_string_is_whitespace(str: string_ref) : bool
+{
+    let result := true
+    for (let char_index : ulong = 0,
+        char_index < str.string_size,
+        char_index++)
+    {
+        if (false == is_whitespace(#(str.ptr + char_index)))
+        {
+            result = false
+            break
+        }
+    }
+
+    return result
+}
+
+fn omit_leading_whitespace(str: string_ref) : string_ref
+{
+    let result = str
+    if (false == is_empty_string(str))
+    {
+        let new_start : char^ = null
+        for (let char_index: ulong = 0,
+            char_index < str.string_size,
+            char_index++)
+        {
+            let c = (str.ptr + char_index)
+            if (is_whitespace(#c))
+            {
+                new_start = c + 1
+            }
+            else
+            {
+                break
+            }
+        }
+
+        if (new_start != null)
+        {
+            if (new_start >= str.ptr + str.string_size)
+            {
+                result.ptr = null
+                result.string_size = 0
+            }
+            else
+            {
+                let old_end := str.ptr + str.string_size - 1
+                let new_size := old_end - new_start
+                result.ptr = new_start
+                result.string_size = new_size as ulong
+            }
+        }
+    }
+    return result
+}
+
+fn omit_trailing_whitespace(str: string_ref) : string_ref
+{
+    let result := str
+    if (false == is_empty_string(str))
+    {
+        let new_end : char^ = null
+        for (let char_index : long = str.string_size - 1,
+            char_index >= 0,
+            char_index--)
+        {
+            let c = (str.ptr + char_index)
+            if (is_whitespace(#c))
+            {
+                new_end = c
+            }
+            else
+            {
+                break
+            }
+        }
+
+        if (new_end != null)
+        {
+            if (new_end < str.ptr)
+            {
+                result.ptr = null
+                result.string_size = 0
+            }
+            else
+            {
+                let new_size := new_end - str.ptr
+                result.ptr = str.ptr
+                result.string_size = new_size as ulong
+            }
+        }
+    }
+    return result
+}
+
+
+/*
+    MEMORY ARENA
+*/
+
+struct memory_arena
+{
+    stack_frames: ulong,
+    memory_block_count: ulong,
+    first_block: memory_arena_block^,
+    last_block: memory_arena_block^,
+}
+
+struct memory_arena_block
+{    
+    base_address: char^,
+    max_size: ulong,
+    current_size: ulong,
+    next: memory_arena_block^,
+}
+
+fn allocate_memory_arena(block_size: ulong): memory_arena^
+{
+    let arena_size := size_of_type(memory_arena) as ulong
+    let arena : memory_arena^ = allocate(arena_size) as memory_arena^
+    allocate_new_block(arena, block_size)
+    return arena
+}
+
+fn allocate_new_block(arena: memory_arena^, size: ulong): memory_arena_block^
+{
+    let new_block_size = size + size_of_type(memory_arena_block)
+    let new_block := allocate(new_block_size) as memory_arena_block^
+
+    new_block.base_address = new_block as char^ + size_of_type(memory_arena_block)
+    new_block.max_size = size
+    new_block.current_size = 0
+   
+    if (arena.last_block)
+    {
+        arena.last_block.next = new_block
+        arena.last_block = new_block
+    }
+    else
+    {
+        arena.first_block = new_block
+        arena.last_block = new_block
+    }
+
+    arena.memory_block_count++
+    return new_block
+}
+
+fn free_memory_arena(arena: memory_arena^)
+{
+    if (arena == null)
+    {
+        return
+    }
+
+    let block_to_delete := arena.first_block
+    while (block_to_delete)
+    {
+        let temp := block_to_delete.next
+        delete block_to_delete
+        block_to_delete = temp
+    }
+
+    delete arena
+}
+
+fn push_size(arena: memory_arena^, size: ulong): char^
+{
+    assert(arena != null)
+    assert(size > 0 as ulong)
+    assert(size < arena.first_block.max_size)
+
+    let block := arena.last_block
+    if (block.max_size - block.current_size < size)
+    {
+        block = allocate_new_block(arena, block.max_size)
+    }
+
+    let result := block.base_address + block.current_size
+    block.current_size += size
+    return result
+}
