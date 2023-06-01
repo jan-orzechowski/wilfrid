@@ -564,9 +564,7 @@ void gen_expr_stub(expr *exp)
         break;
         case STUB_EXPR_POINTER_ARITHMETIC_INC:
         {
-            gen_printf("(%s(", exp->stub.is_inc ? "++" : "--");
             gen_expr(exp->stub.original_expr);
-            gen_printf(")");
         }
         break;
         case STUB_EXPR_LIST_CAPACITY:
@@ -690,8 +688,20 @@ void gen_expr(expr *e)
         break;
         case EXPR_UNARY:
         {
-            assert(e->unary.operator != TOKEN_INC && e->unary.operator != TOKEN_DEC);            
-            gen_printf("(%s(", get_token_kind_name(e->unary.operator));
+            assert(e->unary.operator != TOKEN_INC && e->unary.operator != TOKEN_DEC); 
+            if (e->unary.operator == TOKEN_DEREFERENCE)
+            {
+                gen_printf("(*(");
+            }
+            else if (e->unary.operator == TOKEN_ADDRESS_OF)
+            {
+                gen_printf("(&(");
+            }
+            else
+            {
+                gen_printf("(%s(", get_token_kind_name(e->unary.operator));
+            }
+
             gen_expr(e->unary.operand);
             gen_printf("))");
         }
