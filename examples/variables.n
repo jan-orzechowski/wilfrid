@@ -61,6 +61,27 @@ let other_binary_val : ulong = 0b_11110000_00001101_11101110_01110001
 */
 
 /*
+    Wilfrid allows for low-level memory manipulation via pointers.
+    A pointer is just an address in memory. We can perform 
+    arithmetic operations on it: addition and subtraction.
+
+    Pointers are always 64-bit in Wilfrid.
+
+    They are declared using a type name and a caret sign:
+*/
+
+let pointer : long^
+
+/*
+    That was a pointer to a variable of type long.
+    Here is a pointer to a pointer to a pointer to int:
+*/
+
+let other_pointer : int^^^
+
+//  For more examples see "Pointer operations".
+
+/*
     String, as in C, are implemented as pointers to characters.
     Strings are delimited by '"' and can span multiple lines:
 */
@@ -69,22 +90,6 @@ let string_var : char^ =
 "example
 of a multiline
 string"
-
-/*
-    Wilfrid allows for low-level memory manipulation via pointers.
-    A pointer is just an address in memory. We can perform 
-    arithmetic operations on it: addition and subtraction.
-
-    Pointers are always 64-bit in Wilfrid.
-*/
-
-//  Pointer to a variable of type long:
-let pointer : long^
-
-//  Pointer to a pointer to a pointer to int:
-let other_pointer : int^^^
-
-//  For more examples see "Pointer operations"
 
 /*
     Arrays in Wilfrid are defined by writing the size of an array 
