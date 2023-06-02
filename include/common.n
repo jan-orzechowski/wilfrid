@@ -61,13 +61,6 @@ struct string_ref
     ptr: char^,
 }
 
-struct string_builder
-{
-    ptr: char^,
-    current_size: ulong,
-    max_size: ulong,
-}
-
 fn is_empty_string(str: string_ref) : bool
 {
     let result := (str.ptr == null || str.string_size == 0)
@@ -291,7 +284,7 @@ struct memory_arena_block
 {    
     base_address: char^,
     max_size: ulong,
-    current_size: ulong,
+    used_size: ulong,
     next: memory_arena_block^,
 }
 
@@ -310,7 +303,7 @@ fn allocate_new_block(arena: memory_arena^, size: ulong): memory_arena_block^
 
     new_block.base_address = new_block as char^ + size_of_type(memory_arena_block)
     new_block.max_size = size
-    new_block.current_size = 0
+    new_block.used_size = 0
    
     if (arena.last_block)
     {
@@ -349,15 +342,117 @@ fn push_size(arena: memory_arena^, size: ulong): char^
 {
     assert(arena != null)
     assert(size > 0 as ulong)
-    assert(size < arena.first_block.max_size)
+    assert(size <= arena.last_block.max_size)
 
     let block := arena.last_block
-    if (block.max_size - block.current_size < size)
+    if (block.max_size - block.used_size < size)
     {
         block = allocate_new_block(arena, block.max_size)
     }
 
-    let result := block.base_address + block.current_size
-    block.current_size += size
+    let result := block.base_address + block.used_size
+    block.used_size += size
     return result
+}
+
+struct memory_arena_marker
+{
+    block: memory_arena_block^,
+    address: char^,
+}
+
+fn push_arena_stack(arena: memory_arena^): memory_arena_marker
+{
+    arena.stack_frames++
+    let current_address := arena.last_block.base_address + arena.last_block.used_size
+    let result : memory_arena_marker = 
+    { 
+        block = arena.last_block,
+        address = current_address
+    }
+    return result
+}
+
+fn get_arena_total_size(arena: memory_arena^): ulong
+{
+    if (arena == null)
+    {
+        return 0
+    }
+
+    let size : ulong = 0
+    let block = arena.first_block
+    while (block)
+    {
+        size += block.max_size
+        block = block.next
+    }
+    return size
+}
+
+fn get_arena_used_size(arena: memory_arena^): ulong
+{
+    if (arena == null)
+    {
+        return 0
+    }
+
+    let size : ulong = 0
+    let block = arena.first_block
+    while (block)
+    {
+        size += block.used_size
+        block = block.next
+    }
+    return size
+}
+
+fn get_arena_unused_size(arena: memory_arena^): ulong
+{
+    return (get_arena_total_size(arena) - get_arena_used_size(arena))
+}
+
+fn zero_memory_arena_block(block: memory_arena_block^, from_address: char^)
+{
+    let block_current_address := block.base_address + block.used_size
+    let block_max_address := block.base_address + block.max_size
+
+    zero_memory(from_address, block_current_address)
+    block.used_size = (from_address - block.base_address) as ulong
+}
+
+fn zero_memory(from_address : char^, to_address : char^)
+{
+    let from := from_address 
+    let to := to_address
+    for (let addr := from, addr < to, addr = addr + 1)
+    {
+        #addr = 0
+    }
+}
+
+fn pop_arena_stack(arena: memory_arena^, marker: memory_arena_marker)
+{    
+    assert(arena.stack_frames > 0 as ulong)
+    arena.stack_frames--
+
+    if (marker.block == arena.last_block)
+    {
+        zero_memory_arena_block(marker.block, marker.address)
+    }
+    else
+    {
+        zero_memory_arena_block(marker.block, marker.address)
+
+        let block_to_delete = marker.block.next
+        while (block_to_delete)
+        {
+            let temp = block_to_delete.next
+            delete block_to_delete
+            arena.memory_block_count--
+            block_to_delete = temp
+        }
+        marker.block.next = null
+        arena.last_block = marker.block
+    }
 }
