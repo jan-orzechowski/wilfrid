@@ -719,7 +719,6 @@ char *get_stub_expr_name(stub_expr_kind kind)
         case STUB_EXPR_LIST_NEW: return "stub-expr-list-new";
         case STUB_EXPR_LIST_AUTO: return "stub-expr-list-auto";
         case STUB_EXPR_LIST_INDEX: return "stub-expr-list-index";
-        case STUB_EXPR_CONSTRUCTOR: return "stub-expr-constructor";
         default: return xprintf("stub-expr unknown:%d", kind);
     }
 }

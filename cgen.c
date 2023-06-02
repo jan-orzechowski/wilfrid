@@ -635,14 +635,7 @@ void gen_expr_stub(expr *exp)
             char *type_str = type_to_cdecl(base_type, null);
             gen_printf("%s)", type_str);
         }
-        break;
-        case STUB_EXPR_CONSTRUCTOR:
-        {
-            assert(orig_exp->kind == EXPR_CALL);
-            assert(orig_exp->call.resolved_function);
-            gen_expr(orig_exp);
-        }
-        break;
+        break;        
         invalid_default_case;
     }
 }

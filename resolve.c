@@ -1532,68 +1532,59 @@ resolved_expr *resolve_special_case_constructors(expr *e)
     on_invalid_expr_return(fn_expr);
 
     type *return_type = fn_expr->type;
-    if (e->call.args_num == 0)
+    
+    symbol *matching = null;
+    symbol *candidate = get_symbol(str_intern("constructor"));
+    while (candidate)
     {
-        plug_stub_expr(e, STUB_EXPR_CONSTRUCTOR, return_type);
-
-        resolved_expr *result = get_resolved_rvalue_expr(return_type);
-        return result;
-    }
-    else
-    {
-        symbol *matching = null;
-        symbol *candidate = get_symbol(str_intern("constructor"));
-        while (candidate)
+        if (candidate->state == SYMBOL_UNRESOLVED)
         {
-            if (candidate->state == SYMBOL_UNRESOLVED)
-            {
-                resolve_symbol(candidate);
-            }
+            resolve_symbol(candidate);
+        }
 
-            assert(candidate->type->kind == TYPE_FUNCTION);
-            if (candidate->type->function.has_variadic_arg)
-            {
-                goto constructor_candidate_check_next;
-            }
+        assert(candidate->type->kind == TYPE_FUNCTION);
+        if (candidate->type->function.has_variadic_arg)
+        {
+            goto constructor_candidate_check_next;
+        }
 
-            if (false == compare_types(candidate->type->function.return_type, return_type))
-            {
-                goto constructor_candidate_check_next;
-            }
+        if (false == compare_types(candidate->type->function.return_type, return_type))
+        {
+            goto constructor_candidate_check_next;
+        }
 
-            if (candidate->type->function.param_count == e->call.args_num)
+        if (candidate->type->function.param_count == e->call.args_num)
+        {
+            for (size_t i = 0; i < candidate->type->function.param_count; i++)
             {
-                for (size_t i = 0; i < candidate->type->function.param_count; i++)
+                expr *arg_expr = e->call.args[i];
+                type *expected_param_type = candidate->type->function.param_types[i];
+                resolved_expr *resolved_arg_expr = resolve_expected_expr(arg_expr, expected_param_type, true);
+                if (false == compare_types(resolved_arg_expr->type, expected_param_type))
                 {
-                    expr *arg_expr = e->call.args[i];
-                    type *expected_param_type = candidate->type->function.param_types[i];
-                    resolved_expr *resolved_arg_expr = resolve_expected_expr(arg_expr, expected_param_type, true);
-                    if (false == compare_types(resolved_arg_expr->type, expected_param_type))
-                    {
-                        goto constructor_candidate_check_next;
-                    }
+                    goto constructor_candidate_check_next;
                 }
-
-                matching = candidate;
-                break;
             }
 
-        constructor_candidate_check_next:
-
-            candidate = candidate->next_overload;
+            matching = candidate;
+            break;
         }
 
-        if (matching == null)
-        {
-            error_in_resolving("No overload is matching types of constructor arguments", e->pos);
-            return null;
-        }
+    constructor_candidate_check_next:
 
-        e->call.resolved_function = matching;
-
-        resolved_expr *result = get_resolved_rvalue_expr(return_type);
-        return result;
+        candidate = candidate->next_overload;
     }
+
+    if (matching == null)
+    {
+        error_in_resolving("No overload is matching types of constructor arguments", e->pos);
+        return null;
+    }
+
+    e->call.resolved_function = matching;
+
+    resolved_expr *result = get_resolved_rvalue_expr(return_type);
+    return result;
 }
 
 symbol **find_function_overload(symbol *first_overload_sym, type *receiver_type, resolved_expr **resolved_args, 

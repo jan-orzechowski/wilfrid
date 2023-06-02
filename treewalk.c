@@ -1870,14 +1870,6 @@ byte *eval_stub_expression(byte *result, expr *exp)
             debug_breakpoint;
         }
         break;
-        case STUB_EXPR_CONSTRUCTOR:
-        {
-            //assert(e->stub.original_expr->kind == EXPR_CALL);
-            //assert(e->stub.original_expr->call.resolved_function);
-            //gen_expr(e->stub.original_expr);
-            fatal("unimplemented");
-        }
-        break;
         case STUB_EXPR_NONE:
         invalid_default_case;
     }
