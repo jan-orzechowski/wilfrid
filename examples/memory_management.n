@@ -104,7 +104,7 @@ fn memory_arena_example()
     for (let i := 0, i < 10, i++)
     {
         let size := size_of_type(some_struct) as ulong
-        let struct_ptr := push_size(arena, size) as some_struct^
+        let struct_ptr := arena.push(size) as some_struct^
         printf("Address of a new some_struct object: %p\\n", struct_ptr)
     }
 
@@ -112,9 +112,9 @@ fn memory_arena_example()
     We can use these functions to query the memory arena's state:
 */
 
-    let total_size := get_arena_total_size(arena)
-    let unused_size := get_arena_unused_size(arena)
-    let used_size := get_arena_used_size(arena)
+    let total_size := arena.get_total_size()
+    let unused_size := arena.get_unused_size()
+    let used_size := arena.get_used_size()
 
     printf("Total arena size: %llu\\n", total_size)
     printf("Total allocations size: %llu\\n", used_size)
@@ -141,31 +141,31 @@ fn memory_arena_example()
 
     for (let i := 0, i < 10, i++)
     {
-        push_size(arena, 512)
+        arena.push(512)
     }
     
     printf("Total allocations size before the marker: %llu\\n",
-         get_arena_used_size(arena))
+         arena.get_used_size())
 
-    let marker := push_arena_stack(arena)
+    let marker := arena.push_stack()
 
     for (let i := 0, i < 10, i++)
     {
-        push_size(arena, 512)
+        arena.push(512)
     }
     
     printf("Total allocations size: %llu\\n",
-         get_arena_used_size(arena))
+         arena.get_used_size())
     
 /*
     All allocations made after the marker 
     will be cleared when we call this function:
 */
 
-    pop_arena_stack(arena, marker)
+    arena.pop_stack(marker)
   
     printf("Total allocations size after popping the stack: %llu\\n",
-         get_arena_used_size(arena))
+         arena.get_used_size())
 
     free_memory_arena(arena)
 }
