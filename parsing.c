@@ -765,15 +765,22 @@ expr *parse_additive_expr(void)
     expr *e = parse_multiplicative_expr();
     while (is_additive_operation(tok.kind))
     {
+        token_kind op = tok.kind;
         source_pos pos = tok.pos;
         expr *left_expr = e;
-        token_kind op = tok.kind;
+        
+        if (left_expr == null)
+        {
+            parsing_error(xprintf("Missing the left operand of the %s binary operator", get_token_kind_name(op)));
+            return null;
+        }
+        
         next_token();
         expr *right_expr = parse_multiplicative_expr();
 
         if (right_expr == null)
         {
-            parsing_error(xprintf("Missing the second operand of %s operation", get_token_kind_name(op)));
+            parsing_error(xprintf("Missing the right operand of the %s binary operator", get_token_kind_name(op)));
             return null;
         }
 
@@ -787,15 +794,22 @@ expr *parse_comparison_expr(void)
     expr *e = parse_additive_expr();
     while (is_comparison_operation(tok.kind))
     {
+        token_kind op = tok.kind;
         source_pos pos = tok.pos;
         expr *left_expr = e;
-        token_kind op = tok.kind;
+        
+        if (left_expr == null)
+        {
+            parsing_error(xprintf("Missing the left operand of the %s binary operator", get_token_kind_name(op)));
+            return null;
+        }
+        
         next_token();
         expr *right_expr = parse_additive_expr();
 
         if (right_expr == null)
         {
-            parsing_error(xprintf("Missing the second operand of %s comparison", get_token_kind_name(op)));
+            parsing_error(xprintf("Missing the right operand of the %s binary operator", get_token_kind_name(op)));
             return null;
         }
 
@@ -809,9 +823,16 @@ expr *parse_and_expr(void)
     expr *e = parse_comparison_expr();
     while (is_token_kind(TOKEN_AND))
     {
+        token_kind op = tok.kind;
         source_pos pos = tok.pos;
         expr *left_expr = e;
-        token_kind op = tok.kind;
+        
+        if (left_expr == null)
+        {
+            parsing_error(xprintf("Missing the left operand of the %s binary operator", get_token_kind_name(op)));
+            return null;
+        }
+        
         next_token();
         expr *right_expr = parse_comparison_expr();
 
@@ -831,9 +852,16 @@ expr *parse_or_expr(void)
     expr *e = parse_and_expr();
     while (is_token_kind(TOKEN_OR))
     {
+        token_kind op = tok.kind;
         source_pos pos = tok.pos;
         expr *left_expr = e;
-        token_kind op = tok.kind;
+        
+        if (left_expr == null)
+        {
+            parsing_error(xprintf("Missing the left operand of the %s binary operator", get_token_kind_name(op)));
+            return null;
+        }
+                
         next_token();
         expr *right_expr = parse_and_expr();
 
@@ -862,6 +890,18 @@ expr *parse_ternary_expr(void)
             expr *if_true_expr = parse_expr();
             expect_token_kind(TOKEN_COLON);
             expr *if_false_expr = parse_expr();
+
+            if (if_true_expr == null)
+            {
+                parsing_error("Missing the left (truthy) operand of the ? ternary operator");
+                return null;
+            }
+
+            if (if_false_expr == null)
+            {
+                parsing_error("Missing the right (falsey) operand of the ? ternary operator");
+                return null;
+            }
 
             e = push_struct(arena, expr);
             e->kind = EXPR_TERNARY;
