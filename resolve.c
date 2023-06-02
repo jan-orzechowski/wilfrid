@@ -1004,13 +1004,13 @@ resolved_expr *resolve_expr_unary(expr *expr)
             result = get_resolved_rvalue_expr(get_pointer_type(type));
         }
         break;
-        case TOKEN_BITWISE_NOT:
-        case TOKEN_NOT:
+        case TOKEN_BITWISE_NOT:        
         {
             if (false == is_unsigned_type(operand->type))
             {
-                error_in_resolving(
-                    xprintf("Bitwise operators allowed only for unsigned integers types, got %s type instead.", operand->type), expr->pos);
+                error_in_resolving(xprintf(
+                    "Bitwise operators are allowed only for unsigned integers types, got %s type instead.",
+                    pretty_print_type_name(operand->type, false)), expr->pos);
                 return resolved_expr_invalid;
             }
             result = get_resolved_rvalue_expr(operand->type);
@@ -1047,6 +1047,18 @@ resolved_expr *resolve_expr_unary(expr *expr)
             {
                 result = get_resolved_rvalue_expr(type);
             }
+        }
+        break;
+        case TOKEN_NOT:
+        {
+            if (operand->type != type_bool)
+            {
+                error_in_resolving(xprintf(
+                    "The negation operator is allowed only for the bool type, got %s instead.",
+                    pretty_print_type_name(operand->type, false)), expr->pos);
+                return resolved_expr_invalid;
+            }
+            result = get_resolved_rvalue_expr(operand->type);
         }
         break;
         default:
