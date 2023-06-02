@@ -57,7 +57,6 @@
     <Text Include="examples\binary_tree.n" />
     <Text Include="examples\dynamic_lists.n" />
     <Text Include="test\linked_lists_test.n" />
-    <Text Include="examples\printf.n" />
     <Text Include="examples\operators.n" />
     <Text Include="examples\pointers.n" />
     <Text Include="examples\variables.n" />
