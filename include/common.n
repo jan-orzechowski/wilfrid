@@ -2,6 +2,7 @@ extern fn assert(condition: bool)
 extern fn printf(str: char^, variadic) : int
 extern fn allocate(num_bytes: ulong) : void^
 extern fn reallocate(ptr : void^, num_bytes: ulong) : void^
+extern fn gc()
 
 fn max(a : ulong, b : ulong) : ulong
 {
