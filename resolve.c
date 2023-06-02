@@ -1188,7 +1188,7 @@ resolved_expr *resolve_expr_binary(expr *expr)
             if (false == is_integer_type(result_type))
             {
                 error_in_resolving(xprintf(
-                    "Modulus operator is allowed only for integer types, got %s type.", 
+                    "Modulus operator is allowed only for integer types, got %s type instead.", 
                     pretty_print_type_name(result_type, false)), expr->pos);
                 return resolved_expr_invalid;
             }
@@ -1203,8 +1203,8 @@ resolved_expr *resolve_expr_binary(expr *expr)
             if (false == is_unsigned_type(result_type))
             {
                 error_in_resolving(xprintf(
-                    "Bitwise operators allowed only for unsigned integers types, got %s type instead.", 
-                    pretty_print_type_name(left->type, false)), expr->pos);
+                    "Bitwise operators are allowed only for unsigned integers types, got %s type instead.", 
+                    pretty_print_type_name(result_type, false)), expr->pos);
                 return resolved_expr_invalid;
             }
         }
