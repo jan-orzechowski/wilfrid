@@ -184,6 +184,7 @@
     <Text Include="examples\binary_tree.n" />
     <Text Include="examples\dynamic_lists.n" />
     <Text Include="examples\functions_and_methods.n" />
+    <Text Include="examples\memory_management.n" />
     <Text Include="examples\pointers.n" />
     <Text Include="examples\operators.n" />
     <Text Include="examples\structs_and_unions.n" />

@@ -1,0 +1,216 @@
+/*
+    Wilfrid offers both manual and automatic memory management.
+
+    First, we will cover the manual way.
+*/
+
+fn manual_management_example()
+{
+/*
+    We can allocate structures on the stack or on the heap.
+    On the stack:
+*/
+
+    let stack_struct : some_struct = {}
+
+/*
+    On the heap:
+*/
+
+    let heap_struct := new some_struct()
+
+/*
+    To free heap-allocated variables we use 'delete':
+*/
+
+    delete heap_struct
+
+/* 
+    Sometimes it's useful to allocate memory without a type.
+    We can use the 'allocate' function to get a specified number of bytes.
+    Memory obtained in this way is always initialized to zero.
+*/
+    
+    let some_memory := allocate(1024)
+
+/*
+    Sometimes it's useful to know a type's size. There are two built-in
+    functions for that: 'size_of' and 'size_of_type'. 'size_of' expects 
+    a variable instance, and 'size_of_type' expects a type.
+*/
+    
+    printf("Size of some_struct is %lld bytes\\n", size_of_type(some_struct))
+
+    let more_memory := allocate(size_of_type(some_struct) * 10)
+    let even_more_memory := allocate(size_of(more_memory))
+
+    delete some_memory
+    delete more_memory
+    delete even_more_memory
+}
+
+fn automatic_management_example()
+{
+/* 
+    There is another way to allocate an object on the heap.
+
+    We can use the 'auto' keyword, which means that 
+    we don't have to manually track the lifetime of an object.   
+*/
+
+    let managed_object = auto some_struct()
+
+/*
+    Objects allocated with 'auto' are automatically deleted 
+    when they are no longer referenced by any stored pointer.
+    This includes cases when the pointer is stored in an object allocated with the 'new' 
+    keyword or on the stack. You can freely mix 'auto' and 'new'
+    objects and store pointers cross-referencing them.
+
+    Since garbage collection can take time, the decision of when to perform
+    it is left to the language user. We call the garbage collector
+    using the 'gc' function:
+*/
+    gc()
+}
+
+fn memory_arena_example()
+{
+/*
+    Wilfrid offers two additional memory management tools out of the box:
+    dynamic arrays and memory arenas.
+
+    Dynamic lists are covered in the "Dynamic lists" example.
+
+    Memory arenas are also called push buffers or push allocators.
+    We allocate a contiguous block of memory, and 'push' new structs to it. 
+    When no memory is left, a new block is allocated.
+    Since the only system allocations are allocations of entire blocks,
+    memory arenas are usually much faster than allocating objects
+    individually. Also, deallocation is much easier - we don't have 
+    to track each object, we just have to call one function 
+    to deallocate the whole arena.
+
+    Here is an example of how to use it:
+*/
+
+    let block_size : ulong = 1024
+    let arena := allocate_memory_arena(block_size)
+
+/*
+    Now we can push to the memory arena anything we want:
+*/  
+
+    for (let i := 0, i < 10, i++)
+    {
+        let size := size_of_type(some_struct) as ulong
+        let struct_ptr := push_size(arena, size) as some_struct^
+        printf("Address of a new some_struct object: %p\\n", struct_ptr)
+    }
+
+/*
+    We can use these functions to query the memory arena's state:
+*/
+
+    let total_size := get_arena_total_size(arena)
+    let unused_size := get_arena_unused_size(arena)
+    let used_size := get_arena_used_size(arena)
+
+    printf("Total arena size: %llu\\n", total_size)
+    printf("Total allocations size: %llu\\n", used_size)
+    printf("Unused arena size: %llu\\n", unused_size)
+
+/*
+    This function de-allocates all blocks:
+*/
+
+    free_memory_arena(arena)
+
+/*
+    Memory arena can be also used as a stack allocator.
+    We can use the 'push_arena_stack' function to mark
+    a beginning of a stack frame. Later, after we are
+    done with using objects allocated in the stack frame,
+    we can call the 'pop_arena_stack' function and clear 
+    memory in the arena up to the beginning of that stack frame.
+
+    Example:
+*/
+
+    arena = allocate_memory_arena(block_size)
+
+    for (let i := 0, i < 10, i++)
+    {
+        push_size(arena, 512)
+    }
+    
+    printf("Total allocations size before the marker: %llu\\n",
+         get_arena_used_size(arena))
+
+    let marker := push_arena_stack(arena)
+
+    for (let i := 0, i < 10, i++)
+    {
+        push_size(arena, 512)
+    }
+    
+    printf("Total allocations size: %llu\\n",
+         get_arena_used_size(arena))
+    
+/*
+    All allocations made after the marker 
+    will be cleared when we call this function:
+*/
+
+    pop_arena_stack(arena, marker)
+  
+    printf("Total allocations size after popping the stack: %llu\\n",
+         get_arena_used_size(arena))
+
+    free_memory_arena(arena)
+}
+
+fn constructor_example()
+{
+/* 
+    We can define custom constructors for objects. 
+    For example, we construct this object by 
+    passing two arguments to the 'new' expression:
+*/
+    let new_struct = new some_struct(10, 12)
+
+    printf("The new struct value is: %lld\\n", new_struct.value)
+}
+
+/* 
+    To define a constructor, we declare a function with the special 'constructor'
+    name, returning the constructed type. User-defined constructors
+    have to have at least one argument.
+*/
+
+fn constructor (val_a: int, val_b: int) : some_struct^
+{ 
+
+/*
+    Constructors can call other constructors.
+    Here we call a default one, which just allocates memory
+    on the heap and initializes it to zero.
+*/
+
+    let s := new some_struct()
+    s.value = val_a + val_b
+    return s 
+}
+
+struct some_struct 
+{ 
+    value: long
+}
+
+fn main()
+{
+    manual_management_example()
+    automatic_management_example()
+    memory_arena_example()
+    constructor_example()
+}

@@ -61,6 +61,7 @@
     <Text Include="examples\pointers.n" />
     <Text Include="examples\variables.n" />
     <Text Include="examples\functions_and_methods.n" />
+    <Text Include="examples\memory_management.n" />
     <Text Include="examples\structs_and_unions.n" />
   </ItemGroup>
 </Project>
