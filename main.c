@@ -28,6 +28,16 @@
 #include <emscripten/html5.h>
 #endif
 
+typedef struct compiler_options
+{
+    char **sources;
+    bool run;
+    bool print_c;
+    bool print_ast;
+    bool test_mode;
+    bool help;
+} compiler_options;
+
 void allocate_memory(void);
 void clear_memory(void);
 
@@ -87,7 +97,7 @@ void report_errors(void)
 #endif
 }
 
-void compile_sources(char **sources, bool print_ast)
+void compile_sources(compiler_options options)
 {
     decl **all_declarations = null;
     symbol **resolved = null;
@@ -95,9 +105,9 @@ void compile_sources(char **sources, bool print_ast)
     parse_file("include/common.n", &all_declarations);
     assert(buf_len(all_declarations) > 0);
 
-    for (size_t i = 0; i < buf_len(sources); i++)
+    for (size_t i = 0; i < buf_len(options.sources); i++)
     {
-        char *filename = sources[i];
+        char *filename = options.sources[i];
         if (path_has_extension(filename, SOURCEFILE_EXTENSION))
         {
             parse_file(filename, &all_declarations);
@@ -108,7 +118,7 @@ void compile_sources(char **sources, bool print_ast)
         }
     }
     
-    if (print_ast)
+    if (options.print_ast)
     {
         decl **decls_to_print = null;
         for (size_t i = 0; i < buf_len(all_declarations); i++)
@@ -149,23 +159,29 @@ void compile_sources(char **sources, bool print_ast)
         }
         else
         {
-#if __EMSCRIPTEN__
-            run_interpreter(resolved);
-#else
-            c_gen(resolved, "output/testcode.c", false);
-            
-            print_source_pos_mode = SOURCE_POS_PRINT_SHORTEN;
-            run_interpreter(resolved);
-            print_source_pos_mode = SOURCE_POS_PRINT_FULL;
-#endif
+            if (options.run)
+            {
+                run_interpreter(resolved);
+            }
+            else
+            {
+                c_gen(resolved, "output/output.c", options.print_c);
+            }
         }
     }
 
     buf_free(all_declarations);
 }
 
-void test_directory(char *path)
+void test_directory(char *path, bool test_interpreter)
 {
+    compiler_options options = 
+    { 
+        .print_ast = true, 
+        .print_c = true,
+        .run = test_interpreter
+    };
+
     char **source_files = get_source_files_in_dir_and_subdirs(path);
     for (size_t i = 0; i < buf_len(source_files); i++)
     {
@@ -175,7 +191,8 @@ void test_directory(char *path)
         {
             char **temp_buf = null;
             buf_push(temp_buf, test_file);
-            compile_sources(temp_buf, true);
+            options.sources = temp_buf;        
+            compile_sources(options);
             buf_free(temp_buf);
             
             if (buf_len(errors) > 0)
@@ -193,17 +210,9 @@ void test_directory(char *path)
     buf_free(source_files);    
 }
 
-typedef struct cmd_arguments
+compiler_options parse_cmd_arguments(int arg_count, char **args)
 {
-    char **sources;
-    bool test_mode;
-    bool help;
-    bool print_ast;
-} cmd_arguments;
-
-cmd_arguments parse_cmd_arguments(int arg_count, char **args)
-{
-    cmd_arguments result = {0};
+    compiler_options result = {0};
     for (size_t i = 1; i < arg_count; i++)
     {
         char *arg = args[i];
@@ -211,18 +220,26 @@ cmd_arguments parse_cmd_arguments(int arg_count, char **args)
 
         if (arg[0] == '-')
         {
-            if (0 == strcmp(arg, "-test"))
+            if (0 == strcmp(arg, "-run"))
+            {
+                result.print_ast = true;
+            }
+            else if (0 == strcmp(arg, "-print-c"))
+            {
+                result.print_c = true;
+            }
+            else if (0 == strcmp(arg, "-print-ast"))
+            {
+                result.print_ast = true;
+            }
+            else if (0 == strcmp(arg, "-test"))
             {
                 result.test_mode = true;
             }
             else if (0 == strcmp(arg, "-help"))
             {
                 result.help = true;
-            }
-            else if (0 == strcmp(arg, "-print-ast"))
-            {
-                result.print_ast = true;
-            }
+            }          
         }
         else
         {
@@ -292,46 +309,39 @@ int main(int arg_count, char **args)
 { 
     print_source_pos_mode = SOURCE_POS_PRINT_FULL;
 
-    cmd_arguments options = parse_cmd_arguments(arg_count, args);
-    options.print_ast = true;
-#if 0
-    //buf_push(options.sources, "test/implicit_type_conversions.n");
-    buf_push(options.sources, "test/function_overloading.n");
+    compiler_options options = parse_cmd_arguments(arg_count, args);
+#if 1    
+    //buf_push(options.sources, "examples/memory_arena.n");
+    buf_push(options.sources, "examples/memory_management.n");
+    //buf_push(options.sources, "examples/hashmap.n");
+    //buf_push(options.sources, "examples/stack_vm.n");
 #elif 1
     options.test_mode = true;
-#else
-    treewalk_interpreter_test();
 #endif
 
 #if DEBUG_BUILD
+    //options.print_ast = true;
     debug_breakpoint;
     for (size_t i = 0; i < 100; i++)
     {
 #endif
-        if (options.help)
-        {
-            // po prostu wyrzucamy tekst do konsoli z predefiniowanego pliku
-            printf("not implemented yet\n");
-        }
-        else if (options.test_mode)
+        if (options.test_mode)
         {
             allocate_memory();
             run_all_tests();
             clear_memory();
             
-            test_directory("test");
-            test_directory("examples");
+            //test_directory("test", false);
+            test_directory("test", true);
+            //test_directory("examples", false);
+            test_directory("examples", true);
         }
         else if (options.sources > 0)
         {
             allocate_memory();
-            compile_sources(options.sources, options.print_ast);
+            compile_sources(options);
             clear_memory();
-        }
-        else
-        {
-            printf("No commands or source files provided.\n");
-        }
+        }       
 
 #if DEBUG_BUILD
         debug_breakpoint;
@@ -345,25 +355,23 @@ int main(int arg_count, char **args)
 
 #else 
 
-typedef enum compiler_options
+typedef enum compiler_option_flags
 {
-    COMPILER_OPTION_SHOW_AST = (1 << 0),
-    COMPILER_OPTION_C = (1 << 1),
-    COMPILER_OPTION_RUN = (1 << 2),
-    COMPILER_OPTION_RUN_VERBOSE = (1 << 3),
+    COMPILER_OPTION_RUN = (1 << 0),
+    COMPILER_OPTION_PRINT_C = (1 << 1),
+    COMPILER_OPTION_PRINT_AST = (1 << 2),
+    COMPILER_OPTION_TEST_MODE = (1 << 3),
     COMPILER_OPTION_HELP = (1 << 4),
-    COMPILER_OPTION_TEST = (1 << 5),
-} compiler_options;
+} compiler_option_flags;
 
 const char *emscripten_input_path = "input.n";
 
 EM_JS(void, define_compiler_constants_in_js, (void), {
-    COMPILER_OPTION_SHOW_AST = (1 << 0);
-    COMPILER_OPTION_C = (1 << 1);
-    COMPILER_OPTION_RUN = (1 << 2);
-    COMPILER_OPTION_RUN_VERBOSE = (1 << 3);
+    COMPILER_OPTION_RUN = (1 << 0);
+    COMPILER_OPTION_PRINT_C = (1 << 1);
+    COMPILER_OPTION_PRINT_AST = (1 << 2);
+    COMPILER_OPTION_TEST_MODE = (1 << 3);
     COMPILER_OPTION_HELP = (1 << 4);
-    COMPILER_OPTION_TEST = (1 << 5);
 
     COMPILER_INPUT_PATH = "input.n";
     COMPILER_MAIN_CALLED = true;
@@ -382,24 +390,28 @@ extern void reset_memory(void)
 }
 
 extern void compile_input(int64_t flags)
-{
+{  
+    compiler_options options = { 0 };
+    buf_push(options.sources, emscripten_input_path);
+
     if (flags & COMPILER_OPTION_RUN)
     {
-        printf("COMPILER_OPTION_RUN\n");
+        options.run = true;
     }
-
-    if (flags & COMPILER_OPTION_SHOW_AST)
+    else
     {
-        printf("COMPILER_OPTION_SHOW_AST\n");
+        generate_line_hints = false;
+        options.print_c = true;
     }
 
     allocate_memory();
+   
+    compile_sources(options);
 
-    char **sources = null;
-    buf_push(sources, emscripten_input_path);
-    compile_sources(sources, true);
-    buf_free(sources);
+    // make sure that we flush everything to the output window
+    printf("\n");
 
+    buf_free(options.sources);
     clear_memory();
 }
 

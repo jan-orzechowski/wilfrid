@@ -2364,7 +2364,9 @@ void run_interpreter(symbol **resolved_decls)
     
     map_chain_grow(&vm_all_allocations, 16);
 
+#if DEBUG_BUILD
     printf("\n=== TREEWALK INTERPRETER RUN ===\n\n");
+#endif
 
     eval_global_declarations(resolved_decls);
 
@@ -2377,15 +2379,16 @@ void run_interpreter(symbol **resolved_decls)
         return;
     }
 
-    // main teoretycznie zwraca int - można tutaj to uszanować
     eval_function(main, null);
 
+#if DEBUG_BUILD
     printf("\n=== FINISHED INTERPRETER RUN ===\n\n");
 
     if (failed_asserts > 0)
     {
         fatal("\nNumber of failed assertions: %d\n", failed_asserts);
     }
+#endif
 
     for (size_t i = 0; i < vm_all_allocations.capacity; i++)
     {
@@ -2406,35 +2409,4 @@ void run_interpreter(symbol **resolved_decls)
     map_chain_free(&vm_all_allocations);
 
     debug_breakpoint;
-}
-
-void treewalk_interpreter_test()
-{
-    decl **all_declarations = null;
-    parse_file("test/auto_dereference.n", &all_declarations);
-    symbol **resolved = resolve(all_declarations, true);
-    assert(all_declarations);
-    assert(resolved);
-
-    // to można by przenieść do resolve...
-    bool print_ast = true;
-    if (print_ast)
-    {
-        printf("\nDeclarations in sorted order:\n");
-
-        for (symbol **it = ordered_global_symbols; it != buf_end(ordered_global_symbols); it++)
-        {
-            symbol *sym = *it;
-            if (sym->decl)
-            {
-                printf("\n%s\n", get_decl_ast(sym->decl));
-            }
-            else
-            {
-                printf("\n%s\n", sym->name);
-            }
-        }
-    }
-
-    run_interpreter(resolved);
 }
