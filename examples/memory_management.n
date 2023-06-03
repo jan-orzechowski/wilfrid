@@ -82,7 +82,7 @@ fn memory_arena_example()
 
     Dynamic lists are covered in the "Dynamic lists" example.
 
-    Memory arenas are also called push buffers or push allocators.
+    Memory arenas are also called push buffers or linear allocators.
     We allocate a contiguous block of memory, and 'push' new structs to it. 
     When no memory is left, a new block is allocated.
     Since the only system allocations are allocations of entire blocks,

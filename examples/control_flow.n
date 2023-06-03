@@ -30,6 +30,18 @@ fn main()
         printf("b is greater\\n")
     }
 
+/* 
+    The same expressed in ternary operators:
+*/
+
+    printf("%s\\n", (a != b) ? "a and b are not equal" : "")
+
+    printf("%s\\n", (a > b)
+        ? "a is greater"
+        : (a == b)
+            ? "a and b are equal"
+            : "b is greater")
+
 /*
     While and do while loops:
 */

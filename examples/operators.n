@@ -152,10 +152,7 @@ fn intersection_example()
 
     let intersection = are_intersecting(a, b)
     
-    printf(
-        "Are rectangles ((%ff, %ff),(%ff, %ff)) and ((%ff, %ff)(%ff, %ff)) intersecting?\\n%s\\n",
-        a.min_corner.x, a.min_corner.y, a.max_corner.x, a.max_corner.y,
-        b.min_corner.x, b.min_corner.y, b.max_corner.x, b.max_corner.y,
+    printf("Are rectangles intersecting? %s\\n",
         intersection ? "Yes" : "No")
 }
 

@@ -70,6 +70,7 @@ fn print_linked_list(list: linked_list^)
         }
         n = n.next
     }
+    printf("\\n")
 }
 
 fn add_at_tail(list: linked_list^, value: int)
