@@ -783,12 +783,9 @@ byte *eval_binary_expression(expr *exp, byte *result)
 {
     assert(exp->kind == EXPR_BINARY);
 
-    byte *left = eval_expression(exp->binary.left);
-    byte *right = eval_expression(exp->binary.right);
-
     type *left_t = exp->binary.left->resolved_type;
-    assert(left_t);
     type *right_t = exp->binary.right->resolved_type;
+    assert(left_t);
     assert(right_t);
     assert(compare_types(left_t, right_t));
     assert(compare_types(left_t, exp->resolved_type));
@@ -797,6 +794,41 @@ byte *eval_binary_expression(expr *exp, byte *result)
     size_t right_size = get_type_size(right_t);
     assert(left_size == right_size);
 
+    byte *left = null;
+    byte *right = null;
+
+    // short-circuit evaluation of logical and/or
+    if (exp->binary.operator == TOKEN_AND || exp->binary.operator == TOKEN_OR)
+    {
+        assert(exp->resolved_type == type_bool);
+        left = eval_expression(exp->binary.left);
+        if (exp->binary.operator == TOKEN_AND)
+        {
+            if ((*(uint32_t *)left) == 0)
+            {
+                (*(uint32_t *)result) = 0;
+                debug_vm_print(exp->pos, "short circuit &&, result false");
+                return result;
+            }
+        }
+        else
+        {
+            if ((*(uint32_t *)left) != 0)
+            {
+                (*(uint32_t *)result) = 1;
+                debug_vm_print(exp->pos, "short circuit &&, result true");
+                return result;
+            }
+        }
+
+        right = eval_expression(exp->binary.right);
+    }
+    else
+    {
+        left = eval_expression(exp->binary.left);
+        right = eval_expression(exp->binary.right);
+    }
+    
     eval_binary_op(result, exp->binary.operator, left, right, left_t, right_t);
 
     if (illegal_op_flag)
