@@ -1783,7 +1783,9 @@ byte *eval_stub_expression(byte *result, expr *exp)
             vm_list_header *hdr = *(vm_list_header **)receiver;
 
             bool get_len = (exp->stub.kind == STUB_EXPR_LIST_LENGTH);
-            size_t value = get_len ? ___get_list_capacity___(hdr) : ___get_list_length___(hdr);
+            size_t value = get_len 
+                ? ___get_list_length___(hdr) 
+                : ___get_list_capacity___(hdr);
             
             copy_vm_val(result, (byte *)&value, sizeof(size_t));
         }
