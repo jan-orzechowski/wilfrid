@@ -10,10 +10,14 @@ int lexed_token_index;
 size_t nested_comments_level;
 char *current_line_beginning;
 
+const char *str_intern_range_with_escaping(const char *start, const char *end);
+
 bool lex_next_token(void)
 {
     bool discard_token = false;
     bool unexpected_character = false;
+
+    char *tok_start_line_beginning = current_line_beginning;
 
     tok.start = stream;
     switch (*stream)
@@ -244,7 +248,7 @@ bool lex_next_token(void)
                 discard_token = true;
                 nested_comments_level++;
 
-                for (;;)
+                while (true)
                 {
                     stream++;
                     if (*(stream) == 0)
@@ -295,7 +299,7 @@ bool lex_next_token(void)
         {
             stream++;
             tok.kind = TOKEN_STRING;
-            for (;;)
+            while (true)
             {                
                 if (*(stream) == '\n')
                 {
@@ -306,19 +310,22 @@ bool lex_next_token(void)
                 }
                 else if (*(stream) == 0)
                 {
-                    tok.string_val = str_intern_range(tok.start + 1, stream);
+                    tok.string_val = 
+                        str_intern_range_with_escaping(tok.start + 1, stream);
                     break;
                 }
                 else if (*(stream) == '"')
                 {
-                    if (*(stream - 1) == '\\')
+                    if (*(stream - 1) == '\\' 
+                        && *(stream - 2) != '\\')
                     {
                         stream++;
                         continue;
                     }
                     else
                     {
-                        tok.string_val = str_intern_range(tok.start + 1, stream);
+                        tok.string_val = 
+                            str_intern_range_with_escaping(tok.start + 1, stream);
                         stream++;
                         break;
                     }
@@ -338,8 +345,28 @@ bool lex_next_token(void)
             tok.kind = TOKEN_CHAR;
             
             char *begin = stream;            
-            while (*stream && *stream != '\'' && *stream != '\n')
+            while (*stream)
             {
+                if (*stream == '\n' || *stream == '\r')
+                {
+                    error("Newlines are not allowed in character literals", tok.pos, 1);
+                    break;
+                }
+
+                if (*stream == '\'')
+                {
+                    if (*(stream - 1) == '\\'
+                        && *(stream - 2) != '\\')
+                    {
+                        stream++;
+                        continue;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
                 stream++;
             }
             
@@ -354,12 +381,16 @@ bool lex_next_token(void)
                 error("Character literal without matching ' sign", tok.pos, 1);
             }
             
-            if (end - begin > 2 && *begin != '\\')
+            if (end - begin == 0)
+            {
+                error("Character literals must contain at least one character", tok.pos, 1);
+            }
+            else if (end - begin > 2 && *begin != '\\')
             {
                 error("Character literals can only be one character long", tok.pos, 1);
             }
 
-            tok.string_val = str_intern_range(begin, end);
+            tok.string_val = str_intern_range_with_escaping(begin, end);
         }
         break;
         case '(':
@@ -681,8 +712,18 @@ bool lex_next_token(void)
         }
         break;
     }
+    
+    // w przypadku tokenów zajmujących wiele linii
+    if (tok.start < current_line_beginning)
+    {
+        assert(tok.start >= tok_start_line_beginning);
+        tok.pos.character = tok.start - tok_start_line_beginning + 1LL;
+    }
+    else
+    {
+        tok.pos.character = tok.start - current_line_beginning + 1LL;
+    }
 
-    tok.pos.character = tok.start - current_line_beginning + 1LL;
     tok.end = stream;
 
     if (unexpected_character)
@@ -701,6 +742,60 @@ bool lex_next_token(void)
 
     bool is_at_end = (tok.kind == TOKEN_EOF && false == discard_token);
     return (false == is_at_end);
+}
+
+const char *str_intern_range_with_escaping(const char *start, const char *end)
+{
+    size_t len = end - start;
+
+    char *copy = xcalloc(len);
+
+    size_t index = 0;
+    char *ptr = start;
+    while (ptr != end && *ptr != 0)
+    {
+        if (*ptr == '\\' && (ptr + 1) != end && *(ptr + 1) != 0)
+        {
+            char escaped_char = *(ptr + 1);
+            char char_to_copy = 0;
+            switch (escaped_char)
+            {
+                case 't': char_to_copy = '\t'; break;
+                case 'n': char_to_copy = '\n'; break;
+                case 'r': char_to_copy = '\r'; break;
+                case 'v': char_to_copy = '\v'; break;
+                case 'a': char_to_copy = '\a'; break;
+                case '"': char_to_copy = '"'; break;
+                case '\'': char_to_copy = '\''; break;
+                case '\\': char_to_copy = '\\'; break;
+                default: char_to_copy = 0; break;
+            }
+
+            if (char_to_copy)
+            {
+                copy[index] = char_to_copy;
+                index++;
+            }
+            else
+            {
+                copy[index] = '\\';
+                copy[index + 1] = escaped_char;
+                index += 2;
+            }
+
+            ptr += 2;
+        }
+        else
+        {
+            copy[index] = *ptr;
+            index++;
+            ptr++;
+        }
+    }
+
+    const char *result = str_intern_range(copy, copy + index);
+    free(copy);
+    return result;
 }
 
 void init_stream(char *source, char *filename)

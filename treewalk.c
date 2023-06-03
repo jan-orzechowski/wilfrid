@@ -928,37 +928,15 @@ byte *eval_printf_call(expr *exp, byte *result)
     type *expected_type = null;
     bool unknown_specifier = false;
 
-    int64_t index = -1;
     while (*format)
     {
-        index++;
-
-        if (*format == '\\' && *(format + 1) != 0)
+        if (*format == '\r' && *(format + 1) == '\n')
         {
-            char escaped_char = *(format + 1);
-            char char_to_print = 0;
-            switch (escaped_char)
-            {
-                case 't': char_to_print = '\t'; break;
-                case 'n': char_to_print = '\n'; break;
-                case 'r': char_to_print = '\r'; break;
-                case 'v': char_to_print = '\v'; break;
-                case 'a': char_to_print = '\a'; break;
-                default: char_to_print = 0; break;
-            }
-
-            if (char_to_print)
-            {
-                buf_printf(output, "%c", char_to_print);
-            }
-            else
-            {
-                buf_printf(output, "\\%c", escaped_char);
-            }
+            buf_printf(output, "\n");
             format += 2;
             continue;
         }
-
+        
         if (*format != '%')
         {
             buf_printf(output, "%c", *format);
@@ -966,7 +944,7 @@ byte *eval_printf_call(expr *exp, byte *result)
             continue;
         }         
 
-        spec_start_index = index + 1;
+        spec_start_index = (format - orig_format) + 1;
         if (*(format + 1) == 0)
         {
             unknown_specifier = true;
@@ -1012,7 +990,10 @@ byte *eval_printf_call(expr *exp, byte *result)
             if (t->kind == TYPE_CHAR)
             {
                 byte *val = arg_vals[current_arg_index];
-                buf_printf(output, "%c", *(char *)val);
+                if (val != 0)
+                {
+                    buf_printf(output, "%c", *(char *)val);
+                }               
             }
             else
             {
