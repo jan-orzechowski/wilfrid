@@ -538,9 +538,9 @@ void gen_expr_stub(expr *exp)
     expr *orig_exp = exp->stub.original_expr;
     expr *receiver = null;
     
-    if (orig_exp->kind == EXPR_CALL)
+    if (orig_exp->kind == EXPR_CALL
+        && orig_exp->call.method_receiver)
     {
-        assert(orig_exp->call.method_receiver);
         receiver = orig_exp->call.method_receiver;
         assert(receiver->resolved_type);
         assert(receiver->resolved_type->kind == TYPE_LIST);
