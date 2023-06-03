@@ -190,6 +190,7 @@
     <Text Include="examples\structs_and_unions.n" />
     <Text Include="examples\variables.n" />
     <Text Include="test\linked_lists_test.n" />
+    <Text Include="test\escaping_characters.n" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

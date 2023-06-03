@@ -1,0 +1,76 @@
+﻿let newline_literal := 
+"
+
+"
+
+let quotes_literal := 
+"\"
+
+\""
+
+fn main()
+{	
+	assert('a' == 'a')	
+
+	let str : char^ = "'"
+	assert(str != null)
+	
+	let c := #str
+	assert(#str == c)
+
+	assert(#str == '\'')
+	assert(c == '\'')
+
+	#str = '\''
+	assert(#str == '\'')
+
+	printf("char: %c", #get_char_ptr())
+	
+	assert(get_char() == '\n')
+	assert(#get_char_ptr() == '\n')
+
+	let slash_str := "\\"
+	assert(#slash_str == '\\')
+	
+	let newline_str := "\n"
+	assert(#newline_str == '\n')
+
+	switch (get_char())
+	{
+		case '\n':
+		{			
+			assert(true)
+		}
+		break
+		default:
+		{
+			assert(false)
+		}
+		break
+	}
+
+	let empty_str = ""
+	assert(empty_str != null)
+	assert(#empty_str == 0 as char)
+
+	let quote = "\""
+	assert(#quote == '"')
+	assert('"' == '\"')
+
+	assert(#newline_literal == '\r')
+
+	assert(#quotes_literal == '"')
+	let len = get_string_length(quotes_literal)
+	let last_char = #(quotes_literal + len - 1)
+	assert(last_char == '"')
+}
+
+fn get_char() : char
+{
+	return '\n'
+}
+
+fn get_char_ptr() : char^
+{
+	return "\n"
+}
