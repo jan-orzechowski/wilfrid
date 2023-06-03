@@ -1228,7 +1228,6 @@ byte *eval_printf_call(expr *exp, byte *result)
     return result;
 }
 
-
 byte *eval_function_call(expr *exp, byte *result)
 {
     assert(exp->kind == EXPR_CALL);
@@ -1250,6 +1249,7 @@ byte *eval_function_call(expr *exp, byte *result)
         if (false == passed)
         {
             failed_asserts++;
+            runtime_error(exp->pos, "ASSERTION FAILED");            
         }
     }
     else if (function->name == str_intern("allocate"))
