@@ -1598,6 +1598,15 @@ symbol **find_function_overload(symbol *first_overload_sym, type *receiver_type,
     symbol *candidate = first_overload_sym;
     while (candidate)
     {
+        if (candidate->type == null)
+        {
+            resolve_symbol(candidate);
+            if (candidate->type == null)
+            {
+                goto find_function_overload_next_candidate;
+            }
+        }
+
         assert(candidate->type->kind == TYPE_FUNCTION);
         type_function candidate_func = candidate->type->function;
 
