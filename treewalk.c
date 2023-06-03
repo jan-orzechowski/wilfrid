@@ -436,7 +436,11 @@ void eval_unary_op(byte *dest, token_kind operation, byte *operand, type *operan
     assert(operand);
     assert(operand_type);
 
-    if (operand_type == type_int)
+    if (operand_type == type_char)
+    {
+        *(uint8_t *)dest = (uint8_t)eval_ulong_unary_op(operation, *(uint8_t *)operand);
+    }
+    else if (operand_type == type_int)
     {
         *(int32_t *)dest = (int32_t)eval_long_unary_op(operation, *(int32_t *)operand);
     }
@@ -506,11 +510,15 @@ void eval_binary_op(byte *dest, token_kind op, byte *left, byte *right, type *le
             }
         }
     }
+    else if (left_t == type_char)
+    {
+        *(uint8_t *)dest = (uint8_t)eval_ulong_binary_op(op, *(uint8_t *)left, *(uint8_t *)right);
+    }
     else if (left_t == type_int)
     {
         *(int32_t *)dest = (int32_t)eval_long_binary_op(op, *(int32_t *)left, *(int32_t *)right);
     }
-    else if (left_t == type_uint || left_t == type_bool || left_t == type_char)
+    else if (left_t == type_uint || left_t == type_bool)
     {
         *(uint32_t *)dest = (uint32_t)eval_ulong_binary_op(op, *(uint32_t *)left, *(uint32_t *)right);
     }
@@ -584,7 +592,7 @@ void perform_cast(source_pos pos, byte *new_val, type* new_type, byte *old_val, 
             }
             else if (old_type == type_char)
             {
-                *(int32_t *)new_val = (int32_t)*(unsigned char *)old_val;
+                *(int32_t *)new_val = (int32_t)*(uint8_t *)old_val;
             }
             else 
             { 
@@ -625,7 +633,7 @@ void perform_cast(source_pos pos, byte *new_val, type* new_type, byte *old_val, 
             }
             else if (old_type == type_char)
             {
-                *(int64_t *)new_val = (int64_t)*(unsigned char *)old_val;
+                *(int64_t *)new_val = (int64_t)*(uint8_t *)old_val;
             }
             else
             {
@@ -634,6 +642,45 @@ void perform_cast(source_pos pos, byte *new_val, type* new_type, byte *old_val, 
         }
         break;
         case TYPE_CHAR:
+        {
+             if (old_type == type_int)
+            {
+                *(uint8_t *)new_val = (uint8_t)*(int32_t *)old_val;
+            }
+            else if (old_type == type_uint)
+            {
+                *(uint8_t *)new_val = (uint8_t)*(uint32_t *)old_val;
+            }
+            else if (old_type == type_long)
+            {
+                *(uint8_t *)new_val = (uint8_t)*(int64_t *)old_val;
+            }
+            else if (old_type == type_ulong || old_type->kind == TYPE_NULL)
+            {
+                *(uint8_t *)new_val = (uint8_t)*(uint64_t *)old_val;
+            }
+            else if (old_type == type_float)
+            {
+                *(uint8_t *)new_val = (uint8_t)*(float *)old_val;
+            }
+            else if (old_type->kind == TYPE_POINTER)
+            {
+                *(uint8_t *)new_val = (uint8_t)*(uintptr_t *)old_val;
+            }
+            else if (old_type->kind == TYPE_ENUM)
+            {
+                *(uint8_t *)new_val = (uint8_t)*(int64_t *)old_val;
+            }
+            else if (old_type == type_char)
+            {
+                *(uint8_t *)new_val = (uint8_t)*(uint8_t *)old_val;
+            }
+            else
+            {
+                invalid_cast = true;
+            }
+        }
+        break;
         case TYPE_BOOL:
         case TYPE_UINT:
         {
@@ -667,7 +714,7 @@ void perform_cast(source_pos pos, byte *new_val, type* new_type, byte *old_val, 
             }
             else if (old_type == type_char)
             {
-                *(uint32_t *)new_val = (uint32_t)*(unsigned char *)old_val;
+                *(uint32_t *)new_val = (uint32_t)*(uint8_t *)old_val;
             }
             else
             {
@@ -709,7 +756,7 @@ void perform_cast(source_pos pos, byte *new_val, type* new_type, byte *old_val, 
             }
             else if (old_type == type_char)
             {
-                *(uint64_t *)new_val = (uint64_t)*(unsigned char *)old_val;
+                *(uint64_t *)new_val = (uint64_t)*(uint8_t *)old_val;
             }
             else
             {
@@ -749,7 +796,7 @@ void perform_cast(source_pos pos, byte *new_val, type* new_type, byte *old_val, 
             }
             else if (old_type == type_char)
             {
-                *(float *)new_val = (float)*(unsigned char *)old_val;
+                *(float *)new_val = (float)*(uint8_t *)old_val;
             }
             else
             {
@@ -1340,8 +1387,8 @@ byte *eval_expression(expr *exp)
         break;
         case EXPR_CHAR:
         {
-            assert(sizeof(char) == sizeof(exp->string_value[0]));
-            *((char *)result) = (char)exp->string_value[0];
+            assert(sizeof(uint8_t) == sizeof(exp->string_value[0]));
+            *((uint8_t *)result) = (uint8_t)(exp->string_value[0]);
         }
         break;
         case EXPR_STRING:

@@ -1894,7 +1894,8 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
         case EXPR_CHAR:
         {
             result = get_resolved_rvalue_expr(type_char);
-            result->is_const = true;
+            result->is_const = true;            
+            result->val = (int64_t)(e->string_value[0]);
         }
         break;
         case EXPR_CALL:
