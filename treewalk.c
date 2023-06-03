@@ -929,14 +929,7 @@ byte *eval_printf_call(expr *exp, byte *result)
     bool unknown_specifier = false;
 
     while (*format)
-    {
-        if (*format == '\r' && *(format + 1) == '\n')
-        {
-            buf_printf(output, "\n");
-            format += 2;
-            continue;
-        }
-        
+    {        
         if (*format != '%')
         {
             buf_printf(output, "%c", *format);

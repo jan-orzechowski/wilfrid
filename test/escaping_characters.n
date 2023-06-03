@@ -57,7 +57,7 @@ fn main()
 	assert(#quote == '"')
 	assert('"' == '\"')
 
-	assert(#newline_literal == '\r')
+	assert(#newline_literal == '\n')
 
 	assert(#quotes_literal == '"')
 	let len = get_string_length(quotes_literal)

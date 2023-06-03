@@ -753,8 +753,14 @@ const char *str_intern_range_with_escaping(const char *start, const char *end)
     size_t index = 0;
     char *ptr = start;
     while (ptr != end && *ptr != 0)
-    {
-        if (*ptr == '\\' && (ptr + 1) != end && *(ptr + 1) != 0)
+    {        
+        if (*ptr == '\r' && (ptr + 1) != end && *(ptr + 1) == '\n')
+        {
+            copy[index] = '\n';
+            index++;
+            ptr += 2;
+        }
+        else if (*ptr == '\\' && (ptr + 1) != end && *(ptr + 1) != 0)
         {
             char escaped_char = *(ptr + 1);
             char char_to_copy = 0;
