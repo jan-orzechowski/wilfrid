@@ -151,6 +151,7 @@
     <Text Include="examples\hello_world.n" />
     <Text Include="examples\memory_arena.n" />
     <Text Include="examples\stack_vm.n" />
+    <Text Include="examples\xml_parser.n" />
     <Text Include="include\common.n" />
     <Text Include="test\assign_operators.n" />
     <Text Include="test\bitwise_operators.n" />

@@ -63,6 +63,7 @@
     <Text Include="examples\functions_and_methods.n" />
     <Text Include="examples\memory_management.n" />
     <Text Include="examples\structs_and_unions.n" />
+    <Text Include="examples\xml_parser.n" />
     <Text Include="test\escaping_characters.n" />
   </ItemGroup>
 </Project>
