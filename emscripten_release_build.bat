@@ -11,7 +11,7 @@ set warnings-options=-Wall -Wextra %disable-warnings%
 
 set general-options=-D_DEFAULT_SOURCE -sALLOW_MEMORY_GROWTH=1 -sINITIAL_MEMORY=48MB -sTOTAL_STACK=2MB -sNO_EXIT_RUNTIME=1 -sINVOKE_RUN=0 -sEXPORTED_FUNCTIONS="['_main', '_compile_input', '_reset_memory']" -sEXPORTED_RUNTIME_METHODS="['ccall', 'callMain']" --embed-file include
 
-set release-options=-sSAFE_HEAP=0 -sASSERTIONS=0 -o wasm/release/nous.js -O3 --pre-js emscripten_module_functions.js
+set release-options=-sSAFE_HEAP=0 -sASSERTIONS=0 -o wasm/release/wilfrid.js -O3 --pre-js emscripten_module_functions.js
 
 call emcc -std=c99 %warnings-options% %general-options% %release-options% main.c 
 

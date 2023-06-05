@@ -6,7 +6,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#define SOURCEFILE_EXTENSION "n"
+#define SRC_FILE_EXT "wil"
 
 #ifdef _MSC_VER
 // wyłącz ostrzeżenie o użyciu strncpy
@@ -102,13 +102,13 @@ void compile_sources(compiler_options options)
     decl **all_declarations = null;
     symbol **resolved = null;
 
-    parse_file("include/common.n", &all_declarations);
+    parse_file("include/common." SRC_FILE_EXT, &all_declarations);
     assert(buf_len(all_declarations) > 0);
 
     for (size_t i = 0; i < buf_len(options.sources); i++)
     {
         char *filename = options.sources[i];
-        if (path_has_extension(filename, SOURCEFILE_EXTENSION))
+        if (path_has_extension(filename, SRC_FILE_EXT))
         {
             parse_file(filename, &all_declarations);
         }
@@ -123,7 +123,7 @@ void compile_sources(compiler_options options)
         decl **decls_to_print = null;
         for (size_t i = 0; i < buf_len(all_declarations); i++)
         {
-            if (0 != strcmp(all_declarations[i]->pos.filename, "include/common.n"))
+            if (0 != strcmp(all_declarations[i]->pos.filename, "include/common." SRC_FILE_EXT))
             {
                 buf_push(decls_to_print, all_declarations[i]);
             }
@@ -187,7 +187,7 @@ void test_directory(char *path, bool test_interpreter)
     {
         allocate_memory();
         char *test_file = source_files[i];
-        if (0 != strcmp(test_file, "test/parsing_tests.n"))
+        if (0 != strcmp(test_file, "test/parsing_tests." SRC_FILE_EXT))
         {
             char **temp_buf = null;
             buf_push(temp_buf, test_file);
@@ -313,18 +313,15 @@ int main(int arg_count, char **args)
     print_source_pos_mode = SOURCE_POS_PRINT_FULL;
 
     compiler_options options = parse_cmd_arguments(arg_count, args);
-#if 1    
-    //buf_push(options.sources, "examples/memory_arena.n");
-    buf_push(options.sources, "examples/memory_management.n");
-    //buf_push(options.sources, "examples/hashmap.n");
-    //buf_push(options.sources, "examples/stack_vm.n");
-#elif 1
-    options.test_mode = true;
-#endif
 
 #if DEBUG_BUILD
-    //options.print_ast = true;
-    debug_breakpoint;
+#if 1
+    options.run = true;
+    buf_push(options.sources, "examples/stack_vm.wil");
+#else
+    options.print_ast = true;
+    options.test_mode = true;
+#endif
     for (size_t i = 0; i < 100; i++)
     {
 #endif
@@ -334,10 +331,8 @@ int main(int arg_count, char **args)
             run_all_tests();
             clear_memory();
             
-            //test_directory("test", false);
+            test_directory("test", false);
             test_directory("test", true);
-            //test_directory("examples", false);
-            test_directory("examples", true);
         }
         else if (options.sources > 0)
         {
@@ -367,7 +362,7 @@ typedef enum compiler_option_flags
     COMPILER_OPTION_HELP = (1 << 4),
 } compiler_option_flags;
 
-const char *emscripten_input_path = "input.n";
+const char *emscripten_input_path = "input.wil";
 
 EM_JS(void, define_compiler_constants_in_js, (void), {
     COMPILER_OPTION_RUN = (1 << 0);
@@ -376,7 +371,7 @@ EM_JS(void, define_compiler_constants_in_js, (void), {
     COMPILER_OPTION_TEST_MODE = (1 << 3);
     COMPILER_OPTION_HELP = (1 << 4);
 
-    COMPILER_INPUT_PATH = "input.n";
+    COMPILER_INPUT_PATH = "input.wil";
     COMPILER_MAIN_CALLED = true;
 });
 

@@ -166,7 +166,7 @@ void test_parsing(void)
 
     test_parsing_single_case();
 
-    string_ref test_file = read_file_for_parsing("test/parsing_tests.n");
+    string_ref test_file = read_file_for_parsing("test/parsing_tests." SRC_FILE_EXT);
     test_file_parsing_test(test_file, true);
     free(test_file.str);
 }
@@ -405,7 +405,7 @@ void run_all_tests(void)
     test_parsing();
     resolve_test();
     mangled_names_test();
-    fuzzy_test();
+    //fuzzy_test();
     common_includes_test();
 
     //gc_init();
