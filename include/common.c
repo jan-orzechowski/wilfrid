@@ -3,36 +3,238 @@
 #include <string.h>
 #include <stdbool.h>
 
+#if !defined(null)
 #define null 0
+#endif 
 
 #if !defined(offsetof)
 #define offsetof(s,m) ((size_t)&(((s*)0)->m))
 #endif
 
 #if !defined(assert)
-#define assert(condition) { if (!(condition)) { int x = 0; int y = 1 / x; } }
+#define assert(condition) { if (!(condition)) { perror("Assert failed"); exit(1); } }
 #endif 
 
 #if !defined(max)
 #define max(a,b) ((a) > (b) ? (a) : (b))
 #endif 
 
-void* ___alloc___(size_t num_bytes) {
-  void* ptr = calloc(1, num_bytes);
-  if (!ptr) {
-    perror("allocation failed");
-    exit(1);
-  }
+#if !defined(min)
+#define max(a,b) ((a) < (b) ? (a) : (b))
+#endif 
+
+typedef struct ___alloc_map_value___ ___alloc_map_value___;
+struct ___alloc_map_value___ {
+  uintptr_t key;
+  size_t value;
+  ___alloc_map_value___ *next;
+};
+
+typedef struct ___alloc_map___ {
+  ___alloc_map_value___ **values;
+  size_t total_count;
+  size_t used_capacity;
+  size_t capacity;
+} ___alloc_map___;
+
+uintptr_t ___hash_ptr___(uintptr_t ptr) {
+  ptr *= 0xff51afd7ed558ccd;
+  ptr ^= ptr >> 32;
   return ptr;
 }
 
-void* ___realloc___(void* ptr, size_t num_bytes) {
-  ptr = realloc(ptr, num_bytes);
-  if (!ptr) {
-    perror("reallocation failed");
+void *___alloc_map_get___(___alloc_map___ *map, uintptr_t key) {
+  ___alloc_map_value___ *val = null;
+  size_t index = (size_t)___hash_ptr___(key) & (map->capacity - 1);
+  val = map->values[index];
+  while (val) {
+    if (val->key == key) {
+      return val->value;
+    }
+    if (val->next) {
+      val = val->next;
+    }
+    else {
+      break;
+    }
+  }
+  return null;
+}
+
+void ___alloc_map_delete___(___alloc_map___ *map, uintptr_t key)
+{
+  if (key == null) {
+    return;
+  }
+  size_t index = (size_t)___hash_ptr___(key) & (map->capacity - 1);
+  ___alloc_map_value___ *val = map->values[index];
+  bool found = false;
+  ___alloc_map_value___ *prev_val = null;
+  size_t chain_length = 0;
+  while (val) {
+    chain_length++;
+    if (val->key == key) {
+      found = true;
+      if (val->next) {
+        if (prev_val) {
+          prev_val->next = val->next;
+        }
+        else {
+          map->values[index] = val->next;
+        }
+      }
+      else {
+        if (prev_val) {
+          prev_val->next = null;
+        }
+        if (chain_length == 1) {
+          map->values[index] = null;
+          map->used_capacity--;
+        }
+      }
+      free(val);
+      map->total_count--;
+      break;
+    }
+    else {
+      prev_val = val;
+      val = val->next;
+    }
+  }
+}
+
+void ___alloc_map_put___(___alloc_map___ *map, uintptr_t key, size_t value);
+
+void ___alloc_map_grow___(___alloc_map___ *map, size_t new_capacity) {
+  bool free_values = (map->capacity > 0);
+  new_capacity = max(16, new_capacity);
+  ___alloc_map___ new_map = {
+    .values = calloc(1, new_capacity * sizeof(___alloc_map_value___ *)),
+    .capacity = new_capacity,
+  };
+  for (size_t i = 0; i < map->capacity; i++) {
+    ___alloc_map_value___ *val = map->values[i];
+    while (val) {
+        ___alloc_map_put___(&new_map, val->key, val->value);
+      ___alloc_map_value___ *temp = val->next;
+      free(val);
+      val = temp;
+    }
+  }
+  if (free_values) {
+    free(map->values);
+  }
+  *map = new_map;
+}
+
+void ___alloc_map_put___(___alloc_map___ *map, uintptr_t key, size_t value) {
+  size_t index = (size_t)___hash_ptr___(key) & (map->capacity - 1);
+  ___alloc_map_value___ *val = map->values[index];
+  if (val) {
+    ___alloc_map_value___ *last_val = val;
+    while (val) {
+      last_val = val;
+      val = val->next;
+    }
+    last_val->next = calloc(1, sizeof(___alloc_map_value___));
+    last_val->next->key = key;
+    last_val->next->value = value;
+  }
+  else {
+    if (2 * map->used_capacity >= map->capacity) {
+      ___alloc_map_grow___(map, 2 * map->capacity);
+    }
+    ___alloc_map_value___ *new_value = calloc(1, sizeof(___alloc_map_value___));
+    new_value->key = key;
+    new_value->value = value;
+    index = (size_t)___hash_ptr___(key) & (map->capacity - 1);
+    val = map->values[index];
+    if (val) {
+      val->next = new_value;
+    }
+    else {
+      map->values[index] = new_value;
+      map->used_capacity++;
+    }
+  }
+
+  map->total_count++;
+}
+
+void ___alloc_map_free___(___alloc_map___ *map) {
+  for (size_t i = 0; i < map->capacity; i++) {
+    ___alloc_map_value___ *val = map->values[i];
+    while (val) {
+      ___alloc_map_value___ *temp = val->next;
+      free(val);
+      val = temp;
+    }
+  }
+  free(map->values);
+  map->total_count = 0;
+  map->used_capacity = 0;
+  map->capacity = 0;
+}
+
+typedef struct ___alloc_hdr___ {
+  size_t size;
+} ___alloc_hdr___;
+
+___alloc_map___ *___allocs___;
+___alloc_map___ *___gc_allocs___;
+
+uintptr_t ___stack_begin___;
+
+void *___calloc_wrapper___(size_t num_bytes, bool gc) {
+  void *memory = calloc(1, num_bytes + sizeof(___alloc_hdr___));
+  if (!memory) {
+    perror("Allocation failed");
     exit(1);
   }
-  return ptr;
+  ___alloc_hdr___ *hdr = (___alloc_hdr___ *)memory;
+  hdr->size = num_bytes;
+  uintptr_t obj_ptr = (uintptr_t)get_obj_ptr(memory);
+  if (gc)
+  {
+    ___alloc_map_put___(___gc_allocs___, obj_ptr, num_bytes);
+  } else
+  {
+    ___alloc_map_put___(___allocs___, obj_ptr, num_bytes);
+  }
+  return (void *)obj_ptr;
+}
+
+void* ___alloc___(size_t num_bytes) {
+  return ___calloc_wrapper___(num_bytes, false);
+}
+
+void *___realloc_wrapper___(void *ptr, size_t num_bytes, bool gc) { 
+  if (ptr == null) {
+    return ___calloc_wrapper___(num_bytes, gc);
+  }    
+  if (gc) {
+      ___alloc_map_delete___(___gc_allocs___, ptr);
+  }
+  else {
+      ___alloc_map_delete___(___allocs___, ptr);
+  }
+  ptr = realloc(ptr, num_bytes);
+  if (!ptr) {
+    perror("Reallocation failed");
+    exit(1);
+  }
+  if (gc) {
+      ___alloc_map_put___(___gc_allocs___, (void *)ptr, num_bytes);
+  }
+  else {
+      ___alloc_map_put___(___allocs___, (void *)ptr, num_bytes);
+  }
+  ___alloc_hdr___ *hdr = (___alloc_hdr___ *)ptr;
+  hdr->size = num_bytes;
+}
+
+void* ___realloc___(void* ptr, size_t num_bytes) {
+  return ___realloc_wrapper___(ptr, num_bytes, false);
 }
 
 void ___free___(void* ptr) {
@@ -42,21 +244,11 @@ void ___free___(void* ptr) {
 }
 
 void* ___managed_alloc___(size_t num_bytes) {
-  void* ptr = calloc(1, num_bytes);
-  if (!ptr) {
-    perror("allocation failed");
-    exit(1);
-  }
-  return ptr;
+  void* ptr = ___calloc_wrapper___(num_bytes, true);
 }
 
 void* ___managed_realloc___(void* ptr, size_t num_bytes) {
-  ptr = realloc(ptr, num_bytes);
-  if (!ptr) {
-    perror("reallocation failed");
-    exit(1);
-  }
-  return ptr;
+  return ___realloc_wrapper___(ptr, num_bytes, true);
 }
 
 void ___managed_free___(void* ptr) {
