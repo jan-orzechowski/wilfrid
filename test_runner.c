@@ -463,6 +463,8 @@ void fuzzy_test(void)
 
 void common_includes_test(void)
 {
+    ___gc_init___();
+
     ___list_hdr___ *int_list = ___list_initialize___(4, sizeof(int), 0);
 
     assert(int_list->length == 0);
@@ -515,4 +517,6 @@ void common_includes_test(void)
     assert(((token *)(token_list->buffer))[1].uint_val == 0);
 
     ___list_free___(token_list);
+
+    ___clean_memory___();
 }
