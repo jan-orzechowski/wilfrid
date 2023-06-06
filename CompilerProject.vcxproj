@@ -155,6 +155,7 @@
     <Text Include="include\common.wil" />
     <Text Include="test\assign_operators.wil" />
     <Text Include="test\bitwise_operators.wil" />
+    <Text Include="test\gc_test.wil" />
     <Text Include="test\hashmap_test.wil" />
     <Text Include="test\arrays.wil" />
     <Text Include="test\auto_dereference.wil" />

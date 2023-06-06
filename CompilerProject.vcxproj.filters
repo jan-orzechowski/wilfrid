@@ -65,5 +65,6 @@
     <Text Include="examples\structs_and_unions.wil" />
     <Text Include="examples\xml_parser.wil" />
     <Text Include="test\escaping_characters.wil" />
+    <Text Include="test\gc_test.wil" />
   </ItemGroup>
 </Project>

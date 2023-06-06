@@ -1,0 +1,91 @@
+fn main()
+{
+    let size_gc := query_gc_total_memory()
+    let count_gc := query_gc_total_count()
+    assert(size_gc == 0)
+    assert(count_gc == 0)
+
+    global_struct = auto some_struct
+
+    size_gc = query_gc_total_memory()
+    count_gc = query_gc_total_count()
+    assert(size_gc == 24)
+    assert(count_gc == 1)
+
+    gc()
+    
+    assert(size_gc == query_gc_total_memory())
+    assert(count_gc == query_gc_total_count())
+    
+    global_struct.next = auto some_struct
+
+    gc()
+
+    assert(size_gc + 24 == query_gc_total_memory())
+    assert(count_gc + 1 == query_gc_total_count())
+
+    let s_holder := new some_struct
+    s_holder.next = auto some_struct
+
+    assert(size_gc + 48 == query_gc_total_memory())
+    assert(count_gc + 2 == query_gc_total_count())
+
+    gc()
+
+    assert(size_gc + 48 == query_gc_total_memory())
+    assert(count_gc + 2 == query_gc_total_count())
+ 
+    let size_gc_before_list := query_gc_total_memory()
+    let count_gc_before_list := query_gc_total_count()
+
+    let array = auto some_struct[]
+
+    size_gc = query_gc_total_memory()
+    count_gc = query_gc_total_count()
+
+    gc()
+
+    assert(size_gc == query_gc_total_memory())
+    assert(count_gc == query_gc_total_count())
+
+    for (let i = 0, i < 10, i++)
+    {
+        array.add({ next = auto some_struct() } as some_struct)
+    }
+
+    size_gc = query_gc_total_memory()
+    count_gc = query_gc_total_count()
+
+    gc()
+
+    assert(size_gc == query_gc_total_memory())
+    assert(count_gc == query_gc_total_count())
+
+    delete array
+
+    gc()
+
+    assert(size_gc_before_list == query_gc_total_memory())
+    assert(count_gc_before_list == query_gc_total_count())
+
+    s_holder.next = auto some_struct()
+
+    gc()
+
+    assert(size_gc_before_list == query_gc_total_memory())
+    assert(count_gc_before_list == query_gc_total_count())
+    
+    global_struct = null
+    delete s_holder
+
+    gc()
+}
+
+let global_struct : some_struct^
+
+struct some_struct
+{
+    next: some_struct^,
+    value: long,
+    other_value: long,
+}
