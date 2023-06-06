@@ -92,14 +92,6 @@ bool is_non_zero(byte *val, size_t size)
 vm_value_meta *get_metadata_by_ptr(byte *ptr);
 
 typedef ___list_hdr___ vm_list_header;
-//{
-//    bool is_managed;
-//    size_t length;
-//    size_t capacity;
-//    byte *buffer;
-//} vm_list_header;
-
-chained_hashmap vm_all_allocations;
 
 #if DEBUG_BUILD
 char *_debug_print_vm_value(byte *val, type *typ)
@@ -1252,6 +1244,32 @@ byte *eval_function_call(expr *exp, byte *result)
             runtime_error(exp->pos, "ASSERTION FAILED");            
         }
     }
+    else if (function->name == str_intern("gc"))
+    {
+        assert(exp->call.args_num == 0);
+
+        if (___gc_allocs___->total_count > 0)
+        {            
+            memory_arena_block *block = vm_global_memory->first_block;
+            while (block)
+            {
+                if (block->current_size > 0)
+                {
+                    ___scan_for_pointers___((uintptr_t)block->base_address, block->current_size);
+                }
+                block = block->next;
+            }
+
+            uintptr_t stack_begin = (uintptr_t)&vm_stack;
+            uintptr_t stack_end = (uintptr_t)last_used_vm_stack_byte;
+            ___scan_for_pointers___(stack_begin, stack_end - stack_begin);
+
+            ___mark_heap___();
+            ___sweep___();
+        }
+
+        return result;
+    }
     else if (function->name == str_intern("allocate"))
     {
         assert(exp->call.args_num == 1);
@@ -1261,9 +1279,8 @@ byte *eval_function_call(expr *exp, byte *result)
         size_t size = *(int64_t *)val;
         assert(size < megabytes(100));
 
-        uintptr_t ptr = (uintptr_t)xcalloc(size);
+        uintptr_t ptr = (uintptr_t)___alloc___(size);
         copy_vm_val(result, (byte *)&ptr, sizeof(uintptr_t));
-        map_chain_put(&vm_all_allocations, ptr, false);
 
         debug_vm_print(exp->pos, "allocation at %p, via 'allocate', size %zu",
             (void *)ptr, size);
@@ -1580,9 +1597,8 @@ byte *eval_expression(expr *exp)
             }
             assert(size);
             
-            uintptr_t ptr = (uintptr_t)xcalloc(size);
+            uintptr_t ptr = (uintptr_t)___calloc_wrapper___(size, false);
             copy_vm_val(result, (byte *)&ptr, sizeof(uintptr_t));
-            map_chain_put(&vm_all_allocations, ptr, false);
 
             debug_vm_print(exp->pos, "allocation at %p, type %s, size %zu", 
                 (void *)ptr,
@@ -1592,13 +1608,10 @@ byte *eval_expression(expr *exp)
         break;
         case EXPR_AUTO:
         {
-            fatal("unimplemented - trzeba dodac GC");
-
             assert(exp->auto_new.resolved_type);
             size_t size = get_type_size(exp->auto_new.resolved_type);
-            uintptr_t ptr = (uintptr_t)xcalloc(size);
+            uintptr_t ptr = (uintptr_t)___calloc_wrapper___(size, true);
             copy_vm_val(result, (byte *)&ptr, sizeof(uintptr_t));
-            map_chain_put(&vm_all_allocations, ptr, false);
 
             debug_vm_print(exp->pos, "GC allocation at %p, type %s, size %zu",
                 (void *)ptr,
@@ -1821,8 +1834,6 @@ byte *eval_stub_expression(byte *result, expr *exp)
             }
 
             vm_list_header *hdr = *(vm_list_header **)list;
-
-            map_chain_delete(&vm_all_allocations, hdr);
             ___list_free___(hdr);
 
             uintptr_t zero = 0;
@@ -1850,7 +1861,6 @@ byte *eval_stub_expression(byte *result, expr *exp)
 
             vm_list_header *ptr = ___list_initialize___(8, element_size, managed);
             copy_vm_val(result, (byte *)&ptr, sizeof(vm_list_header *));
-            map_chain_put(&vm_all_allocations, ptr, true);
         }
         break;
         case STUB_EXPR_LIST_ADD:
@@ -1882,10 +1892,6 @@ byte *eval_stub_expression(byte *result, expr *exp)
             byte *new_elem = (byte *)(hdr->buffer + (hdr->length * elem_size));
             copy_vm_val(new_elem, arg, elem_size);
             hdr->length++;
-            
-            debug_breakpoint;
-
-            // nie ma result, zwracany typ to type_void
         }
         break;
         case STUB_EXPR_LIST_INDEX:
@@ -1921,8 +1927,6 @@ byte *eval_stub_expression(byte *result, expr *exp)
 
             size_t index_offset = get_type_size(list_typ->list.base_type) * element_index;
             result = hdr->buffer + index_offset;
-
-            debug_breakpoint;
         }
         break;
         case STUB_EXPR_NONE:
@@ -2330,10 +2334,9 @@ void eval_statement(stmt *st, byte *opt_ret_value)
                 byte *obj = eval_expression(st->delete.expr);
                 uintptr_t ptr = *(uintptr_t *)obj;
                 if (ptr != 0)
-                {
-                    map_chain_delete(&vm_all_allocations, ptr);                 
+                {              
                     debug_vm_print(st->pos, "free allocation at: %p", (void *)ptr);
-                    free((void *)ptr);
+                    ___free___((void *)ptr);
                 }
             }
         }
@@ -2417,7 +2420,7 @@ void run_interpreter(symbol **resolved_decls)
         return;
     }
     
-    map_chain_grow(&vm_all_allocations, 16);
+    ___gc_init___();
 
 #if DEBUG_BUILD
     printf("\n=== TREEWALK INTERPRETER RUN ===\n\n");
@@ -2445,23 +2448,7 @@ void run_interpreter(symbol **resolved_decls)
     }
 #endif
 
-    for (size_t i = 0; i < vm_all_allocations.capacity; i++)
-    {
-        hashmap_value *val = vm_all_allocations.values[i];
-        while (val)
-        {
-            hashmap_value *temp = val->next;
-            assert(val->key);
-            if (val->value)
-            {
-                vm_list_header *hdr = (vm_list_header *)val->key;
-                free(hdr->buffer);
-            }
-            free(val->key);
-            val = temp;
-        }
-    }
-    map_chain_free(&vm_all_allocations);
+    ___clean_memory___();
 
     debug_breakpoint;
 }

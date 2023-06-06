@@ -293,6 +293,8 @@ void clear_memory(void)
     memset(vm_stack, 0, MAX_VM_STACK_SIZE);
     last_used_vm_stack_byte = vm_stack;
 
+    ___clean_memory___();
+
     map_free(&global_identifiers);
 
     for (size_t i = 0; i < buf_len(enum_values_hashmaps); i++)
