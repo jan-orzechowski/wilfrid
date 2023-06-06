@@ -1150,6 +1150,7 @@ void gen_entry_point(symbol **resolved)
     string s = get_string(argv[i]);\
     buf_push(buf, s);\
   }\
+  ___gc_init___();\
   ___main___0l___0s___0v(buf);\
   buf_free(buf);\
 }");
@@ -1159,12 +1160,13 @@ void gen_entry_point(symbol **resolved)
     {
         gen_printf(
 "\nint main(int argc, char **argv) {\
+  ___gc_init___();\
   ___main___0v();\
 }");
     }
     else
     {
-        fatal("Should be checked at resolve time");
+        fatal("Declaration of main function should be checked at the resolve time");
     }
 }
 

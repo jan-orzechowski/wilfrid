@@ -23,10 +23,37 @@
 #define max(a,b) ((a) < (b) ? (a) : (b))
 #endif 
 
+#if !defined(align_down)
+#define align_down(num, align) ((num) & ~((align) - 1))
+#endif
+
+#if !defined(align_up)
+#define align_up(num, align) (align_down((num) + (align) - 1, (align)))
+#endif 
+
+#if !defined(align_down_ptr)
+#define align_down_ptr(ptr, align) ((void *)align_down((uintptr_t)(ptr), (align)))
+#endif 
+
+#if !defined(align_up_ptr)
+#define align_up_ptr(ptr, align) ((void *)align_up((uintptr_t)(ptr), (align)))
+#endif 
+
+typedef struct ___alloc_hdr___ {
+  size_t size;
+} ___alloc_hdr___;
+
+#define ___alive_tag___ 0x1000000000000000
+#define ___tag___(v, t) ((v) = ((v) | (t)))
+#define ___untag___(v, t) ((v) = ((v) & (~0 & ~(t))))
+
+#define ___get_obj_ptr___(hdr_ptr) (void*)((char*)(hdr_ptr) + sizeof(___alloc_hdr___))
+#define ___get_hdr_ptr___(obj_ptr) (___alloc_hdr___*)((char*)(obj_ptr) - sizeof(___alloc_hdr___))
+
 typedef struct ___alloc_map_value___ ___alloc_map_value___;
 struct ___alloc_map_value___ {
   uintptr_t key;
-  size_t value;
+  uintptr_t value;
   ___alloc_map_value___ *next;
 };
 
@@ -43,7 +70,7 @@ uintptr_t ___hash_ptr___(uintptr_t ptr) {
   return ptr;
 }
 
-void *___alloc_map_get___(___alloc_map___ *map, uintptr_t key) {
+uintptr_t ___alloc_map_get___(___alloc_map___ *map, uintptr_t key) {
   ___alloc_map_value___ *val = null;
   size_t index = (size_t)___hash_ptr___(key) & (map->capacity - 1);
   val = map->values[index];
@@ -103,7 +130,7 @@ void ___alloc_map_delete___(___alloc_map___ *map, uintptr_t key)
   }
 }
 
-void ___alloc_map_put___(___alloc_map___ *map, uintptr_t key, size_t value);
+void ___alloc_map_put___(___alloc_map___ *map, uintptr_t key, uintptr_t value);
 
 void ___alloc_map_grow___(___alloc_map___ *map, size_t new_capacity) {
   bool free_values = (map->capacity > 0);
@@ -127,7 +154,7 @@ void ___alloc_map_grow___(___alloc_map___ *map, size_t new_capacity) {
   *map = new_map;
 }
 
-void ___alloc_map_put___(___alloc_map___ *map, uintptr_t key, size_t value) {
+void ___alloc_map_put___(___alloc_map___ *map, uintptr_t key, uintptr_t value) {
   size_t index = (size_t)___hash_ptr___(key) & (map->capacity - 1);
   ___alloc_map_value___ *val = map->values[index];
   if (val) {
@@ -166,6 +193,7 @@ void ___alloc_map_free___(___alloc_map___ *map) {
     ___alloc_map_value___ *val = map->values[i];
     while (val) {
       ___alloc_map_value___ *temp = val->next;
+      free(___get_hdr_ptr___(val->key));
       free(val);
       val = temp;
     }
@@ -175,10 +203,6 @@ void ___alloc_map_free___(___alloc_map___ *map) {
   map->used_capacity = 0;
   map->capacity = 0;
 }
-
-typedef struct ___alloc_hdr___ {
-  size_t size;
-} ___alloc_hdr___;
 
 ___alloc_map___ *___allocs___;
 ___alloc_map___ *___gc_allocs___;
@@ -193,13 +217,13 @@ void *___calloc_wrapper___(size_t num_bytes, bool gc) {
   }
   ___alloc_hdr___ *hdr = (___alloc_hdr___ *)memory;
   hdr->size = num_bytes;
-  uintptr_t obj_ptr = (uintptr_t)get_obj_ptr(memory);
+  uintptr_t obj_ptr = (uintptr_t)___get_obj_ptr___(memory);
   if (gc)
   {
-    ___alloc_map_put___(___gc_allocs___, obj_ptr, num_bytes);
+    ___alloc_map_put___(___gc_allocs___, obj_ptr, obj_ptr);
   } else
   {
-    ___alloc_map_put___(___allocs___, obj_ptr, num_bytes);
+    ___alloc_map_put___(___allocs___, obj_ptr, obj_ptr);
   }
   return (void *)obj_ptr;
 }
@@ -213,24 +237,26 @@ void *___realloc_wrapper___(void *ptr, size_t num_bytes, bool gc) {
     return ___calloc_wrapper___(num_bytes, gc);
   }    
   if (gc) {
-      ___alloc_map_delete___(___gc_allocs___, ptr);
+      ___alloc_map_delete___(___gc_allocs___, (uintptr_t)ptr);
   }
   else {
-      ___alloc_map_delete___(___allocs___, ptr);
+      ___alloc_map_delete___(___allocs___, (uintptr_t)ptr);
   }
-  ptr = realloc(ptr, num_bytes);
+  ptr = realloc(___get_hdr_ptr___(ptr), num_bytes);
   if (!ptr) {
     perror("Reallocation failed");
     exit(1);
   }
+  uintptr_t obj_ptr = (uintptr_t)___get_obj_ptr___(ptr);
   if (gc) {
-      ___alloc_map_put___(___gc_allocs___, (void *)ptr, num_bytes);
+      ___alloc_map_put___(___gc_allocs___, (uintptr_t)obj_ptr, (uintptr_t)obj_ptr);
   }
   else {
-      ___alloc_map_put___(___allocs___, (void *)ptr, num_bytes);
+      ___alloc_map_put___(___allocs___, (uintptr_t)obj_ptr, (uintptr_t)obj_ptr);
   }
   ___alloc_hdr___ *hdr = (___alloc_hdr___ *)ptr;
   hdr->size = num_bytes;
+  return (void *)obj_ptr;
 }
 
 void* ___realloc___(void* ptr, size_t num_bytes) {
@@ -239,12 +265,13 @@ void* ___realloc___(void* ptr, size_t num_bytes) {
 
 void ___free___(void* ptr) {
   if (ptr) {
-    free(ptr);
+    ___alloc_map_delete___(___allocs___, (uintptr_t)ptr);
+    free(___get_hdr_ptr___(ptr));
   }
 }
 
 void* ___managed_alloc___(size_t num_bytes) {
-  void* ptr = ___calloc_wrapper___(num_bytes, true);
+  return ___calloc_wrapper___(num_bytes, true);
 }
 
 void* ___managed_realloc___(void* ptr, size_t num_bytes) {
@@ -253,7 +280,95 @@ void* ___managed_realloc___(void* ptr, size_t num_bytes) {
 
 void ___managed_free___(void* ptr) {
   if (ptr) {
-    free(ptr);
+    ___alloc_map_delete___(___gc_allocs___, (uintptr_t)ptr);
+    free(___get_hdr_ptr___(ptr));
+  }
+}
+
+void ___gc_init___() {
+  int value_on_stack = 1;
+  ___stack_begin___ = (uintptr_t)&value_on_stack;
+  ___gc_allocs___ = calloc(1, sizeof(___alloc_map___));
+  ___allocs___ = calloc(1, sizeof(___alloc_map___));
+  ___alloc_map_grow___(___gc_allocs___, 16);
+  ___alloc_map_grow___(___allocs___, 16);
+}
+
+void ___scan_for_pointers___(uintptr_t memory_block_begin, size_t byte_count) {
+  uintptr_t memory_block_end = ((uintptr_t)memory_block_begin + align_down(byte_count, 8));
+  for (uintptr_t ptr = memory_block_begin; ptr < memory_block_end; ptr += sizeof(uintptr_t)) {
+    uintptr_t potential_ptr = *((uintptr_t *)ptr);
+    uintptr_t obj_ptr = 0;
+    if (potential_ptr != 0) {
+      obj_ptr = (uintptr_t)___alloc_map_get___(___gc_allocs___, potential_ptr);
+    }
+    if (obj_ptr) {
+      ___alloc_hdr___ *hdr = ___get_hdr_ptr___(obj_ptr);
+      if (hdr->size & ___alive_tag___) {
+          continue;
+      }
+      ___tag___(hdr->size, ___alive_tag___);
+      ___scan_for_pointers___(obj_ptr, hdr->size);
+    }
+  }
+}
+
+void ___mark_stack___(void) {
+  int value_on_stack = 0;
+  uintptr_t stack_begin = ___stack_begin___;
+  uintptr_t stack_end = (uintptr_t)&value_on_stack;
+  if (stack_begin > stack_end)
+  {
+    uintptr_t temp = stack_end;
+    stack_end = stack_begin;
+    stack_begin = temp;
+  }
+  ___scan_for_pointers___(stack_begin, stack_end - stack_begin);
+}
+
+void ___mark_heap___(void) {
+  for (size_t i = 0; i < ___allocs___->capacity; i++) {
+    ___alloc_map_value___ *val = ___allocs___->values[i];
+    while (val) {
+      ___alloc_hdr___ *hdr = ___get_hdr_ptr___(val->value);
+      ___scan_for_pointers___((uintptr_t)val->value, hdr->size);
+      val = val->next;
+    }
+  }
+}
+
+void ___sweep___(void) {
+  for (size_t i = 0; i < ___gc_allocs___->capacity; i++) {
+    ___alloc_map_value___ *val = ___gc_allocs___->values[i];
+    if (val) {
+      ___alloc_hdr___ *hdr = ___get_hdr_ptr___(val->value);
+      if (false == (hdr->size & ___alive_tag___)) {
+        ___alloc_map_delete___(___gc_allocs___, val->value);
+      }
+      else {
+        ___untag___(hdr->size, ___alive_tag___);
+      }
+      val = val->next;
+    }
+  }
+}
+
+void gc(void) {
+  if (___gc_allocs___->total_count > 0) {
+    ___mark_stack___();
+    ___mark_heap___();
+    ___sweep___();
+  }
+}
+
+void ___clean_memory___(void) {
+  if (___gc_allocs___ != 0) {
+    ___alloc_map_free___(___gc_allocs___);
+    ___alloc_map_free___(___allocs___);
+    free(___gc_allocs___);
+    free(___allocs___);
+    ___gc_allocs___ = 0;
+    ___allocs___ = 0;
   }
 }
 
