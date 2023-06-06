@@ -142,7 +142,7 @@ void ___alloc_map_grow___(___alloc_map___ *map, size_t new_capacity) {
   for (size_t i = 0; i < map->capacity; i++) {
     ___alloc_map_value___ *val = map->values[i];
     while (val) {
-        ___alloc_map_put___(&new_map, val->key, val->value);
+      ___alloc_map_put___(&new_map, val->key, val->value);
       ___alloc_map_value___ *temp = val->next;
       free(val);
       val = temp;
@@ -242,7 +242,7 @@ void *___realloc_wrapper___(void *ptr, size_t num_bytes, bool gc) {
   else {
       ___alloc_map_delete___(___allocs___, (uintptr_t)ptr);
   }
-  ptr = realloc(___get_hdr_ptr___(ptr), num_bytes);
+  ptr = realloc(___get_hdr_ptr___(ptr), num_bytes + sizeof(___alloc_hdr___));
   if (!ptr) {
     perror("Reallocation failed");
     exit(1);
@@ -307,8 +307,9 @@ void ___scan_for_pointers___(uintptr_t memory_block_begin, size_t byte_count) {
       if (hdr->size & ___alive_tag___) {
           continue;
       }
+      size_t size = hdr->size;
       ___tag___(hdr->size, ___alive_tag___);
-      ___scan_for_pointers___(obj_ptr, hdr->size);
+      ___scan_for_pointers___(obj_ptr, size);
     }
   }
 }
@@ -317,8 +318,7 @@ void ___mark_stack___(void) {
   int value_on_stack = 0;
   uintptr_t stack_begin = ___stack_begin___;
   uintptr_t stack_end = (uintptr_t)&value_on_stack;
-  if (stack_begin > stack_end)
-  {
+  if (stack_begin > stack_end) {
     uintptr_t temp = stack_end;
     stack_end = stack_begin;
     stack_begin = temp;
@@ -330,45 +330,11 @@ void ___mark_heap___(void) {
   for (size_t i = 0; i < ___allocs___->capacity; i++) {
     ___alloc_map_value___ *val = ___allocs___->values[i];
     while (val) {
-      ___alloc_hdr___ *hdr = ___get_hdr_ptr___(val->value);
-      ___scan_for_pointers___((uintptr_t)val->value, hdr->size);
+      uintptr_t obj_ptr = val->value;
+      ___alloc_hdr___ *hdr = ___get_hdr_ptr___(obj_ptr);
+      ___scan_for_pointers___((uintptr_t)obj_ptr, hdr->size);
       val = val->next;
     }
-  }
-}
-
-void ___sweep___(void) {
-  for (size_t i = 0; i < ___gc_allocs___->capacity; i++) {
-    ___alloc_map_value___ *val = ___gc_allocs___->values[i];
-    if (val) {
-      ___alloc_hdr___ *hdr = ___get_hdr_ptr___(val->value);
-      if (false == (hdr->size & ___alive_tag___)) {
-        ___alloc_map_delete___(___gc_allocs___, val->value);
-      }
-      else {
-        ___untag___(hdr->size, ___alive_tag___);
-      }
-      val = val->next;
-    }
-  }
-}
-
-void gc(void) {
-  if (___gc_allocs___->total_count > 0) {
-    ___mark_stack___();
-    ___mark_heap___();
-    ___sweep___();
-  }
-}
-
-void ___clean_memory___(void) {
-  if (___gc_allocs___ != 0) {
-    ___alloc_map_free___(___gc_allocs___);
-    ___alloc_map_free___(___allocs___);
-    free(___gc_allocs___);
-    free(___allocs___);
-    ___gc_allocs___ = 0;
-    ___allocs___ = 0;
   }
 }
 
@@ -459,6 +425,66 @@ void ___list_free_internal__(___list_hdr___* hdr) {
 #define ___get_list_capacity___(hdr) ((hdr) ? (hdr->capacity) : 0)
 
 #define ___get_list_length___(hdr) ((hdr) ? (hdr->length) : 0)
+
+void ___sweep___(void) {
+  ___list_hdr___ *garbage = ___list_initialize___(2, sizeof(uintptr_t), false);
+  for (size_t i = 0; i < ___gc_allocs___->capacity; i++) {
+    ___alloc_map_value___ *val = ___gc_allocs___->values[i]; 
+    while (val) {
+      ___alloc_map_value___ *next = val->next;
+      ___alloc_hdr___ *hdr = ___get_hdr_ptr___(val->value);
+      if (false == (hdr->size & ___alive_tag___)) {
+        ___list_add___(garbage, (uintptr_t)hdr, uintptr_t);
+      }
+      else {
+        ___untag___(hdr->size, ___alive_tag___);
+      }
+      val = next;
+    }
+  }
+  for (size_t i = 0; i < garbage->length; i++) {
+    uintptr_t hdr_ptr = (uintptr_t)(((uintptr_t*)garbage->buffer)[i]);    
+    ___alloc_map_delete___(___gc_allocs___, (uintptr_t)___get_obj_ptr___(hdr_ptr));
+    free((void *)hdr_ptr);
+  }
+  ___list_free___(garbage);
+}
+
+size_t query_gc_total_memory(void) {
+  size_t result = 0;
+  for (size_t i = 0; i < ___gc_allocs___->capacity; i++) {
+    ___alloc_map_value___ *val = ___gc_allocs___->values[i];
+    while (val) {
+      ___alloc_hdr___ *hdr = ___get_hdr_ptr___(val->value);
+      result += hdr->size;
+      val = val->next;
+    }
+  }
+  return result;
+}
+
+size_t query_gc_total_count(void) {
+    return ___gc_allocs___->total_count;
+}
+
+void gc(void) {
+  if (___gc_allocs___->total_count > 0) {
+    ___mark_stack___();
+    ___mark_heap___();
+    ___sweep___();
+  }
+}
+
+void ___clean_memory___(void) {
+  if (___gc_allocs___ != 0) {
+    ___alloc_map_free___(___gc_allocs___);
+    ___alloc_map_free___(___allocs___);
+    free(___gc_allocs___);
+    free(___allocs___);
+    ___gc_allocs___ = 0;
+    ___allocs___ = 0;
+  }
+}
 
 void *allocate(size_t num_bytes) {  
   return ___alloc___(num_bytes);
