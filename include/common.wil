@@ -3,6 +3,8 @@ extern fn printf(str: char^, variadic) : int
 extern fn allocate(num_bytes: ulong) : void^
 extern fn reallocate(ptr : void^, num_bytes: ulong) : void^
 extern fn gc()
+extern fn query_gc_total_memory() : ulong
+extern fn query_gc_total_count() : ulong
 
 fn max(a : ulong, b : ulong) : ulong
 {

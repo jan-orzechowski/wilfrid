@@ -252,7 +252,6 @@ void eval_function(symbol *function_sym, byte *ret_value);
 memory_arena *vm_global_memory;
 hashmap global_identifiers;
 
-// const strings zrobić osobno
 byte *push_global_identifier(source_pos pos, const char *name, byte* init_val, size_t val_size)
 {
     assert(null == map_get(&global_identifiers, name));
@@ -1247,6 +1246,7 @@ byte *eval_function_call(expr *exp, byte *result)
     else if (function->name == str_intern("gc"))
     {
         assert(exp->call.args_num == 0);
+        debug_vm_simple_print("--------------------------- GC CALL\n");
 
         if (___gc_allocs___->total_count > 0)
         {            
@@ -1268,6 +1268,20 @@ byte *eval_function_call(expr *exp, byte *result)
             ___sweep___();
         }
 
+        return result;
+    }
+    else if (function->name == str_intern("query_gc_total_memory"))
+    {
+        assert(exp->call.args_num == 0);
+        size_t val = query_gc_total_memory();
+        copy_vm_val(result, (byte *)&val, sizeof(size_t));
+        return result;
+    }
+    else if (function->name == str_intern("query_gc_total_count"))
+    {
+        assert(exp->call.args_num == 0);        
+        size_t val = query_gc_total_count();
+        copy_vm_val(result, (byte *)&val, sizeof(size_t));
         return result;
     }
     else if (function->name == str_intern("allocate"))
