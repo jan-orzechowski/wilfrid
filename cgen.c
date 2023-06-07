@@ -1172,8 +1172,6 @@ void gen_entry_point(symbol **resolved)
 
 void gen_common_includes(void)
 {
-    gen_printf("#pragma pack(push, 1)\n\n");
-    
     char *common_include_file = "include/common.c";
     string_ref file_buf = read_file(common_include_file);
     gen_printf(file_buf.str);
