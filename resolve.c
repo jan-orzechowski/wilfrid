@@ -2047,9 +2047,12 @@ resolved_expr *resolve_expected_expr(expr *e, type *expected_type, bool ignore_e
             {                
                 if (false == (t->kind == TYPE_STRUCT || t->kind == TYPE_UNION))
                 {
-                    error_in_resolving(xprintf(
-                        "Only structs, unions and enums can have values accessed by a dot; tried to access %s",
-                        pretty_print_type_name(t, false)), e->pos);
+                    if (t->kind != TYPE_NONE)
+                    {
+                        error_in_resolving(xprintf(
+                            "Only structs, unions and enums can have values accessed by a dot; tried to access %s",
+                            pretty_print_type_name(t, false)), e->pos);
+                    }
                     return resolved_expr_invalid;
                 }
 
