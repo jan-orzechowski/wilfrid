@@ -64,7 +64,7 @@ typedef struct ___alloc_map___ {
   size_t capacity;
 } ___alloc_map___;
 
-uintptr_t ___hash_ptr___(uintptr_t ptr) {
+uint64_t ___hash_ptr___(uint64_t ptr) {
   ptr *= 0xff51afd7ed558ccd;
   ptr ^= ptr >> 32;
   return ptr;
