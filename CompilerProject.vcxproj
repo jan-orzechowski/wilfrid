@@ -150,6 +150,7 @@
     <Text Include="examples\control_flow.wil" />
     <Text Include="examples\hello_world.wil" />
     <Text Include="examples\memory_arena.wil" />
+    <Text Include="examples\quine.wil" />
     <Text Include="examples\stack_vm.wil" />
     <Text Include="examples\xml_parser.wil" />
     <Text Include="include\common.wil" />

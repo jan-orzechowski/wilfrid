@@ -1,0 +1,13 @@
+/*
+    A quine is a program that takes no input 
+    and produces a copy of its source code. 
+    Quines are named in honor of Willard Van Orman Quine.
+
+    Here is a quine in Wilfrid:
+*/
+
+fn main()
+{
+    let s := "fn main()%c{%c    let s := %c%s%c%c    printf(s, 10 as char, 10 as char, 34 as char, s, 34 as char, 10 as char, 10 as char)%c}"
+    printf(s, 10 as char, 10 as char, 34 as char, s, 34 as char, 10 as char, 10 as char)
+}

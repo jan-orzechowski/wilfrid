@@ -66,5 +66,6 @@
     <Text Include="examples\xml_parser.wil" />
     <Text Include="test\escaping_characters.wil" />
     <Text Include="test\gc_test.wil" />
+    <Text Include="examples\quine.wil" />
   </ItemGroup>
 </Project>
