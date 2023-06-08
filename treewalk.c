@@ -895,7 +895,13 @@ byte *eval_printf_call(expr *exp, byte *result)
 
     assert(exp->call.args_num >= 1);
     assert(exp->call.args[0]->kind);
-    char *format = exp->call.args[0]->string_value;
+
+    type *format_arg_type = exp->call.args[0]->resolved_type;
+    assert(format_arg_type->kind == TYPE_POINTER
+        && format_arg_type->pointer.base_type->kind == TYPE_CHAR);
+
+    byte *format_arg = eval_expression(exp->call.args[0]);
+    char *format = *(char **)format_arg;
     char *orig_format = format;
 
     byte **arg_vals = null;
