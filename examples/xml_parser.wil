@@ -8,11 +8,11 @@
     search on the parsed XML document 
     by tag name or attribute value.
 
-    There are also helper functions to print the
-    lexed tokens and parsed tree.
+    There are also helper functions to print
+    the lexed tokens and the parsed tree.
 
     The code is adapted from my other project, 
-    Trifle Psychotic game:
+    Trifle Psychotic, a sci-fi platformer game:
         https://janorzechowski.itch.io/trifle-psychotic
 */
 

@@ -1,16 +1,18 @@
 /* 
-    In Wilfrid functions are declared with a 'fn' keyword, 
+    In Wilfrid functions are declared with the 'fn' keyword, 
     followed by a function name and optional parameters 
-    list within parentheses. A function body is delimited by braces.
+    list within parentheses. A function body is delimited 
+    by braces.
 */
 
 fn some_function()
 {
-    // This function has no statements
+    // This function does nothing
 }
 
 /*
-    Function parameters are defined by a name followed by a colon and a type.
+    Function parameters are defined by a name followed 
+    by a colon and a type.
 */
 
 fn other_function(param_a: int, param_b: int)
@@ -18,26 +20,30 @@ fn other_function(param_a: int, param_b: int)
 
 /*
     Here we can call a function that we defined previously. 
-    Since it accepts no parameters, we invoke it by name and empty parentheses.
+    Since it accepts no parameters, we invoke it by name 
+    and empty parentheses.
 */
 
     some_function()
 
 /*
-    Printf is a special built-in function. It accepts a variable 
-    amount of parameters. 
+    Printf is a special built-in function. It accepts 
+    a variable number of parameters. 
    
-    Note that the string literal passed to the printf contains formatting 
-    specifiers. '%d' means that we want to print an integer value.
-    If there is any mismatch between passed values and the formatting string,
-    there will be a runtime error.
+    Note that the string literal passed to the printf 
+    contains formatting specifiers. '%d' means that 
+    we want to print an integer value.
+    
+    If there is any mismatch between passed values and 
+    the formatting string, there will be a runtime error.
 
-    Formatting specifiers are the same as in C. Some other values are:
-    '%u' for unsigned integers (uint), '%lld' for long integers (long),
-    '%llu' for unsigned long integers (ulong), '%p% for pointers.
+    Formatting specifiers are the same as in C. Some other 
+    values are: '%u' for unsigned integers (uint) and chars,
+    '%lld' for long integers (long), '%llu' for unsigned long 
+    integers (ulong), and '%p% for pointers.
 */
 
-    printf("Passed params: %d and %d\n", param_a, param_b)
+    printf("Passed params: %d and %d\\n", param_a, param_b)
 }
 
 /*
@@ -74,18 +80,17 @@ fn main()
 }
 
 /* 
-    Aside from functions, we have also methods. 
+    Aside from functions, there are also methods. 
     Methods differ from functions in the fact that they 
-    have a receiver. A receiver is written similarly to a parameter, 
-    but it occurs before the function name.
+    have a receiver. A receiver is written similarly to
+    a parameter, but it occurs before the function name.
     
     Here is an example declaration:
 */
 
-fn (a: rectangle) add (b: rectangle) : rectangle
+fn (a: rectangle^) add (b: rectangle^) : rectangle
 {
-    let result : rectangle = { x = a.x + b.x, y = a.y + b.y }
-    return result
+    #a = { x = a.x + b.x, y = a.y + b.y }
 }
 
 struct rectangle 
@@ -99,19 +104,25 @@ struct rectangle
 
     There is no difference in how functions and methods work. 
     The only difference is the syntax of a call. Methods
-    require an instance of a variable that has the type of the receiver.
+    require an instance of a variable that has 
+    the type of the receiver.
 
     Here is an example usage of the previously defined method:
 */
 
 fn method_example()
 {
-    let a : rectangle = { 1, 2 }
-    let b : rectangle = { 3, 4 }
+    let a := new rectangle()
+    a.x = 1
+    a.y = 2
+
+    let b := new rectangle()
+    b.x = 3
+    b.y = 4
 
     a.add(b)
 
-    printf("Summed rectangle has sides %d and %d\\n", a.x, a.y)
+    printf("The summed rectangle has sides %d and %d\\n", a.x, a.y)
 }
 
 /* 
@@ -120,16 +131,9 @@ fn method_example()
     defined for cuboids.
 */
 
-fn (a: cuboid) add(b: cuboid) : cuboid
+fn (a: cuboid^) add(b: cuboid^) : cuboid
 {
-    let result : cuboid = 
-    { 
-        x = a.x + b.x, 
-        y = a.y + b.y, 
-        z = a.z + b.z 
-    }
-
-    return result
+    #a = { x = a.x + b.x, y = a.y + b.y, z = a.z + b.z }
 }
 
 struct cuboid
@@ -140,9 +144,10 @@ struct cuboid
 }
 
 /* 
-    The 'extern' keyword allows for easy interoperability with C code.
-    To use code from C standard library, you have to define an extern
-    function with the same name and signature. 
+    The 'extern' keyword allows for easy interoperability
+    with C code. To use code from C standard library, 
+    we have to define an extern function with the same name 
+    and signature. 
 
     Extern functions don't have a body. 
     
@@ -158,6 +163,7 @@ extern fn strncpy(destination: char^, source: char^, length: ulong) : char^
 extern fn snprintf(buffer: char^, buffer_size: ulong, fmt: char^, variadic) : int
 
 /* 
-    The 'variadic' keyword is provided for interoperability with C.
-    It isn't allowed to be used in functions that are not extern.
+    The 'variadic' keyword is provided for interoperability 
+    with C. It isn't allowed to be used in functions that 
+    are not extern.
 */

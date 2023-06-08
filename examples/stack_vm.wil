@@ -1,32 +1,7 @@
-﻿fn main()
-{
-    init()
-
-    vm_code.add(instruction.PUSH)
-    vm_code.add(3)
-    vm_code.add(instruction.PUSH)
-    vm_code.add(7)
-    vm_code.add(instruction.ADD)
-    vm_code.add(instruction.POP)
-    vm_code.add(instruction.BRANCH)
-    vm_code.add(13) // jump to 13
-    vm_code.add(instruction.PUSH)
-    vm_code.add(4)
-    vm_code.add(instruction.PUSH)
-    vm_code.add(5)
-    vm_code.add(instruction.ADD)
-    vm_code.add(instruction.PUSH) // 13
-    vm_code.add(4)
-    vm_code.add(instruction.POP)
-    vm_code.add(instruction.HALT)
-    
-    run_vm()
-
-    assert(vm_output[0] == 10)
-    assert(vm_output[1] == 4)
-
-    clear()    
-}
+/*
+    This is a most basic bytecode virtual machine.
+    The enum below contains a full list of its instructions:
+*/
 
 enum instruction
 {
@@ -37,8 +12,38 @@ enum instruction
     SUB,
     DIV,
     MUL,
-    PRINT,
     BRANCH,
+}
+
+/*
+    Here is a program that adds some constants:
+*/
+
+fn main()
+{
+    init()
+
+    vm_code.add(instruction.PUSH)
+    vm_code.add(3)
+    vm_code.add(instruction.PUSH)
+    vm_code.add(7)
+    vm_code.add(instruction.ADD)
+    vm_code.add(instruction.POP)
+    vm_code.add(instruction.BRANCH)
+    vm_code.add(13) // jump to 13th instruction 
+    vm_code.add(instruction.PUSH)
+    vm_code.add(4)
+    vm_code.add(instruction.PUSH)
+    vm_code.add(5)
+    vm_code.add(instruction.ADD)
+    vm_code.add(instruction.PUSH) // 13th instruction
+    vm_code.add(4)
+    vm_code.add(instruction.POP)
+    vm_code.add(instruction.HALT)
+    
+    run_vm()
+
+    clear()    
 }
 
 let vm_code: int[]
@@ -72,12 +77,7 @@ fn run_vm()
     let a: int
     let b: int
 
-    let opcode := vm_code[ip] as instruction
-    assert(opcode as instruction == instruction.PUSH)
-
-    printf("%d", vm_code[ip])
-    printf("%d", instruction.PUSH as int)
-    
+    let opcode := vm_code[ip] as instruction    
     while (opcode != instruction.HALT && ip < vm_code.length())
     {
         switch (opcode)
@@ -93,62 +93,45 @@ fn run_vm()
                 sp++
                 ip++
                 stack[sp] = vm_code[ip]
-                assert(stack[sp] == vm_code[ip])
-                printf("pushed %d", stack[sp])
             }
             break
             case instruction.POP:
             {
-                assert(sp >= 0)
                 a = stack[sp]
                 sp--
                 vm_output.add(a)
-                printf("added %d to output", a)
-                printf("stack 0: %d", stack[0])
-                printf("stack 1: %d", stack[1])
-                printf("stack 2: %d", stack[2])
-                printf("stack 3: %d", stack[3])
-                printf("stack 4: %d", stack[4])
             }
             break
             case instruction.ADD:
             {
-                assert(sp >= 1)
                 a = stack[sp]
                 sp--
                 b = stack[sp]
                 stack[sp] = b + a
-                assert(stack[sp] == b + a)
             }
             break
             case instruction.SUB:
             {
-                assert(sp >= 1)
                 a = stack[sp]
                 sp--
                 b = stack[sp]
                 stack[sp] = b - a
-                assert(stack[sp] == b - a)
             }
             break
             case instruction.MUL:
             {
-                assert(sp >= 1)
                 a = stack[sp]
                 sp--
                 b = stack[sp]
                 stack[sp] = b * a
-                assert(stack[sp] == b * a)
             }
             break
             case instruction.DIV:
             {
-                assert(sp >= 1)
                 a = stack[sp]
                 sp--
                 b = stack[sp]
                 stack[sp] = b / a
-                assert(stack[sp] == b / a)
             }
             break
             case instruction.HALT:
@@ -160,8 +143,11 @@ fn run_vm()
 
         ip++
         opcode = vm_code[ip] as instruction
+    }
 
-        printf("stack pointer: %d", sp)
-        printf("instruction pointer %d", ip)
+    printf("Output:\\n")
+    for (let i := 0, i < vm_output.length(), i++)
+    {
+        printf("%d ", vm_output[i])
     }
 }

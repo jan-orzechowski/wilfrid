@@ -20,9 +20,9 @@ let bool_var = true // inferred type: bool
 let long_var : long // initialized to zero
 
 /* 
-    Since in Wilfrid, every variable must have a definitive 
-    type, omitting both type and value in a variable declaration 
-    is not allowed.
+    Since in Wilfrid every variable must have a definitive 
+    type, omitting both type and value in a variable 
+    declaration is not allowed.
 */
 
 /*
@@ -38,7 +38,7 @@ let _weird_name42 = 0
 */
 
 let decimal_val : ulong = 2014144115
-let binary_val : ulong = 0b1111000000011010110011001110011
+let binary_val : ulong = 0b11110000000110101100110
 let hexadecimal_val : ulong = 0x780D6673
 
 /*
@@ -47,21 +47,24 @@ let hexadecimal_val : ulong = 0x780D6673
 */
 
 let other_decimal_val : ulong = 1_141_151_568
-let other_binary_val : ulong = 0b_11110000_00001101_11101110_01110001
+let other_binary_val : ulong = 0b_11110000_00001101_11101110
 
 /*
     Primitive numeric types in Wilfrid are:
-    int, uint, ulong, long, and float.
+    int, uint, long, ulong, and float.
 
     Int means 32-bit integer, and long means 64-bit integer.
     Uint and ulong are their unsigned versions.
     Floating point values are always 32-bit.
 
-    There is also a 32-bit bool, holding either 'true' or 'false'.
+    There is also a 32-bit bool, holding either 
+    'true' or 'false'.
 */
 
 /*
-    Wilfrid allows for low-level memory manipulation via pointers.
+    Wilfrid allows for low-level memory manipulation 
+    via pointers.
+    
     A pointer is just an address in memory. We can perform 
     arithmetic operations on it: addition and subtraction.
 
@@ -92,8 +95,9 @@ of a multiline
 string"
 
 /*
-    Arrays in Wilfrid are defined by writing the size of an array 
-    in square brackets after some other type, like this:
+    Arrays in Wilfrid are defined by writing the size 
+    of an array in square brackets after some other type, 
+    like this:
 */
 
 let array_of_ints : int[10] 
@@ -107,7 +111,8 @@ let int_from_array := array_of_ints[4]
 
 /*    
     More complex types are also supported.
-    Here is an array of pointers to arrays of pointers to integers:
+    Here is an array of pointers to arrays of pointers 
+    to integers:
 */
 
 let complex_array : int^[10]^[10]
@@ -120,9 +125,9 @@ let complex_array : int^[10]^[10]
     Const values are always of long integer type.
 */
 
-const some_constant = 42
+const constant_value = 42
 
-let array_of_floats : float[some_constant]
+let array_of_floats : float[constant_value]
 
 /* 
     Each Wilfrid program has to have a main function declared.
@@ -133,7 +138,7 @@ fn main()
 
 /* 
     Declaring local variables looks the same as 
-    declaring global ones. The only exception is that 
+    declaring global ones. The only difference is that 
     inside functions we cannot declare const variables.
 */
 

@@ -1,4 +1,4 @@
-﻿/*
+/*
     Wilfrid features built-in dynamic lists.
 
     They can hold any type. 
@@ -17,7 +17,7 @@ fn main ()
     A dynamic list can hold any type.
 */
     
-    let some_struct_list := new some_struct[]
+    let things_list := new thing[]
 
 /*
     Adding new elements:
@@ -25,7 +25,7 @@ fn main ()
 
     int_list.add(1)
 
-    some_struct_list.add({ 10, 20 } as some_struct)
+    things_list.add({ 10, 20 } as thing)
 
 /*
     Checking the list's state:
@@ -39,8 +39,8 @@ fn main ()
     
 /*
     A dynamic list is implemented as an array with a fixed 
-    size plus some metadata. The underlying array is reallocated 
-    each time the capacity is filled.
+    size plus some metadata. The underlying array is 
+    reallocated each time the capacity is filled.
     
     Despite reallocation, pointers to dynamic lists are stable.
     Therefore it's safe to keep references to them.
@@ -82,19 +82,19 @@ fn main ()
 */
 
     delete int_list
-    delete some_struct_list
+    delete things_list
 
 /*
-    As with every other object, lists can be allocated with 'auto'
-    which means that they will be automatically garbage-collected
-    when they are no longer used.
+    As with every other object, lists can be allocated 
+    with 'auto' which means that they will be automatically 
+    garbage-collected when they are no longer used.
 */
 
-    let other_list = auto some_struct[]
+    let other_list = auto thing[]
 }
 
-struct some_struct
+struct thing
 {
-    value_a: long,
-    value_b: ulong
+    value: long,
+    other_value: ulong
 }

@@ -1,11 +1,13 @@
-﻿/*
-    Here is an implementation of a stack allocator. It's very 
-    similar to the memory arenas that are part of Wilfrid's standard library.
+/*
+    Here is an implementation of a stack allocator. 
+    It's very similar to the memory arenas that are 
+    part of Wilfrid's standard library.
 
     This stack allocator allocates memory in big chunks. 
     If all the memory is used, the next chunk is allocated. 
-    Using push_stack and pop_stack functions we can create stack frames 
-    and clean them easily when they are no longer needed.
+    Using push_stack and pop_stack functions we can 
+    create stack frames and clean them easily when 
+    they are no longer needed.
 
     In the example below we initialize a stack with 1kb blocks 
     and push 50kb of data to it in ten stack frames. Then we 

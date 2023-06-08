@@ -1,12 +1,12 @@
 /*
     In Wilfrid, you have direct access to the memory 
-    and can manipulate it freely with pointers. The results
-    of pointer operations are not checked. With great
-    freedom comes great responsibility - Wilfrid isn't 
-    a memory-safe language by choice.
+    and can manipulate it freely with pointers. 
+    The results of pointer operations are not checked. 
+    With great freedom comes great responsibility - Wilfrid 
+    isn't a memory-safe language by choice.
 
     If you prefer automatic memory management, Wilfrid
-    offers also optional garbage collection; 
+    also offers optional garbage collection; 
     see the "Memory management" example.
 */
 
@@ -54,22 +54,24 @@ fn main()
     {
 
 /* 
-    With each iteration of the loop, we increase the offset by one.
-    We add it to the pointer to the first number and then dereference it.
-    This way each iteration of the loop we are one element in the array further.
+    With each iteration of the loop, we increase the offset 
+    by one. We add it to the pointer to the first number 
+    and then dereference it. This way each iteration 
+    of the loop we are one element in the array further.
 */
 
         let number := #(first_number + offset)
 
 /*
     As we can see, pointer arithmetic moves a pointer 
-    by a multiple of the size of a type that is pointed to by it.
+    by a multiple of the size of a type that is pointed 
+    to by it.
 
     Adding one to a pointer to a char moves us one byte,
     because a char is one byte long.
 
-    Adding one to a pointer to a long integer moves us by eight bytes,
-    because that's the size of a long integer.
+    Adding one to a pointer to a long integer moves us 
+    by eight bytes, because that's the size of a long integer.
 */
 
         printf("Number is %d\\n", number)
@@ -116,7 +118,8 @@ fn main()
     printf("The value of the field is: %d\\n", ptr_to_struct.int_field)
 
 /*
-    This works no matter how many layers of indirection there are:
+    This works no matter how many layers of indirection 
+    there are:
 */
 
     let ptr_to_ptr = @ptr_to_struct

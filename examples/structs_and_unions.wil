@@ -4,13 +4,14 @@
 
     Structs are just collections of fields, allocated 
     in the memory sequentially. Fields can be of any type.
-    By default, they are padded to be aligned on 8-byte 
-    boundaries.
+    By default, they are padded to their natural alignment, 
+    i.e. 4-byte values are placed on 4-byte boundaries,
+    and so on.
 
     This is a declaration of a struct:
 */
 
-struct some_struct
+struct thing
 {
     first_var : int,
     second_var : long,
@@ -21,7 +22,7 @@ struct some_struct
     Structs can be initialized by passing initial values:
 */ 
 
-let initialized_struct : some_struct = 
+let initialized_struct : thing = 
 { 
     first_var = 10, 
     second_var = 1000, 
@@ -34,7 +35,7 @@ let initialized_struct : some_struct =
     in the order of their appearance:
 */
 
-let same_as_above : some_struct = 
+let same_as_above : thing = 
 { 
     10, 
     1000, 
@@ -48,8 +49,8 @@ let same_as_above : some_struct =
     Two notations given below are equivalent:
 */
 
-let zeroed_struct : some_struct
-let other_zeroed_struct : some_struct = { }
+let zeroed_struct : thing
+let other_zeroed_struct : thing = { }
 
 /* 
     Arrays can be initialized similarly:
@@ -67,34 +68,41 @@ let zeroed_array : int[10] = { }
     a float or a long integer, and has a size of 64 bits.
 */
 
-union some_union
+union other_thing
 {
-    long_val : long,
-    float_val : float
+    int_val : int,
+    uint_val : uint
 }
 
-let some_union_val : some_union = { long_val = 6040 }
+let union_example : other_thing = { int_val = -6040 }
+
+fn test_union()
+{
+    printf("The union's field as int: %d\\n", union_example.int_val)
+    printf("The union's field as uint: %u\\n", union_example.uint_val)
+}
 
 /* 
-    We can check the size using built-in functions 'size_of'
-    and 'size_of_type'. 'size_of' expects a variable instance, 
-    and 'size_of_type' expects a type.
+    We can check an object's size using built-in functions 
+    'size_of' and 'size_of_type'. 'size_of' expects 
+    a variable instance, and 'size_of_type' expects a type.
 */
 
-let some_union_size = size_of_type(some_union)
+let other_thing_size = size_of_type(other_thing)
 
 /* 
     There are also enumerations. Enumerations are just 
     constants that are accessible by name.
     
-    Under the hood, enumerations are always of long integer type.
+    Under the hood, enumerations are always 
+    of the long integer type.
 */
 
-enum some_enum
+enum enum_example
 {
-    ENUM_VALUE_ONE,
-    ENUM_VALUE_TWO,
-    ENUM_VALUE_THREE
+    VALUE_ONE,
+    VALUE_TWO,
+    VALUE_THREE
 }
 
 /* 
@@ -102,44 +110,48 @@ enum some_enum
     To use them, we must pass an enum name first.
 */
 
-let some_enum_example = some_enum.ENUM_VALUE_TWO
+let enum_value = enum_example.VALUE_TWO
 
 /* 
     We can provide custom values to enum labels.
     Enum values can also depend on each other.
 */
 
-enum some_other_enum
+enum other_enum_example
 {
-    ENUM_VALUE_ZERO = 0,
-    ENUM_VALUE_TWO = 2,
-    ENUM_VALUE_OTHER_TWO = 2,
-    ENUM_VALUE_OTHER_ZERO = ENUM_VALUE_ZERO
+    VALUE_ZERO = 0,
+    VALUE_TWO = 2,
+    VALUE_OTHER_TWO = 2,
+    VALUE_OTHER_ZERO = VALUE_ZERO
 }
 
 fn main()
 {
+    test_union()
+
 /*
     Here we allocate two structs on the stack:
 */
-    let x : some_struct = { }
-    let y : some_struct = { 10 }
+
+    let x : thing = { }
+    let y : thing = { 10 }
 
 /* 
     To pass them to this function, we must take their
     addresses using the '@' (at) operator:
 */
 
-    copy_some_struct(@x, @y)
+    copy_thing(@x, @y)
 
-    printf("Value of first_var field after the copy: %d", x.first_var)     
+    printf("Value of first_var field after the copy: %d\\n", x.first_var)
 }
 
-fn copy_some_struct(from: some_struct^, to: some_struct^)
+fn copy_thing(from: thing^, to: thing^)
 {
 /*
-    When accessing a struct or union fields,
-    pointers to structs are automatically dereferenced.
+    When accessing a struct or union fields, pointers to 
+    structs are automatically dereferenced.
+    
     This means we can use the dot operator no matter whether
     we have struct/union or just a pointer to it.
 */

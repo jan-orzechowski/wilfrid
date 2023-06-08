@@ -1,11 +1,8 @@
-﻿/*
+/*
     Here is a simple hash table implementation.
     It uses the Fowler-Noll-Vo hash function and 
     stores 64-bit values. Hash collision is resolved 
     by open addressing.
-
-    The same hashmap is used in the "Self-hosted 
-    Wilfrid parser" example for string interning.
 */
 
 fn main()
@@ -143,7 +140,7 @@ fn hash_ptr(ptr: void^) : ulong
 
 fn hash_bytes(buf: char^, len: ulong) : ulong
 {
-    // FNV hash
+    // Fowler-Noll-Vo hash
     let x : ulong = 0xcbf29ce484222325
     for (let i : ulong = 0, i < len, i++)
     {

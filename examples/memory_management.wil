@@ -11,37 +11,39 @@ fn manual_management_example()
     On the stack:
 */
 
-    let stack_struct : some_struct = {}
+    let stack_thing : thing = {}
 
 /*
     On the heap:
 */
 
-    let heap_struct := new some_struct()
+    let heap_thing := new thing()
 
 /*
     To free heap-allocated variables we use 'delete':
 */
 
-    delete heap_struct
+    delete heap_thing
 
 /* 
     Sometimes it's useful to allocate memory without a type.
-    We can use the 'allocate' function to get a specified number of bytes.
-    Memory obtained in this way is always initialized to zero.
+    We can use the 'allocate' function to get a specified
+    number of bytes. Memory obtained in this way 
+    is always initialized to zero.
 */
     
     let some_memory := allocate(1024)
 
 /*
-    Sometimes it's useful to know a type's size. There are two built-in
-    functions for that: 'size_of' and 'size_of_type'. 'size_of' expects 
-    a variable instance, and 'size_of_type' expects a type.
+    Sometimes it's useful to know a type's size. There are two
+    built-in functions for that: 'size_of' and 'size_of_type'. 
+    'size_of' expects a variable instance, and 'size_of_type'
+    expects a type.
 */
     
-    printf("Size of some_struct is %lld bytes\\n", size_of_type(some_struct))
+    printf("Size of a thing is %lld bytes\\n", size_of_type(thing))
 
-    let more_memory := allocate(size_of_type(some_struct) * 10)
+    let more_memory := allocate(size_of_type(thing) * 10)
     let even_more_memory := allocate(size_of(more_memory))
 
     delete some_memory
@@ -58,38 +60,53 @@ fn automatic_management_example()
     we don't have to manually track the lifetime of an object.   
 */
 
-    let managed_object = auto some_struct()
+    let managed_object = auto thing()
 
 /*
     Objects allocated with 'auto' are automatically deleted 
     when they are no longer referenced by any stored pointer.
-    This includes cases when the pointer is stored in an object allocated with the 'new' 
-    keyword or on the stack. You can freely mix 'auto' and 'new'
-    objects and store pointers cross-referencing them.
+    This includes cases when the pointer is stored in an 
+    object allocated with the 'new' keyword or on the stack. 
+    You can freely mix 'auto' and 'new' objects and store 
+    pointers cross-referencing them.
 
-    Since garbage collection can take time, the decision of when to perform
-    it is left to the language user. We call the garbage collector
-    using the 'gc' function:
+    Since garbage collection can take time, the decision 
+    of when to perform it is left to the language user. 
+    We call the garbage collector using the 'gc' function:
 */
     gc()
+
+/*
+    We can query the managed memory state using 
+    these functions:
+*/
+
+    let count := query_gc_total_count()
+    let size := query_gc_total_memory()
+
+    printf("Current managed memory size: %llu\\n", size)
+    printf("Current managed object count: %llu\\n", count)
 }
 
 fn memory_arena_example()
 {
 /*
-    Wilfrid offers two additional memory management tools out of the box:
-    dynamic arrays and memory arenas.
+    Wilfrid offers two additional memory management tools 
+    out of the box: dynamic arrays and memory arenas.
 
     Dynamic lists are covered in the "Dynamic lists" example.
 
-    Memory arenas are also called push buffers or linear allocators.
-    We allocate a contiguous block of memory, and 'push' new structs to it. 
-    When no memory is left, a new block is allocated.
-    Since the only system allocations are allocations of entire blocks,
-    memory arenas are usually much faster than allocating objects
-    individually. Also, deallocation is much easier - we don't have 
-    to track each object, we just have to call one function 
-    to deallocate the whole arena.
+    Memory arenas are also called push buffers or linear 
+    allocators. We allocate a contiguous block of memory, 
+    and 'push' new structs to it. When no memory is left, 
+    a new block is allocated.
+
+    Since the only system allocations are allocations 
+    of entire blocks, memory arenas are usually much faster 
+    than allocating objects individually. Also, deallocation 
+    is much easier - we don't have to track each object, 
+    we just have to call one function to deallocate 
+    the whole arena.
 
     Here is an example of how to use it:
 */
@@ -103,13 +120,14 @@ fn memory_arena_example()
 
     for (let i := 0, i < 10, i++)
     {
-        let size := size_of_type(some_struct) as ulong
-        let struct_ptr := arena.push(size) as some_struct^
-        printf("Address of a new some_struct object: %p\\n", struct_ptr)
+        let size := size_of_type(thing) as ulong
+        let thing_ptr := arena.push(size) as thing^
+        printf("Address of a new thing: %p\\n", thing_ptr)
     }
 
 /*
-    We can use these functions to query the memory arena's state:
+    We can use these functions to query 
+    the memory arena's state:
 */
 
     let total_size := arena.get_total_size()
@@ -132,7 +150,8 @@ fn memory_arena_example()
     a beginning of a stack frame. Later, after we are
     done with using objects allocated in the stack frame,
     we can call the 'pop_arena_stack' function and clear 
-    memory in the arena up to the beginning of that stack frame.
+    memory in the arena up to the beginning of that 
+    stack frame.
 
     Example:
 */
@@ -177,18 +196,19 @@ fn constructor_example()
     For example, we construct this object by 
     passing two arguments to the 'new' expression:
 */
-    let new_struct = new some_struct(10, 12)
+    let new_thing = new thing(10, 12)
 
-    printf("The new struct value is: %lld\\n", new_struct.value)
+    printf("The new thing's value is: %lld\\n", new_thing.value)
 }
 
 /* 
-    To define a constructor, we declare a function with the special 'constructor'
-    name, returning the constructed type. User-defined constructors
-    have to have at least one argument.
+    To define a constructor, we declare a function with 
+    the special 'constructor' name, returning the constructed 
+    type. User-defined constructors must have at least 
+    one argument.
 */
 
-fn constructor (val_a: int, val_b: int) : some_struct^
+fn constructor (val_a: int, val_b: int) : thing^
 { 
 
 /*
@@ -197,12 +217,12 @@ fn constructor (val_a: int, val_b: int) : some_struct^
     on the heap and initializes it to zero.
 */
 
-    let s := new some_struct()
+    let s := new thing()
     s.value = val_a + val_b
     return s 
 }
 
-struct some_struct 
+struct thing 
 { 
     value: long
 }

@@ -34,16 +34,17 @@
         - a smaller type might be converted to a larger type
         - an unsigned type might be converted to a signed type
         - a non-float type might be converted to a float
-        - pointers and unsigned long integers  can be converted both ways
+        - pointers and unsigned long integers can be converted both ways
         - enum values and long integers can be converted both ways
 
-    In all other cases, explicit cast (using the 'as' keyword) must be used.
-    Some casts are not allowed, for example, a cast from a numeric type 
-    to a struct.
+    In all other cases, explicit cast (using the 'as' keyword)
+    must be used. Some casts are not allowed, for example, 
+    a cast from a numeric type to a struct.
 */
 
 /*
-    Here are some example math functions making use of these operators.
+    Here are some example math functions making use of these
+    operators.
 
     Calculating the n-th element of the Fibonacci series:
 */
