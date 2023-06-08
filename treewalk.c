@@ -1139,7 +1139,7 @@ byte *eval_printf_call(expr *exp, byte *result)
             if (t->kind == TYPE_ULONG)
             {
                 byte *val = arg_vals[current_arg_index];
-                buf_printf(output, "%lld", *(uint64_t *)val);                
+                buf_printf(output, "%llu", *(uint64_t *)val);                
             }
             else
             {
