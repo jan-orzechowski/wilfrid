@@ -67,5 +67,6 @@
     <Text Include="test\escaping_characters.wil" />
     <Text Include="test\gc_test.wil" />
     <Text Include="examples\quine.wil" />
+    <Text Include="test\xml_parser_test.wil" />
   </ItemGroup>
 </Project>

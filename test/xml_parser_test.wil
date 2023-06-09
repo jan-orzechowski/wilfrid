@@ -1,0 +1,1026 @@
+let example_xml = 
+"<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<map version=\"1.9\" orientation=\"orthogonal\">
+    <properties>
+        <property name=\"backdrop\" value=\"desert\"/>
+        <property name=\"music\" value=\"kevin_macleod_energizing\"/>
+    </properties>
+    <layer>
+        <data encoding=\"csv\">715,716,715,716,588,589,715,716,588,589</data>
+    </layer>
+    <objectgroup name=\"entities\">
+        <object id=\"237\" x=\"2800\" y=\"624\">
+            <properties>
+                <property name=\"color\" value=\"#ffff0000\"/>
+            </properties>
+        </object>
+        <object id=\"238\" x=\"2896\" y=\"784\">
+            <properties>
+                <property name=\"color\" value=\"#ffff0000\"/>
+            </properties>
+        </object>
+    </objectgroup>
+</map>"
+
+fn main()
+{
+/*
+    Printing options:
+*/
+
+    let print_tokens := false
+    let print_nodes := true
+
+/*
+    First, we parse the XML:
+*/
+
+    let block_size : ulong = 1024    
+    let arena := allocate_memory_arena(block_size)
+    let root := scan_and_parse_xml(example_xml, arena, print_tokens)
+
+    if (error_message != null)
+    {
+        printf("\nERROR (position: %llu): %s\n", 
+            error_position,
+            error_message)
+        return
+    }
+    
+    if (print_nodes)
+    {
+        print_xml_tree(root)
+    }
+
+/*
+    Here we query the parsed XML tree:
+*/
+
+    let map_node := find_tag_singular_node(root, "map")
+
+    let music_nodes = find_tag_and_attr_value(
+        map_node, "property", "name", "music")
+
+    printf("The music track name is %s\n", music_nodes[0].get_attribute_value("value"))
+
+    let backdrop_nodes = find_tag_and_attr_value(
+        map_node, "property", "name", "backdrop")
+
+    printf("The backdrop name is %s\n", backdrop_nodes[0].get_attribute_value("value"))
+
+    let layer_node = find_tag_singular_node(map_node, "layer")
+    let layer_data_node = find_tag_singular_node(layer_node, "data")
+    
+    printf("The map tiles are: %s\n", layer_data_node.inner_text)
+
+    let object_group_nodes := 
+        find_tag_and_attr_value(root, "objectgroup", "name", "entities")
+
+    let object_group_node = object_group_nodes[0]
+
+    let objects :=
+        find_tag(object_group_node, "object")
+
+    printf("The number of found objects: %d\n", objects.length())
+
+    printf("Objects:\n")
+    for (let i = 0, i < objects.length(), i++)
+    {
+        let object_node := objects[i]
+        let id = object_node.get_attribute_value("id")
+        let color = "not found"
+        
+        let color_property_list = find_tag_and_attr_value(
+            object_node, "property", "name", "color")
+        
+        if (color_property_list.length() > 0)
+        {
+            color = color_property_list[0].get_attribute_value("value")       
+        }
+
+        printf("- id: %s, color: %s\n", id, color)
+        delete color_property_list
+    }
+
+    delete music_nodes
+    delete backdrop_nodes
+    delete object_group_nodes
+    free_memory_arena(arena)
+}
+
+fn scan_and_parse_xml
+    (str: char^, arena: memory_arena^, print_tokens: bool): xml_node^
+{
+    let result : xml_node^ = null
+
+    let scan := new xml_scanner()
+    scan.source = str
+    scan.source_length = get_string_length(str)
+    scan.last_token = null
+    scan.token_count = 0
+    scan.arena = arena
+
+    while (scan.scan_token())
+    {
+        continue
+    }
+
+    if (scan.token_count > 0)
+    {
+        if (print_tokens)
+        {
+            print_all_xml_tokens(scan.first_token)       
+        }
+
+        let pars := new xml_parser()
+        pars.scan = scan
+        pars.current_token = scan.first_token
+        pars.current_token_index = 0
+        pars.arena = arena
+
+        result = pars.parse_tokens()
+   
+        delete pars
+    }
+
+    delete scan
+
+    return result
+}
+
+let error_message : char^
+let error_position : ulong
+
+enum xml_token_type
+{
+    LEFT_CHEVRON, // <
+    CLOSING_LEFT_CHEVRON, // </
+    RIGHT_CHEVRON, // >
+    SELF_CLOSING_RIGHT_CHEVRON, // />
+    LEFT_PROLOG_CHEVRON, // <?
+    RIGHT_PROLOG_CHEVRON, // ?>
+    TAG,
+    ATTRIBUTE_NAME,
+    ATTRIBUTE_VALUE,
+    INNER_TEXT
+}
+
+struct xml_token
+{
+    type: xml_token_type,
+    value: char^,
+    char_index: ulong,
+    
+    next: xml_token^,
+}
+
+struct xml_scanner
+{
+    source: char^,
+    source_length: ulong,
+    
+    current_char_index: ulong,
+    first_token: xml_token^,
+    last_token: xml_token^,
+    
+    arena: memory_arena^,
+    token_count: ulong
+}
+
+struct xml_parser
+{
+    scan: xml_scanner^,
+
+    current_token_index: ulong,
+    current_token: xml_token^,
+    current_char_index: ulong,
+    
+    arena: memory_arena^,
+    nodes_count: ulong,
+}
+
+struct xml_node
+{
+    tag: char^,
+    parent: xml_node^,
+    next: xml_node^, // the next node with the same parent
+    inner_text: char^,
+
+    first_attribute: xml_attribute^,
+    attributes_count: ulong,
+
+    first_child: xml_node^,
+    children_count: ulong,
+}
+
+struct xml_attribute
+{
+    name: char^,
+    value: char^,
+    next: xml_attribute^,
+}
+
+fn (scan: xml_scanner^) is_scanner_at_end() : bool
+{
+    let result := (scan.current_char_index >= scan.source_length)
+    return result
+}
+
+fn (scan: xml_scanner^) add_token(type: xml_token_type) : xml_token^
+{
+    let token_size : ulong = size_of_type(xml_token)
+    let new_token := scan.arena.push(token_size) as xml_token^
+    new_token.type = type
+    new_token.char_index = scan.current_char_index
+
+    if (scan.last_token)
+    {
+        scan.last_token.next = new_token
+        scan.last_token = scan.last_token.next
+    }
+    else
+    {
+        scan.first_token = new_token
+        scan.last_token = new_token
+    }
+    scan.token_count++
+
+    return new_token
+}
+
+fn (scan: xml_scanner^) add_token_with_value
+    (type: xml_token_type, value: char^) : xml_token^ 
+{
+    let new_token := scan.add_token(type)
+    if (value)
+    {
+        new_token.value = value
+    }
+    return new_token
+}
+
+fn (scan: xml_scanner^) get_current_char() : char
+{
+    if (false == scan.is_scanner_at_end())
+    {
+        return #(scan.source + scan.current_char_index)
+    }
+    else
+    {
+        return 0 as char
+    }
+}
+
+fn (scan: xml_scanner^) advance()
+{
+    if (false == scan.is_scanner_at_end())
+    {
+        scan.current_char_index++
+    }
+}
+
+fn (scan: xml_scanner^) peek() : char
+{
+    if (false == scan.is_scanner_at_end())
+    {
+        return #(scan.source + scan.current_char_index + 1)        
+    }
+    else
+    {
+        return 0 as char
+    }
+}
+
+fn (scan: xml_scanner^) omit_whitespace()
+{
+    while (is_whitespace(scan.peek()))
+    {
+        scan.current_char_index++
+    }
+}
+
+fn is_charater_allowed_for_text(c: char, allow_whitespace: bool) : bool
+{
+    let result = (c != 0 as char
+        && c != '\"'
+        && c != '<'
+        && c != '='
+        && c != '>'
+        && (is_whitespace(c) == false || allow_whitespace))
+
+    return result
+}
+
+fn (scan: xml_scanner^) scan_text(allow_whitespace: bool) : char^
+{
+    let lexeme_start_char_index := scan.current_char_index
+    let next_c := scan.peek()
+    while (is_charater_allowed_for_text(next_c, allow_whitespace))
+    {
+        scan.advance()
+        next_c = scan.peek()
+    }
+    let lexeme_end_char_index := scan.current_char_index
+    let lexeme_length := lexeme_end_char_index - lexeme_start_char_index + 1
+    let lexeme_start_ptr := scan.source + lexeme_start_char_index
+
+    let copy := scan.arena.push(lexeme_length + 1) as char^
+    for (let i : ulong = 0, i < lexeme_length, i++)
+    {
+        #(copy + i) = #(lexeme_start_ptr + i)
+    }
+    #(copy + lexeme_length) = 0 as char
+
+    return copy
+}
+
+fn (scan: xml_scanner^) scan_token() : bool
+{
+    let c := scan.get_current_char()
+    switch (c)
+    {
+        case '<':
+        {
+            let next_c := scan.peek()
+            if (next_c == '?')
+            {
+                scan.advance()
+                scan.add_token(xml_token_type.LEFT_PROLOG_CHEVRON)
+            }
+            else if (next_c == '/')
+            {
+                scan.advance()
+                scan.add_token(xml_token_type.CLOSING_LEFT_CHEVRON)
+            }
+            else
+            {
+                scan.add_token(xml_token_type.LEFT_CHEVRON)
+            }
+
+            scan.omit_whitespace()
+
+            if (is_charater_allowed_for_text(scan.peek(), false))
+            {
+                scan.advance()
+                let tag_name := scan.scan_text(false)
+                scan.add_token_with_value(xml_token_type.TAG, tag_name)
+            }
+        }
+        break
+        case '?':
+        {
+            if (scan.peek() == '>')
+            {
+                scan.advance()
+                scan.add_token(xml_token_type.RIGHT_PROLOG_CHEVRON)
+
+                scan.omit_whitespace()
+                if (is_charater_allowed_for_text(scan.peek(), true))
+                {
+                    scan.advance()
+                    let inner_text := scan.scan_text(true)
+                    scan.add_token_with_value(xml_token_type.INNER_TEXT, inner_text)
+                }
+            }
+            else
+            {
+                error_message = "a lone '?'"
+                error_position = scan.current_char_index
+                return false
+            }
+        }
+        break
+        case '>':
+        {
+            scan.add_token(xml_token_type.RIGHT_CHEVRON)
+            scan.advance()
+
+            if (is_charater_allowed_for_text(scan.peek(), true))
+            {
+                let inner_text := scan.scan_text(true)
+                if (false == check_if_string_is_whitespace(inner_text))
+                {
+                    scan.add_token_with_value(xml_token_type.INNER_TEXT, inner_text)
+                }
+            }
+        }
+        break
+        case '/':
+        {
+            if (scan.peek() == '>')
+            {
+                scan.advance()
+                scan.add_token(xml_token_type.SELF_CLOSING_RIGHT_CHEVRON)
+            }
+            else
+            {
+                error_message = "a '/' without '>'"
+                error_position = scan.current_char_index
+                return false
+            }
+        }
+        break
+        case '=':
+        {
+            while (scan.peek() != '\"' && false == scan.is_scanner_at_end())
+            {
+                scan.advance()
+            }
+
+            scan.omit_whitespace()
+
+            if (scan.peek() == '\"')
+            {
+                scan.advance()
+            }
+            else
+            {
+                error_message = "'=' without '\"'"
+                error_position = scan.current_char_index
+                return false
+            }
+
+            if (is_charater_allowed_for_text(scan.peek(), true))
+            {
+                scan.advance()
+                let attr_value := scan.scan_text(true)
+                scan.add_token_with_value(xml_token_type.ATTRIBUTE_VALUE, attr_value)
+            }
+            else
+            {
+                error_message = "value is not a valid text"
+                error_position = scan.current_char_index
+                return false
+            }
+
+            if (scan.peek() == '\"')
+            {
+                scan.advance()
+            }
+        }
+        break
+        case '\"':
+        {
+            error_message = "'\"' without '='"
+            error_position = scan.current_char_index
+            return false
+        }
+        break
+
+        case ' ':
+        case '\r':
+        case '\t':
+        case '\n':
+        {
+            // ignore whitespace
+        }
+        break
+
+        default:
+        {
+            // in this case we have an attribute name 
+            // - the case of inner text is handled with the case of '>'
+            if (is_charater_allowed_for_text(c, false))
+            {
+                let attr_value := scan.scan_text(false)
+                scan.add_token_with_value(xml_token_type.ATTRIBUTE_NAME, attr_value)
+            }
+        }
+        break
+    }
+
+    scan.advance()
+    if (scan.is_scanner_at_end())
+    {
+        return false
+    }
+    else
+    {
+        return true
+    }
+}
+
+fn (pars: xml_parser^) is_parser_at_end() : bool
+{
+    let result = (pars.current_token_index >= pars.scan.token_count
+        || pars.current_token == null
+        || pars.current_token.next == null)
+    return result
+}
+
+fn (pars: xml_parser^) get_next_token() : xml_token^
+{
+    let result : xml_token^ = null
+    if (false == pars.is_parser_at_end())
+    {
+        pars.current_token = pars.current_token.next
+        pars.current_token_index++
+        pars.current_char_index = 
+            pars.current_token.char_index
+
+        result = pars.current_token
+    }
+    return result
+}
+
+fn (pars: xml_parser^) peek_next_token() : xml_token^
+{
+    let result: xml_token^ = null
+    if (false == pars.is_parser_at_end())
+    {
+        result = pars.current_token.next
+    }
+    return result
+}
+
+fn (pars: xml_parser^) skip_to_next_token_type_occurrence
+    (type: xml_token_type) : xml_token^ 
+{
+    let t := pars.current_token
+    while (t)
+    {
+        if (t.type == type)
+        {
+            break
+        }
+        else
+        {
+            t = pars.get_next_token()
+        }
+    }
+
+    if (t != null && t.type == type)
+    {
+        return t
+    }
+    else
+    {
+        return null
+    }
+}
+
+fn (parent_node: xml_node^) add_to_children(new_node: xml_node^)
+{
+    new_node.parent = parent_node
+    parent_node.children_count++
+
+    if (parent_node.first_child)
+    {
+        let last_child := parent_node.first_child
+        while (last_child.next)
+        {
+            last_child = last_child.next
+        }
+        last_child.next = new_node
+    }
+    else
+    {
+        parent_node.first_child = new_node
+    }
+}
+
+fn (node: xml_node^) add_to_attributes(new_attribute: xml_attribute^)
+{
+    node.attributes_count++
+
+    if (node.first_attribute)
+    {
+        let last_attribute := node.first_attribute
+        while (last_attribute.next)
+        {
+            last_attribute = last_attribute.next
+        }
+        last_attribute.next = new_attribute
+        node.attributes_count++
+    }
+    else
+    {
+        node.first_attribute = new_attribute
+    }
+}
+
+fn (pars: xml_parser^) parse_tokens() : xml_node^
+{
+    let t := pars.current_token
+    let current_node : xml_node^ = null
+
+    while (t != null)
+    {
+        if (t.type == xml_token_type.LEFT_PROLOG_CHEVRON)
+        {
+            t = pars.skip_to_next_token_type_occurrence(
+                xml_token_type.RIGHT_PROLOG_CHEVRON)
+            continue
+        }
+
+        if (t.type == xml_token_type.LEFT_CHEVRON)
+        {
+            t = pars.get_next_token()
+            if (t != null && t.type == xml_token_type.TAG)
+            {
+                let node_size : ulong = size_of_type(xml_node)
+                let new_node := pars.arena.push(node_size) as xml_node^ 
+
+                new_node.tag = t.value
+                if (current_node != null)
+                {
+                    new_node.parent = current_node
+                    current_node.add_to_children(new_node)
+                }
+                else
+                {
+                    // XML has always one root element
+                    current_node = new_node
+                }
+
+                t = pars.get_next_token()
+                while (t != null
+                    && t.type != xml_token_type.RIGHT_CHEVRON
+                    && t.type != xml_token_type.SELF_CLOSING_RIGHT_CHEVRON)
+                {
+                    // we have pairs value-attribute
+                    if (t.type == xml_token_type.ATTRIBUTE_NAME)
+                    {
+                        let attr_size : ulong = size_of_type(xml_attribute)
+                        let new_attribute := pars.arena.push(
+                            attr_size) as xml_attribute^ 
+
+                        new_attribute.name = t.value
+
+                        t = pars.get_next_token()
+                        if (t != null 
+                            && t.type == xml_token_type.ATTRIBUTE_VALUE)
+                        {
+                            new_attribute.value = t.value
+                            new_node.add_to_attributes(new_attribute)
+                        }
+                        else
+                        {
+                            error_message = "name without value"
+                            error_position = pars.current_char_index
+                            return null
+                        }
+                    }
+                    else
+                    {
+                        error_message = "expected attribute name"
+                        error_position = pars.current_char_index
+                        return null
+                    }
+
+                    t = pars.get_next_token()
+                }
+
+                if (false == pars.is_parser_at_end())
+                {
+                    if (t.type != xml_token_type.SELF_CLOSING_RIGHT_CHEVRON)
+                    {
+                        current_node = new_node
+                    }
+                }
+                else
+                {
+                    error_message = "we arrived at the end without a closing tag"
+                    error_position = pars.current_char_index
+                    return null
+                }
+
+                t = pars.get_next_token()
+                continue
+            }
+            else
+            {
+                error_message = "element without a tag"
+                error_position = pars.current_char_index
+                return null
+            }
+        }
+
+        if (t.type == xml_token_type.INNER_TEXT)
+        {
+            if (current_node != null)
+            {
+                current_node.inner_text = t.value
+                t = pars.get_next_token()
+                continue
+            }
+            else
+            {
+                // error
+            }
+        }
+
+        if (t.type == xml_token_type.CLOSING_LEFT_CHEVRON) // </tag>
+        {
+            t = pars.get_next_token()
+            if (t && t.type == xml_token_type.TAG)
+            {
+                let tag := t.value
+                if (current_node != null
+                    && string_compare(current_node.tag, tag))
+                {
+                    if (current_node.parent)
+                    {
+                        current_node = current_node.parent
+                    }
+                    else
+                    {
+                        // we finished
+                        break
+                    }
+                }
+                else if (current_node != null
+                    && current_node.parent != null
+                    && string_compare(current_node.parent.tag, tag))
+                {
+                    // it happens in situation like this: <tag><innytag/></tag>
+                    if (current_node.parent.parent != null)
+                    {
+                        current_node = current_node.parent.parent
+                    }
+                    else
+                    {
+                        // we finished
+                        break
+                    }
+                }
+                else
+                {
+                    error_message = "a tag without matching opening tag"
+                    error_position = pars.current_char_index
+                    return null
+                }
+
+                t = pars.get_next_token()
+                continue
+            }
+        }
+
+        t = pars.get_next_token()
+    }
+
+    return current_node
+}
+
+fn (node: xml_node^) get_attribute_value(attribute_name: char^): char^
+{
+    let result : char^ = null
+    if (node != null)
+    {
+        let attribute := node.first_attribute
+        while (attribute != null)
+        {
+            if (string_compare(attribute.name, attribute_name))
+            {
+                result = attribute.value
+                break
+            }
+            else
+            {
+                attribute = attribute.next
+            }
+        }
+    }
+    return result
+}
+
+fn find_tag(root: xml_node^, tag: char^, list: xml_node^[])
+{   
+    if (root != null)
+    {	
+        if (string_compare(root.tag, tag))
+        {
+            list.add(root)
+        }
+
+        let child := root.first_child
+        while (child != null)
+        {            
+            find_tag(child, tag, list)
+            child = child.next
+        }
+    }
+}
+
+fn find_tag(root: xml_node^, tag: char^) : xml_node^[]
+{
+    let result = new xml_node^[]    
+    find_tag(root, tag, result)    
+    return result
+}
+
+fn find_tag_and_attr_value
+    (root: xml_node^, tag: char^, attr_name: char^, attr_value: char^, list: xml_node^[]) 
+{
+    if (root != null)
+    {	
+        if (string_compare(root.tag, tag))
+        {
+            let value := root.get_attribute_value(attr_name)
+            if (value != null && string_compare(value, attr_value))
+            {
+                list.add(root)               
+            }
+        }
+
+        let child := root.first_child
+        while (child != null)
+        {            
+            find_tag_and_attr_value(
+                child, tag, attr_name, attr_value, list)
+
+            child = child.next
+        }
+    }
+}
+
+fn find_tag_and_attr_value
+    (root: xml_node^, tag: char^, attr_name: char^, attr_value: char^) : xml_node^[]
+{
+    let result := new xml_node^[]    
+    find_tag_and_attr_value(root, tag, attr_name, attr_value, result)
+    return result
+}
+
+fn find_tag_singular_node(root: xml_node^, tag: char^): xml_node^
+{
+    let search_results := find_tag(root, tag)
+    if (search_results.length() == 1)
+    {
+        let result := search_results[0]
+        delete search_results
+        return result
+    }
+    else
+    {
+        delete search_results
+        return null
+    }
+}
+
+let indentation = 0
+
+fn print_indent()
+{
+    for (let i = 0, i < indentation, i++)
+    {
+        printf("  ")
+    }
+}
+
+fn print_xml_node(node: xml_node^)
+{
+    if (node == null)
+    {
+        return
+    }
+
+    printf("(%s ", node.tag)
+    
+    let attr := node.first_attribute       
+    while (attr != null)
+    {
+        print_xml_attribute(attr)
+        attr = attr.next
+        if (attr != null)
+        {
+            printf(" ")
+        }
+    }
+
+    indentation++
+
+    if (node.inner_text)
+    {
+        printf("\n")
+        print_indent()
+        printf("(%s)", node.inner_text)
+    }
+
+    let child := node.first_child
+    while (child != null)
+    {
+        printf("\n")
+        print_indent()
+        print_xml_node(child)
+        child = child.next
+        if (child != null)
+        {
+            printf(",")
+        }
+    }
+
+    indentation--
+
+    if (node.first_child != null
+        || node.inner_text)
+    {
+        printf("\n")
+        print_indent()
+    }
+    printf(")")
+}
+
+fn print_xml_attribute(attr: xml_attribute^)
+{
+    if (attr == null)
+    {
+        return
+    }
+
+    printf("%s:%s", attr.name, attr.value)
+}
+
+fn printf_xml_token(token: xml_token^)
+{    
+    if (token == null)
+    {
+        return
+    }
+
+    switch (token.type)
+    {
+        case xml_token_type.LEFT_CHEVRON: { printf("<") } break 
+        case xml_token_type.CLOSING_LEFT_CHEVRON: { printf("</") } break 
+        case xml_token_type.RIGHT_CHEVRON: { printf(">") } break 
+        case xml_token_type.SELF_CLOSING_RIGHT_CHEVRON: { printf("/>") } break 
+        case xml_token_type.LEFT_PROLOG_CHEVRON: { printf("<?") } break 
+        case xml_token_type.RIGHT_PROLOG_CHEVRON: { printf("?>") } break
+        case xml_token_type.TAG: { printf("tag:%s", token.value) } break
+        case xml_token_type.ATTRIBUTE_NAME: { printf("name:%s", token.value) } break
+        case xml_token_type.ATTRIBUTE_VALUE: { printf("value:%s", token.value) } break
+        case xml_token_type.INNER_TEXT: { printf("inner:%s", token.value) } break 
+    }
+}
+
+fn print_xml_tree(root: xml_node^)
+{
+    printf("PARSED TREE:\n")
+    print_xml_node(root)
+    printf("\n\n")
+}
+
+fn print_all_xml_tokens(token: xml_token^)
+{
+    printf("LEXED TOKENS:\n")
+    while (token)
+    {
+        printf_xml_token(token)
+        token = token.next
+        if (token)
+        {
+            printf(", ")
+        }
+    }
+    printf("\n\n")
+}
+
+fn string_compare(a: char^, b: char^) : bool
+{
+    if (a == null && b == null)
+    {
+        return true
+    }
+
+    let a_len := get_string_length(a)
+    let b_len := get_string_length(b)
+    if (a_len != b_len)
+    {
+        return false
+    }
+
+    for (let i = 0, i < a_len, i++)
+    {
+        let a_char = #(a + i)
+        let b_char = #(b + i)
+        if (a_char != b_char)
+        {
+            return false
+        }
+    }
+
+    return true
+}
+
+fn check_if_string_is_whitespace(str: char^) : bool
+{
+    let result := true
+    let str_len = get_string_length(str)
+    if (str_len == 0)
+    {
+        return false
+    }
+
+    for (let char_index : ulong = 0,
+        char_index < str_len,
+        char_index++)
+    {
+        if (false == is_whitespace(#(str + char_index)))
+        {
+            result = false
+            break
+        }
+    }
+
+    return result
+}
