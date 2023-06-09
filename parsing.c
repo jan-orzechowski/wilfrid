@@ -1777,6 +1777,6 @@ void lex_and_parse(char *source, char *filename, decl*** declarations)
 
     if (decl_count == 0)
     {
-        parsing_error("Could not parse any declaration");
+        error_without_pos("Could not parse any declaration");
     }
 }
