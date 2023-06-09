@@ -1,20 +1,22 @@
 /*
     Wilfrid is a general-purpose, procedural, low-level, 
     statically-typed programming language.
-    
-    It's on feature parity with C, with improvements 
-    in some areas, such as stricter type checking, 
-    cleaner syntax, order-independent declarations, 
-    optional automatic memory management, 
-    and built-in dynamic arrays, among others.
-    It has full interoperability with C.
-    
-    Wilfrid is in the early alpha stage, 
-    not intended to be used in production.
+
+    Some of its features are:
+    - direct access to memory via pointers
+    - optional garbage collection
+    - strict type checking with limited implicit conversions
+    - Go-style syntax
+    - function overloading
+    - order-independent declarations
+    - built-in dynamic arrays
+    - full interoperability with C
+
+    Wilfrid is currently in the early alpha stage.
 
     Wilfrid can be compiled to C or run in the interpreter. 
     You can test both modes by selecting options 
-    in the panel on the right.    
+    in the panel on the right.
 */
 
 fn main()
