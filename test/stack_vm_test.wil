@@ -1,0 +1,154 @@
+enum instruction
+{
+    HALT,
+    ADD,
+    POP,
+    PUSH,
+    SUB,
+    DIV,
+    MUL,
+    PRINT,
+    BRANCH,
+}
+
+fn main()
+{
+    init()
+
+    vm_code.add(instruction.PUSH)
+    vm_code.add(3)
+    vm_code.add(instruction.PUSH)
+    vm_code.add(7)
+    vm_code.add(instruction.ADD)
+    vm_code.add(instruction.POP)
+    vm_code.add(instruction.BRANCH)
+    vm_code.add(13) // jump to 13
+    vm_code.add(instruction.PUSH)
+    vm_code.add(4)
+    vm_code.add(instruction.PUSH)
+    vm_code.add(5)
+    vm_code.add(instruction.ADD)
+    vm_code.add(instruction.PUSH) // 13
+    vm_code.add(4)
+    vm_code.add(instruction.POP)
+    vm_code.add(instruction.HALT)
+    
+    run_vm()
+
+    assert(vm_output[0] == 10)
+    assert(vm_output[1] == 4)
+
+    clear()    
+}
+
+let vm_code: int[]
+let vm_output: int[]
+
+let stack: int^
+let stack_size: int
+let ip: int
+let sp: int
+
+fn init()
+{
+    vm_code = new int[]
+    vm_output = new int[]
+    stack_size = 1024
+    stack = new int[(size_of_type(int) as int) * stack_size]
+}
+
+fn clear()
+{
+    delete vm_code
+    delete vm_output
+    delete stack
+}
+
+fn run_vm()
+{   
+    ip = 0
+    sp = -1
+
+    let a: int
+    let b: int
+
+    let opcode := vm_code[ip] as instruction
+    assert(opcode as instruction == instruction.PUSH)
+
+    while (opcode != instruction.HALT && ip < vm_code.length())
+    {
+        switch (opcode)
+        {
+            case instruction.BRANCH:
+            {
+                ip++
+                ip = vm_code[ip] - 1
+            }
+            break
+            case instruction.PUSH:
+            {
+                sp++
+                ip++
+                stack[sp] = vm_code[ip]
+                assert(stack[sp] == vm_code[ip])
+            }
+            break
+            case instruction.POP:
+            {
+                assert(sp >= 0)
+                a = stack[sp]
+                sp--
+                vm_output.add(a)
+            }
+            break
+            case instruction.ADD:
+            {
+                assert(sp >= 1)
+                a = stack[sp]
+                sp--
+                b = stack[sp]
+                stack[sp] = b + a
+                assert(stack[sp] == b + a)
+            }
+            break
+            case instruction.SUB:
+            {
+                assert(sp >= 1)
+                a = stack[sp]
+                sp--
+                b = stack[sp]
+                stack[sp] = b - a
+                assert(stack[sp] == b - a)
+            }
+            break
+            case instruction.MUL:
+            {
+                assert(sp >= 1)
+                a = stack[sp]
+                sp--
+                b = stack[sp]
+                stack[sp] = b * a
+                assert(stack[sp] == b * a)
+            }
+            break
+            case instruction.DIV:
+            {
+                assert(sp >= 1)
+                a = stack[sp]
+                sp--
+                b = stack[sp]
+                stack[sp] = b / a
+                assert(stack[sp] == b / a)
+            }
+            break
+            case instruction.HALT:
+            {
+                return
+            }
+            break
+        }
+
+        ip++
+        opcode = vm_code[ip] as instruction
+    }
+}

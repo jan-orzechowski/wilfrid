@@ -167,6 +167,7 @@
     <Text Include="test\pointer_arithmetic.wil" />
     <Text Include="test\printf_test.wil" />
     <Text Include="test\size_of.wil" />
+    <Text Include="test\stack_vm_test.wil" />
     <Text Include="test\structs.wil" />
     <Text Include="test\casts.wil" />
     <Text Include="test\compound_literals.wil" />
