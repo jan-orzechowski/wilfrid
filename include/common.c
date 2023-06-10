@@ -80,16 +80,14 @@ uintptr_t ___alloc_map_get___(___alloc_map___ *map, uintptr_t key) {
     }
     if (val->next) {
       val = val->next;
-    }
-    else {
+    } else {
       break;
     }
   }
   return null;
 }
 
-void ___alloc_map_delete___(___alloc_map___ *map, uintptr_t key)
-{
+void ___alloc_map_delete___(___alloc_map___ *map, uintptr_t key) {
   if (key == null) {
     return;
   }
@@ -105,12 +103,10 @@ void ___alloc_map_delete___(___alloc_map___ *map, uintptr_t key)
       if (val->next) {
         if (prev_val) {
           prev_val->next = val->next;
-        }
-        else {
+        } else {
           map->values[index] = val->next;
         }
-      }
-      else {
+      } else {
         if (prev_val) {
           prev_val->next = null;
         }
@@ -122,8 +118,7 @@ void ___alloc_map_delete___(___alloc_map___ *map, uintptr_t key)
       free(val);
       map->total_count--;
       break;
-    }
-    else {
+    } else {
       prev_val = val;
       val = val->next;
     }
@@ -166,8 +161,7 @@ void ___alloc_map_put___(___alloc_map___ *map, uintptr_t key, uintptr_t value) {
     last_val->next = calloc(1, sizeof(___alloc_map_value___));
     last_val->next->key = key;
     last_val->next->value = value;
-  }
-  else {
+  } else {
     if (2 * map->used_capacity >= map->capacity) {
       ___alloc_map_grow___(map, 2 * map->capacity);
     }
@@ -178,8 +172,7 @@ void ___alloc_map_put___(___alloc_map___ *map, uintptr_t key, uintptr_t value) {
     val = map->values[index];
     if (val) {
       val->next = new_value;
-    }
-    else {
+    } else {
       map->values[index] = new_value;
       map->used_capacity++;
     }
@@ -218,11 +211,9 @@ void *___calloc_wrapper___(size_t num_bytes, bool gc) {
   ___alloc_hdr___ *hdr = (___alloc_hdr___ *)memory;
   hdr->size = num_bytes;
   uintptr_t obj_ptr = (uintptr_t)___get_obj_ptr___(memory);
-  if (gc)
-  {
+  if (gc) {
     ___alloc_map_put___(___gc_allocs___, obj_ptr, obj_ptr);
-  } else
-  {
+  } else {
     ___alloc_map_put___(___allocs___, obj_ptr, obj_ptr);
   }
   return (void *)obj_ptr;
@@ -237,10 +228,9 @@ void *___realloc_wrapper___(void *ptr, size_t num_bytes, bool gc) {
     return ___calloc_wrapper___(num_bytes, gc);
   }    
   if (gc) {
-      ___alloc_map_delete___(___gc_allocs___, (uintptr_t)ptr);
-  }
-  else {
-      ___alloc_map_delete___(___allocs___, (uintptr_t)ptr);
+    ___alloc_map_delete___(___gc_allocs___, (uintptr_t)ptr);
+  } else {
+    ___alloc_map_delete___(___allocs___, (uintptr_t)ptr);
   }
   ptr = realloc(___get_hdr_ptr___(ptr), num_bytes + sizeof(___alloc_hdr___));
   if (!ptr) {
@@ -249,10 +239,9 @@ void *___realloc_wrapper___(void *ptr, size_t num_bytes, bool gc) {
   }
   uintptr_t obj_ptr = (uintptr_t)___get_obj_ptr___(ptr);
   if (gc) {
-      ___alloc_map_put___(___gc_allocs___, (uintptr_t)obj_ptr, (uintptr_t)obj_ptr);
-  }
-  else {
-      ___alloc_map_put___(___allocs___, (uintptr_t)obj_ptr, (uintptr_t)obj_ptr);
+    ___alloc_map_put___(___gc_allocs___, (uintptr_t)obj_ptr, (uintptr_t)obj_ptr);
+  } else {
+    ___alloc_map_put___(___allocs___, (uintptr_t)obj_ptr, (uintptr_t)obj_ptr);
   }
   ___alloc_hdr___ *hdr = (___alloc_hdr___ *)ptr;
   hdr->size = num_bytes;
@@ -350,8 +339,7 @@ ___list_hdr___* ___list_initialize___(size_t initial_capacity, size_t element_si
   if (managed) {   
     hdr = (___list_hdr___*)___managed_alloc___(sizeof(___list_hdr___));
     hdr->buffer = (char*)___managed_alloc___(initial_capacity * element_size);
-  }
-  else {
+  } else {
     hdr = (___list_hdr___*)___alloc___(sizeof(___list_hdr___));
     hdr->buffer = (char*)___alloc___(initial_capacity * element_size);
   }
@@ -366,8 +354,7 @@ void ___list_grow___(___list_hdr___* hdr, size_t new_length, size_t element_size
     size_t new_capacity = max(1 + 2 * hdr->capacity, new_length);  
     if (hdr->is_managed) {
       hdr->buffer = (char*)___managed_realloc___(hdr->buffer, new_capacity * element_size);
-    }
-    else {
+    } else {
       hdr->buffer = (char*)___realloc___(hdr->buffer, new_capacity * element_size);
     }        
     hdr->capacity = new_capacity;
@@ -407,8 +394,7 @@ void ___list_free_internal__(___list_hdr___* hdr) {
     if (hdr->is_managed) {
       ___managed_free___(hdr->buffer);
       ___managed_free___(hdr);
-    }
-    else {
+    } else {
       ___free___(hdr->buffer);
       ___free___(hdr);
     }    
@@ -435,8 +421,7 @@ void ___sweep___(void) {
       ___alloc_hdr___ *hdr = ___get_hdr_ptr___(val->value);
       if (false == (hdr->size & ___alive_tag___)) {
         ___list_add___(garbage, (uintptr_t)hdr, uintptr_t);
-      }
-      else {
+      } else {
         ___untag___(hdr->size, ___alive_tag___);
       }
       val = next;
@@ -464,7 +449,7 @@ size_t query_gc_total_memory(void) {
 }
 
 size_t query_gc_total_count(void) {
-    return ___gc_allocs___->total_count;
+  return ___gc_allocs___->total_count;
 }
 
 void gc(void) {
