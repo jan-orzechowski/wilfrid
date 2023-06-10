@@ -46,6 +46,7 @@ void gen_stmt(stmt *s);
 void gen_expr(expr *e);
 void gen_func_decl(decl *d, const char *mangled_name);
 void gen_expr_stub(expr *exp);
+const char *gen_escape_string(const char *str);
 
 const char *gen_expr_str(expr *e)
 {
@@ -656,12 +657,12 @@ void gen_expr(expr *e)
         break;
         case EXPR_STRING:
         {
-            gen_printf("\"%s\"", e->string_value);
+            gen_printf("\"%s\"", gen_escape_string(e->string_value));
         }
         break;
         case EXPR_CHAR:
         {
-            gen_printf("\'%s\'", e->string_value);
+            gen_printf("\'%s\'", gen_escape_string(e->string_value));
         }
         break;
         case EXPR_NULL:
@@ -1497,6 +1498,47 @@ const char *pretty_print_type_list(type **list)
     }
     
     const char *result = xprintf(buffer);
+    buf_free(buffer);
+    return result;
+}
+
+const char *gen_escape_string(const char *str)
+{
+    size_t str_length = strlen(str);
+    char *buffer = null;
+    __buf_fit(buffer, str_length);
+
+    size_t index = 0;
+    char *ptr = str;
+    for (size_t i = 0; i < str_length; i++)
+    {
+        char c = *(ptr + i);
+        char code_c = 0;
+        switch (c)
+        {
+            case '\t': code_c = 't'; break;
+            case '\n': code_c = 'n'; break;
+            case '\r': code_c = 'r'; break;
+            case '\v': code_c = 'v'; break;
+            case '\a': code_c = 'a'; break;
+            case '\"': code_c = '\"'; break;
+            case '\'': code_c = '\''; break;
+            case '\\': code_c = '\\'; break;
+        }
+
+        if (code_c)
+        {
+            buf_printf(buffer, "%c", '\\');
+            buf_printf(buffer, "%c", code_c);
+        }
+        else
+        {
+            buf_printf(buffer, "%c", c);
+        }        
+    }
+    buf_printf(buffer, "%c", 0);
+
+    char *result = xprintf("%s", buffer);
     buf_free(buffer);
     return result;
 }
