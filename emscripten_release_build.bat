@@ -13,7 +13,7 @@ set general-options=-D_DEFAULT_SOURCE -sALLOW_MEMORY_GROWTH=1 -sINITIAL_MEMORY=4
 
 set release-options=-sSAFE_HEAP=0 -sASSERTIONS=0 -o wasm/release/wilfrid.js -O3 --pre-js emscripten_module_functions.js
 
-call emcc -std=c99 %warnings-options% %general-options% %release-options% main.c 
+call emcc -std=c99 %warnings-options% %general-options% %release-options% source/main.c 
 
 pause
 

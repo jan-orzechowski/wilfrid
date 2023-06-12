@@ -13,7 +13,7 @@ set general-options=-D_DEFAULT_SOURCE -sALLOW_MEMORY_GROWTH=1 -sINITIAL_MEMORY=4
 
 set debug-options=-DDEBUG_BUILD -sASSERTIONS=2 -o wasm/debug/index.html -O0 -g3 -gsource-map --source-map-base http://localhost:6931/ --emrun --memoryprofiler --shell-file emscripten_debug_shell.html
 
-call emcc -std=c99 %warnings-options% %general-options% %debug-options% main.c 
+call emcc -std=c99 %warnings-options% %general-options% %debug-options% source/main.c 
 
 pause
 
