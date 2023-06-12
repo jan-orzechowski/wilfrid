@@ -20,7 +20,7 @@
 #include "resolve.c"
 #include "cgen.c"
 
-#include "include/common.c"
+#include "../include/common.c"
 #include "test_runner.c"
 
 #ifdef __EMSCRIPTEN__

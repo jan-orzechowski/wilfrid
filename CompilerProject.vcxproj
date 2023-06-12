@@ -144,7 +144,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="main.c" />
+    <ClCompile Include="source\main.c" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="examples\control_flow.wil" />
@@ -195,7 +195,7 @@
     <Text Include="examples\variables.wil" />
     <Text Include="test\linked_lists_test.wil" />
     <Text Include="test\escaping_characters.wil" />
-	<Text Include="test\xml_parser_test.wil" />
+    <Text Include="test\xml_parser_test.wil" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
