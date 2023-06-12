@@ -183,6 +183,7 @@ void test_directory(char *path, bool test_interpreter)
     };
 
     char **source_files = get_source_files_in_dir_and_subdirs(path);
+    assert(buf_len(source_files) > 0);
     for (size_t i = 0; i < buf_len(source_files); i++)
     {
         allocate_memory();
