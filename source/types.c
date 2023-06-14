@@ -1,6 +1,4 @@
-﻿#pragma once
-
-typedef struct symbol symbol;
+﻿typedef struct symbol symbol;
 typedef struct type type;
 
 typedef enum type_kind
