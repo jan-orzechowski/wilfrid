@@ -23,7 +23,8 @@ memory_arena *arena;
 #include "ast_print.c"
 #include "parsing.c"
 #include "arithmetic.c"
-#include "resolve.c"
+
+#include "resolving.c"
 #include "cgen.c"
 #include "mangling.c"
 

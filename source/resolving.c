@@ -1,8 +1,4 @@
-﻿#include "utils.h"
-#include "parsing.h"
-#include "resolve.h"
-
-size_t get_type_size(type *type)
+﻿size_t get_type_size(type *type)
 {
     assert(type);
     assert(type->kind > TYPE_COMPLETING);
