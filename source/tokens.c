@@ -1,6 +1,4 @@
-﻿#pragma once
-
-typedef enum token_kind
+﻿typedef enum token_kind
 {
     TOKEN_EOF,
     TOKEN_NEWLINE, // używany do synchronizacji w wypadku błędu parsowania
