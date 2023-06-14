@@ -18,6 +18,7 @@
 #include "utils\utils.c"
 
 memory_arena *arena;
+#include "ast.c"
 #include "lexing.c"
 #include "ast_print.c"
 #include "parsing.c"

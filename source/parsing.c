@@ -1,6 +1,4 @@
-﻿#include "parsing.h"
-
-expr *parse_expr(void);
+﻿expr *parse_expr(void);
 typespec *parse_typespec(void);
 typespec *push_typespec_name(source_pos pos, const char *name);
 
