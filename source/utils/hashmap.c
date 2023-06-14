@@ -229,10 +229,12 @@ void _map_chain_delete(chained_hashmap *map, void *key)
         }
     }
 
+#if DEBUG_BUILD
     if (found == false)
     {
         fatal("key not found");
     }
+#endif
 }
 
 void _map_chain_put(chained_hashmap *map, void *key, void *value);

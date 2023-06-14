@@ -1,13 +1,4 @@
-﻿#pragma once
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
-#include <stdint.h>
-#include <math.h>
-
-#define null 0
+﻿#define null 0
 
 #if !defined(max)
 #define max(a,b) ((a) > (b) ? (a) : (b))

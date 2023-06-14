@@ -1,10 +1,12 @@
 ﻿#include <stdio.h>
 #include <stdlib.h>
-#include <stddef.h>
-#include <ctype.h>
+#include <stdint.h>
 #include <stdarg.h>
+#include <stddef.h>
 #include <string.h>
 #include <stdbool.h>
+#include <ctype.h>
+#include <math.h>
 
 #define SRC_FILE_EXT "wil"
 
@@ -13,6 +15,7 @@
 #pragma warning(disable:4996)
 #endif
 
+#include "utils\utils.c"
 #include "lexing.c"
 #include "ast_print.c"
 #include "parsing.c"

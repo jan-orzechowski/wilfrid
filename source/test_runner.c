@@ -1,5 +1,3 @@
-﻿#include "utils.h"
-
 char *test_parse_case(char **source, char *source_end, char *case_label, char *end_label)
 {
     int case_label_length = (int)strlen(case_label);
@@ -389,8 +387,7 @@ void mangled_names_test(void)
     }
 }
 
-#include "utils_tests.c"
-//#include "gc_test.c"
+#include "utils\utils_tests.c"
 
 void common_includes_test(void);
 void fuzzy_test(void);
@@ -407,9 +404,6 @@ void run_all_tests(void)
     mangled_names_test();
     //fuzzy_test();
     common_includes_test();
-
-    //gc_init();
-    //gc_test();
 }
 
 #include <time.h>
