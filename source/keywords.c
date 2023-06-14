@@ -1,5 +1,3 @@
-#pragma once
-
 const char *struct_keyword;
 const char *enum_keyword;
 const char *union_keyword;

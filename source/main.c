@@ -20,6 +20,7 @@
 memory_arena *arena;
 
 #include "tokens.c"
+#include "keywords.c"
 #include "ast.c"
 #include "types.c"
 #include "lexing.c"
