@@ -22,6 +22,7 @@
 #include "arithmetic.c"
 #include "resolve.c"
 #include "cgen.c"
+#include "mangling.c"
 
 #include "../include/common.c"
 #include "test_runner.c"
