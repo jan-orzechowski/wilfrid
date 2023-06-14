@@ -1,6 +1,4 @@
-﻿#include "parsing.h"
-
-bool generate_line_hints = true;
+﻿bool generate_line_hints = true;
 
 int gen_indent;
 

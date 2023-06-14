@@ -218,3 +218,27 @@ token_kind get_assignment_operation_token(token_kind assignment)
     }
     return TOKEN_EOF;
 }
+
+bool is_assign_operation(token_kind kind)
+{
+    bool result = (kind >= TOKEN_FIRST_ASSIGN_OPERATOR && kind <= TOKEN_LAST_ASSIGN_OPERATOR);
+    return result;
+}
+
+bool is_multiplicative_operation(token_kind kind)
+{
+    bool result = (kind >= TOKEN_FIRST_MUL_OPERATOR && kind <= TOKEN_LAST_MUL_OPERATOR);
+    return result;
+}
+
+bool is_additive_operation(token_kind kind)
+{
+    bool result = (kind >= TOKEN_FIRST_ADD_OPERATOR && kind <= TOKEN_LAST_ADD_OPERATOR);
+    return result;
+}
+
+bool is_comparison_operation(token_kind kind)
+{
+    bool result = (kind >= TOKEN_FIRST_CMP_OPERATOR && kind <= TOKEN_LAST_CMP_OPERATOR);
+    return result;
+}
