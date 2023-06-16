@@ -36,6 +36,7 @@ memory_arena *arena;
 #include "../include/common.c"
 #include "test_runner.c"
 
+#include "treewalk.c"
 #include "setup.c"
 
 #ifdef __EMSCRIPTEN__
@@ -66,8 +67,6 @@ void parse_file(char *filename, decl ***declarations_list)
 
     free(source.str);
 }
-
-#include "treewalk.c"
 
 void parse_directory(char *path, decl ***declarations_list)
 {
