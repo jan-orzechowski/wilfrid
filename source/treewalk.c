@@ -300,7 +300,6 @@ void leave_vm_stack_scope(byte *marker)
 {
     assert(marker >= vm_stack);
     assert(marker <= last_used_vm_stack_byte);
-    assert(vm_metadata_count > 0);
 
     for (byte *byte_to_clean = marker + 1;
         byte_to_clean <= last_used_vm_stack_byte;
@@ -310,18 +309,21 @@ void leave_vm_stack_scope(byte *marker)
     }
     last_used_vm_stack_byte = marker;
 
-    for (int64_t index = vm_metadata_count - 1; index >= 0; index--)
+    if (vm_metadata_count > 0)
     {
-        vm_value_meta *m = &stack_metadata[index];
-        assert(m->stack_ptr);
-        if ((byte *)m->stack_ptr > marker)
+        for (int64_t index = vm_metadata_count - 1; index >= 0; index--)
         {
-            *m = (vm_value_meta){0};
-            vm_metadata_count--;
-        }
-        else
-        {
-            break;
+            vm_value_meta *m = &stack_metadata[index];
+            assert(m->stack_ptr);
+            if ((byte *)m->stack_ptr > marker)
+            {
+                *m = (vm_value_meta){ 0 };
+                vm_metadata_count--;
+            }
+            else
+            {
+                break;
+            }
         }
     }
 }
