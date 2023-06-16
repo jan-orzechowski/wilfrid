@@ -44,7 +44,7 @@ parse_case_exit_loop_label:
     }
 }
 
-void test_file_parsing_test(string_ref source, bool print_results)
+void parsing_tests_from_file(string_ref source, bool print_results)
 {
     int case_counter = 0;
     int error_counter = 0;
@@ -135,7 +135,7 @@ void test_file_parsing_test(string_ref source, bool print_results)
     }
 }
 
-void test_parsing_single_case(void)
+void parsing_test_single_case(void)
 {
     char *test = "let str := \"<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?>\"";
 
@@ -158,14 +158,14 @@ void test_parsing_single_case(void)
     buf_free(decls);
 }
 
-void test_parsing(void)
+void parsing_test(void)
 {
     printf("\n==== PARSING TEST ====\n");
 
-    test_parsing_single_case();
+    parsing_test_single_case();
 
     string_ref test_file = read_file_for_parsing("test/parsing_tests." SRC_FILE_EXT);
-    test_file_parsing_test(test_file, true);
+    parsing_tests_from_file(test_file, true);
     free(test_file.str);
 }
 
@@ -399,7 +399,7 @@ void run_all_tests(void)
     buf_copy_test();
     map_test();
 
-    test_parsing();
+    parsing_test();
     resolve_test();
     mangled_names_test();
     //fuzzy_test();
