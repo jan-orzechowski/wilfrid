@@ -92,7 +92,7 @@
 
 const char *get_function_mangled_name(decl *dec)
 {
-    // ___function_name___arg_type1___arg_type2___ret_type
+    // ___function_name___arg_type1___arg_type2
 
     assert(dec);
     assert(dec->kind == DECL_FUNCTION);
@@ -127,18 +127,15 @@ const char *get_function_mangled_name(decl *dec)
         buf_printf(mangled, mangled_arg);
         buf_free(mangled_arg);
     }
-
-    if (dec->function.return_type)
+   
+    // return type odróżnia tylko constructory
+    if (dec->name == str_intern("constructor") && dec->function.return_type)
     {
         char *mangled_ret = get_typespec_mangled_name(dec->function.return_type);
         buf_printf(mangled, mangled_ret);
         buf_free(mangled_ret);
     }
-    else
-    {
-        buf_printf(mangled, "___0v");
-    }
-
+    
     const char *result = str_intern(mangled);
     buf_free(mangled);
     return result;

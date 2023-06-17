@@ -2513,8 +2513,8 @@ symbol *get_entry_point(symbol **symbols)
         return null;
     }
 
-    if (false == (main_function->mangled_name == str_intern("___main___0l___0s___0v")
-        || main_function->mangled_name == str_intern("___main___0v")))
+    if (false == (main_function->mangled_name == str_intern("___main___0l___0s")
+        || main_function->mangled_name == str_intern("___main")))
     {
         error_in_resolving(
             "Main function has an incorrect declaration. Allowed declarations are 'fn main()' and 'fn main(args: string[])'", 
