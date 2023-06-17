@@ -1,33 +1,4 @@
-﻿size_t get_type_size(type *type)
-{
-    assert(type);
-    assert(type->kind > TYPE_COMPLETING);
-    assert(type->size != 0);
-    return type->size;
-}
-
-size_t get_type_align(type *type)
-{
-    assert(type->kind > TYPE_COMPLETING);
-    assert(is_power_of_2(type->align));
-    return type->align;
-}
-
-const size_t POINTER_SIZE = 8;
-const size_t POINTER_ALIGN = 8;
-
-type *type_void =    &(type) { .kind = TYPE_VOID,    .size = 1, .align = 0 };
-type *type_null =    &(type) { .kind = TYPE_NULL,    .size = 8, .align = 0 };
-type *type_char =    &(type) { .kind = TYPE_CHAR,    .size = 1, .align = 1 };
-type *type_int =     &(type) { .kind = TYPE_INT,     .size = 4, .align = 4 };
-type *type_uint =    &(type) { .kind = TYPE_UINT,    .size = 4, .align = 4 };
-type *type_long =    &(type) { .kind = TYPE_LONG,    .size = 8, .align = 8 };
-type *type_ulong =   &(type) { .kind = TYPE_ULONG,   .size = 8, .align = 8 };
-type *type_float =   &(type) { .kind = TYPE_FLOAT,   .size = 4, .align = 4 };
-type *type_bool =    &(type) { .kind = TYPE_BOOL,    .size = 4, .align = 4 };
-type *type_invalid = &(type) { .kind = TYPE_NONE,    .size = 0, .align = 0 };
-
-hashmap global_symbols;
+﻿hashmap global_symbols;
 symbol **global_symbols_list;
 symbol **ordered_global_symbols;
 
@@ -66,157 +37,6 @@ const char *pretty_print_type_list(type **list);
 #define on_invalid_expr_return(e) if (!(e) || !((e)->type) || ((e)->type->kind == TYPE_NONE)) { return resolved_expr_invalid; }
 
 #define check_resolved_expr(e) ((e) && (e)->type && (e)->type->kind != TYPE_NONE)
-
-size_t get_field_offset(type *aggregate, char *field_name)
-{
-    assert_is_interned(field_name);
-    assert(aggregate->kind == TYPE_STRUCT || aggregate->kind == TYPE_UNION);
-
-    for (size_t i = 0; i < aggregate->aggregate.fields_count; i++)
-    {
-        type_aggregate_field *f = aggregate->aggregate.fields[i];
-        if (f->name == field_name)
-        {
-            return f->offset;
-        }
-    }
-
-    fatal("Unknown field after resolve!");
-    return 0;
-}
-
-type *get_field_type(type *aggregate, char *field_name)
-{
-    assert_is_interned(field_name);
-    assert(aggregate->kind == TYPE_STRUCT || aggregate->kind == TYPE_UNION);
-
-    for (size_t i = 0; i < aggregate->aggregate.fields_count; i++)
-    {
-        type_aggregate_field *f = aggregate->aggregate.fields[i];
-        if (f->name == field_name)
-        {
-            return f->type;
-        }
-    }
-
-    fatal("Unknown field after resolve!");
-    return null;
-}
-
-type *get_field_type_by_index(type *aggregate, size_t field_index)
-{
-    assert(aggregate->kind == TYPE_STRUCT || aggregate->kind == TYPE_UNION);
-    assert(field_index < aggregate->aggregate.fields_count);
-    return aggregate->aggregate.fields[field_index]->type;
-}
-
-size_t get_field_offset_by_index(type *aggr_type, size_t field_index)
-{
-    assert(aggr_type);
-    assert(aggr_type->kind == TYPE_STRUCT || aggr_type->kind == TYPE_UNION);
-
-    assert(field_index < aggr_type->aggregate.fields_count);
-    type_aggregate_field *f = aggr_type->aggregate.fields[field_index];
-    return f->offset;
-}
-
-size_t get_array_index_offset(type *arr_type, size_t element_index)
-{
-    assert(arr_type);
-    assert(arr_type->kind == TYPE_ARRAY || arr_type->kind == TYPE_POINTER);
-   
-    if (arr_type->kind == TYPE_ARRAY)
-    {
-        assert(element_index < arr_type->array.size);
-        size_t result = get_type_size(arr_type->array.base_type) * element_index;
-        return result;
-    }
-    else
-    {
-        assert(arr_type->pointer.base_type->kind != TYPE_ARRAY);
-        size_t result = get_type_size(arr_type->pointer.base_type) * element_index;
-        return result;
-    }
-}
-
-bool compare_types(type *a, type *b)
-{
-    assert(a);
-    assert(b);
-
-    if (a == b)
-    {
-        return true;
-    }
-    
-    if ((a == type_long && b->kind == TYPE_ENUM)
-        || (b == type_long && a->kind == TYPE_ENUM))
-    {
-        return true;
-    }
-
-    if ((a == type_null && b->kind == TYPE_POINTER)
-        || (b == type_null && a->kind == TYPE_POINTER))
-    {
-        return true;
-    }
-
-    if ((a == type_ulong && b->kind == TYPE_POINTER)
-        || (b == type_ulong && a->kind == TYPE_POINTER))
-    {
-        return true;
-    }
-
-    if (a->kind != b->kind)
-    {
-        return false;
-    }
-
-    // teraz musimy sprawdzić tylko jeden kind
-    if (a->kind == TYPE_LIST)
-    {
-        bool result = compare_types(a->list.base_type, b->list.base_type);
-        return result;
-    }
-    
-    if (a->kind == TYPE_ARRAY)
-    {
-        bool result = (a->array.size == b->array.size
-            && compare_types(a->array.base_type, b->array.base_type));
-        return result;
-    }
-    
-    if (a->kind == TYPE_POINTER)
-    {
-        bool result = compare_types(a->pointer.base_type, b->pointer.base_type);
-        return result;
-    }
-
-    return false;
-}
-
-void plug_expr(expr *original_expr, expr* new_expr)
-{
-    expr temp = *original_expr;
-    (*original_expr) = *new_expr;
-    *new_expr = temp;
-}
-
-void plug_stub_expr(expr *original_expr, stub_expr_kind kind, type *resolved_type)
-{
-    expr *new_expr = push_struct(arena, expr);
-    new_expr->kind = EXPR_STUB;
-    new_expr->pos = original_expr->pos;
-    new_expr->stub.kind = kind;
-    new_expr->resolved_type = resolved_type;
-
-    plug_expr(original_expr, new_expr);
-
-    // tutaj nazwy są odwrócone; efekt jest taki, że stub ma teraz odniesienie do starego wyrażenia
-    original_expr->stub.original_expr = new_expr;
-
-    assert(original_expr->kind == EXPR_STUB);
-}
 
 cast_info try_cast(type *from, type* to, bool allow_forcing_numeric_types)
 {
@@ -448,13 +268,6 @@ bool check_if_symbol_name_unused(const char *name, source_pos pos)
     return true;
 }
 
-type *get_new_type(type_kind kind)
-{
-    type *t = push_struct(arena, type);
-    t->kind = kind;
-    return t;
-}
-
 symbol *enter_local_scope(void)
 {
     symbol *marker = last_local_symbol;
@@ -478,6 +291,34 @@ void push_local_symbol(const char *name, type *type)
       .state = SYMBOL_RESOLVED,
       .type = type,
     };
+}
+
+type *get_array_type(type *element, size_t size)
+{
+    complete_type(element);
+    type *t = get_new_type(TYPE_ARRAY);
+    t->size = size * get_type_size(element);
+    t->align = get_type_align(element);
+    t->array.base_type = element;
+    t->array.size = size;
+    return t;
+}
+
+type *get_list_type(type *element)
+{
+    complete_type(element);
+    type *t = get_new_type(TYPE_LIST);
+    t->size = POINTER_SIZE;
+    t->align = POINTER_ALIGN;
+    t->list.base_type = element;
+    return t;
+}
+
+type *get_incomplete_type(symbol *sym)
+{
+    type *type = get_new_type(TYPE_INCOMPLETE);
+    type->symbol = sym;
+    return type;
 }
 
 hashmap *enum_values_hashmaps;
@@ -528,113 +369,6 @@ void complete_aggregate_type(type *type, type_aggregate_field **fields, size_t f
     
     type->aggregate.fields = copy_buf_to_arena(arena, fields);
     type->aggregate.fields_count = fields_count;
-}
-
-type *get_array_type(type *element, size_t size)
-{
-    complete_type(element);
-    type *t = get_new_type(TYPE_ARRAY);
-    t->size = size * get_type_size(element);
-    t->align = get_type_align(element);
-    t->array.base_type = element;
-    t->array.size = size;
-    return t; 
-}
-
-type *get_list_type(type *element)
-{
-    complete_type(element);
-    type *t = get_new_type(TYPE_LIST);
-    t->size = POINTER_SIZE;
-    t->align = POINTER_ALIGN;
-    t->list.base_type = element;
-    return t;
-}
-
-type *get_incomplete_type(symbol *sym)
-{
-    type *type = get_new_type(TYPE_INCOMPLETE);
-    type->symbol = sym;
-    return type;
-}
-
-type **cached_pointer_types;
-
-type *get_pointer_type(type *base_type)
-{
-    if (base_type == null)
-    {
-        return type_invalid;
-    }
-
-    size_t ptr_count = buf_len(cached_pointer_types);
-    if (ptr_count > 0)
-    {
-        for (size_t i = 0; i < ptr_count; i++)
-        {
-            type *ptr_type = cached_pointer_types[i];
-            assert(ptr_type->kind == TYPE_POINTER);
-
-            if (compare_types(ptr_type->pointer.base_type, base_type))
-            {
-                return ptr_type;
-            }
-        }
-    }
-
-    type *type = get_new_type(TYPE_POINTER);
-    type->size = POINTER_SIZE;
-    type->align = POINTER_ALIGN;
-    type->pointer.base_type = base_type;
-    buf_push(cached_pointer_types, type);
-    return type;
-}
-
-type *get_function_type(type **param_types_buf, type *return_type)
-{
-    type *type = get_new_type(TYPE_FUNCTION);
-    type->size = POINTER_SIZE;
-    type->align = POINTER_ALIGN;
-    type->function.param_types = copy_buf_to_arena(arena, param_types_buf);
-    type->function.param_count = buf_len(param_types_buf);
-    type->function.return_type = return_type;
-    return type;
-}
-
-symbol *get_new_symbol(symbol_kind kind, const char *name, decl *decl)
-{
-    symbol *sym = push_struct(arena, symbol);
-    sym->kind = kind;
-    sym->name = name;
-    sym->decl = decl;
-    return sym;
-}
-
-resolved_expr *get_resolved_rvalue_expr(type *t)
-{
-    assert(t);
-    resolved_expr *result = push_struct(arena, resolved_expr);
-    result->type = t;
-    return result;
-}
-
-resolved_expr *get_resolved_lvalue_expr(type *t)
-{
-    assert(t);
-    assert(t->kind != SYMBOL_CONST);
-    resolved_expr *result = push_struct(arena, resolved_expr);
-    result->type = t;
-    result->is_lvalue = true;
-    return result;
-}
-
-resolved_expr *get_resolved_const_expr(int64_t val)
-{
-    resolved_expr *result = push_struct(arena, resolved_expr);
-    result->type = type_long;
-    result->is_const = true;
-    result->val = val;
-    return result;
 }
 
 symbol *get_symbol_from_decl(decl *d)
