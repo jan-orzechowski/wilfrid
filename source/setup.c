@@ -6,6 +6,7 @@
     map_grow(interns, 16);
 
     map_grow(&global_symbols, 16);
+    map_chain_grow(&cached_pointer_types, 32);
 
     vm_global_memory = allocate_memory_arena(kilobytes(100));
     map_grow(&global_identifiers, 16);
@@ -29,7 +30,7 @@ void clear_memory(void)
     // tablice wskaźników - same obiekty są zaalokowane na arenie
     buf_free(global_symbols_list);
     buf_free(ordered_global_symbols);
-    buf_free(cached_pointer_types);
+    map_chain_free(&cached_pointer_types);
 
     map_free(&global_symbols);
 

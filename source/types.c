@@ -253,7 +253,7 @@ size_t get_type_align(type *type)
     return type->align;
 }
 
-type **cached_pointer_types;
+chained_hashmap cached_pointer_types;
 
 type *get_pointer_type(type *base_type)
 {
@@ -261,27 +261,18 @@ type *get_pointer_type(type *base_type)
     {
         return type_invalid;
     }
-
-    size_t ptr_count = buf_len(cached_pointer_types);
-    if (ptr_count > 0)
+    
+    type *ptr_type = map_chain_get(&cached_pointer_types, base_type);
+    if (ptr_type)
     {
-        for (size_t i = 0; i < ptr_count; i++)
-        {
-            type *ptr_type = cached_pointer_types[i];
-            assert(ptr_type->kind == TYPE_POINTER);
-
-            if (compare_types(ptr_type->pointer.base_type, base_type))
-            {
-                return ptr_type;
-            }
-        }
+        return ptr_type;
     }
 
     type *type = get_new_type(TYPE_POINTER);
     type->size = POINTER_SIZE;
     type->align = POINTER_ALIGN;
     type->pointer.base_type = base_type;
-    buf_push(cached_pointer_types, type);
+    map_chain_put(&cached_pointer_types, base_type, type);
     return type;
 }
 
