@@ -1,99 +1,109 @@
-﻿char *get_typespec_mangled_name(typespec *typ)
+﻿char mangle_buf[kilobytes(2)];
+int64_t mangle_buf_cap = kilobytes(2);
+int64_t mangle_buf_len = 0;
+
+#define mangle_clear() { memset(mangle_buf, 0, mangle_buf_cap); mangle_buf_len = 0; }
+
+#define mangle_print(...) { \
+    if (mangle_buf_len > mangle_buf_cap - 1) \
+    { \
+        fatal("Mangled name is over 2kb"); \
+    } \
+    else \
+    { \
+        int32_t count = stbsp_snprintf(mangle_buf + mangle_buf_len, mangle_buf_cap - mangle_buf_len, __VA_ARGS__);  \
+        mangle_buf_len += count; \
+        assert(mangle_buf_len < mangle_buf_cap); \
+    } \
+}
+
+void print_mangled_typespec_to_buffer(typespec *typ)
 {
-    assert(typ);
-    char *result = null;
-    buf_printf(result, "___");
+    assert(typ);    
+    mangle_print("___");
     switch (typ->kind)
     {
         case TYPESPEC_NAME:
         {
             if (0 == strcmp(typ->name, "int"))
             {
-                buf_printf(result, "0i");
+                mangle_print("0i");
             }
             else if (0 == strcmp(typ->name, "uint"))
             {
-                buf_printf(result, "0ui");
+                mangle_print("0ui");
             }
             else if (0 == strcmp(typ->name, "long"))
             {
-                buf_printf(result, "0lo");
+                mangle_print("0lo");
             }
             else if (0 == strcmp(typ->name, "ulong"))
             {
-                buf_printf(result, "0ul");
+                mangle_print("0ul");
             }
             else if (0 == strcmp(typ->name, "char"))
             {
-                buf_printf(result, "0c");
+                mangle_print("0c");
             }
             else if (0 == strcmp(typ->name, "string"))
             {
-                buf_printf(result, "0s");
+                mangle_print("0s");
             }
             else if (0 == strcmp(typ->name, "float"))
             {
-                buf_printf(result, "0f");
+                mangle_print("0f");
             }
             else if (0 == strcmp(typ->name, "bool"))
             {
-                buf_printf(result, "0b");
+                mangle_print("0b");
             }
             else if (0 == strcmp(typ->name, "null"))
             {
-                buf_printf(result, "0n");
+                mangle_print("0n");
             }
             else if (0 == strcmp(typ->name, "void"))
             {
-                buf_printf(result, "0v");
+                mangle_print("0v");
             }
             else
             {
-                buf_printf(result, typ->name);
+                mangle_print(typ->name);
             }
         }
         break;
         case TYPESPEC_ARRAY:
         {
             // ___0a_16___type
-            buf_printf(result, "0a");
+            mangle_print("0a");
 
             resolved_expr *e = resolve_expr(typ->array.size_expr);
             size_t arr_count = e->val;
 
-            buf_printf(result, xprintf("_%zu", arr_count));
-            char *mangled = get_typespec_mangled_name(typ->array.base_type);
-            buf_printf(result, mangled);
-            buf_free(mangled);
+            mangle_print(xprintf("_%zu", arr_count));
+            print_mangled_typespec_to_buffer(typ->array.base_type);
         }
         break;
         case TYPESPEC_LIST:
         {
             // ___0l___type
-            buf_printf(result, "0l");
-            char *mangled = get_typespec_mangled_name(typ->list.base_type);
-            buf_printf(result, mangled);
-            buf_free(mangled);
+            mangle_print("0l");
+            print_mangled_typespec_to_buffer(typ->list.base_type);
         }
         break;
         case TYPESPEC_POINTER:
         {
-            buf_printf(result, "0p");
-            char *mangled = get_typespec_mangled_name(typ->pointer.base_type);
-            buf_printf(result, mangled);
-            buf_free(mangled);
+            mangle_print("0p");
+            print_mangled_typespec_to_buffer(typ->pointer.base_type);
         }
         break;
         case TYPESPEC_NONE:
         invalid_default_case;
     }
-    return result;
 }
 
 const char *get_function_mangled_name(decl *dec)
 {
     // ___function_name___arg_type1___arg_type2
-
     assert(dec);
     assert(dec->kind == DECL_FUNCTION);
 
@@ -102,18 +112,16 @@ const char *get_function_mangled_name(decl *dec)
         return dec->name;
     }
 
-    char *mangled = null;
+    mangle_clear();
 
     if (dec->function.method_receiver)
     {
         typespec *t = dec->function.method_receiver->type;
-        char *mangled_rec = get_typespec_mangled_name(t);
-        buf_printf(mangled, mangled_rec);
-        buf_free(mangled_rec);
+        print_mangled_typespec_to_buffer(t);
     }
 
-    buf_printf(mangled, "___");
-    buf_printf(mangled, dec->name);
+    mangle_print("___");
+    mangle_print(dec->name);
     for (size_t i = 0; i < dec->function.params.param_count; i++)
     {
         typespec *t = dec->function.params.params[i].type;
@@ -123,21 +131,16 @@ const char *get_function_mangled_name(decl *dec)
             // więc możemy nie generować mangled name
             return null;
         }
-        char *mangled_arg = get_typespec_mangled_name(t);
-        buf_printf(mangled, mangled_arg);
-        buf_free(mangled_arg);
+        print_mangled_typespec_to_buffer(t);
     }
    
     // return type odróżnia tylko constructory
     if (dec->name == str_intern("constructor") && dec->function.return_type)
     {
-        char *mangled_ret = get_typespec_mangled_name(dec->function.return_type);
-        buf_printf(mangled, mangled_ret);
-        buf_free(mangled_ret);
+        print_mangled_typespec_to_buffer(dec->function.return_type);
     }
     
-    const char *result = str_intern(mangled);
-    buf_free(mangled);
+    const char *result = str_intern(mangle_buf);
     return result;
 }
 

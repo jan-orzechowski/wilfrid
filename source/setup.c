@@ -27,10 +27,10 @@ void clear_memory(void)
 
     free_memory_arena(arena);
 
-    // tablice wskaźników - same obiekty są zaalokowane na arenie
     buf_free(global_symbols_list);
     buf_free(ordered_global_symbols);
     map_chain_free(&cached_pointer_types);
+    mangle_clear();
 
     map_free(&global_symbols);
 
