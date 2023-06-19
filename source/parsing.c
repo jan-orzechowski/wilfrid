@@ -376,13 +376,18 @@ void parse_function_call_arguments(expr *e)
 {
     assert(e->kind == EXPR_CALL);
     
-    expr **args = null;
+    // optymalizacja - nie alokujemy tablicy dynamicznej, jeśli jest poniżej 10 argumentów
+    expr *args_stack[10] = { 0 };
+    size_t args_stack_len = 0;
+    bool use_stack = true;
+    expr **args_buf = null;
+
     while (false == is_token_kind(TOKEN_RIGHT_PAREN))
     {
         expr *arg = parse_expr();
         if (arg)
         {
-            buf_push(args, arg);
+            push_to_stack_or_list(arg, use_stack, args_stack, args_stack_len, 10, args_buf);
         }
         else
         {
@@ -396,12 +401,8 @@ void parse_function_call_arguments(expr *e)
         }
     }
 
-    e->call.args_num = buf_len(args);
-    if (e->call.args_num > 0)
-    {
-        e->call.args = copy_buf_to_arena(arena, args);
-        buf_free(args);
-    }
+    copy_stack_or_list_to_arena(e->call.args, e->call.args_num, sizeof(expr *),
+        use_stack, args_stack, args_stack_len, args_buf);
 }
 
 // przydałaby się lepsza nazwa na to
@@ -1124,19 +1125,22 @@ stmt_block parse_statement_block(void)
     {
         // specjalny przypadek - pusty blok
         next_token();
-        return (stmt_block){0};
+        return (stmt_block){ 0 };
     }
 
-    stmt_block result = {0};
-    stmt **statements = null;
-    
+    // optymalizacja - nie alokujemy tablicy dynamicznej, jeśli jest poniżej 30 statements
+    stmt *stmts_stack[30] = { 0 };
+    size_t stmts_stack_len = 0;
+    bool use_stack = true;
+    stmt **stmts_buf = null;
+
     for (size_t attempts = 0; attempts < 3; attempts++)
     {
         stmt *st = parse_statement();
         if (st)
         {
             attempts = 0;
-            buf_push(statements, st);
+            push_to_stack_or_list(st, use_stack, stmts_stack, stmts_stack_len, 30, stmts_buf);
         }
 
         if (is_token_kind(TOKEN_RIGHT_BRACE)
@@ -1146,13 +1150,9 @@ stmt_block parse_statement_block(void)
         }
     }
 
-    size_t count = buf_len(statements);
-    if (count > 0)
-    {
-        result.stmts = copy_buf_to_arena(arena, statements);
-        result.stmts_count = count;
-        buf_free(statements);
-    }
+    stmt_block result = { 0 };
+    copy_stack_or_list_to_arena(result.stmts, result.stmts_count, sizeof(stmt *),
+        use_stack, stmts_stack, stmts_stack_len, stmts_buf);
 
     expect_token_kind(TOKEN_RIGHT_BRACE);
 
@@ -1189,11 +1189,16 @@ function_param parse_function_param(void)
     return p;
 }
 
-function_param_list parse_function_param_list()
+function_param_list parse_function_param_list(void)
 {
     expect_token_kind(TOKEN_LEFT_PAREN);
 
-    function_param *params = null;
+    // optymalizacja - nie alokujemy tablicy dynamicznej, jeśli jest poniżej 10 argumentów
+    function_param params_stack[10] = { 0 };
+    size_t params_stack_len = 0;
+    bool use_stack = true;
+    function_param *params_buf = null;
+
     while (is_token_kind(TOKEN_NAME) || is_token_kind(TOKEN_KEYWORD))
     {
         function_param p = parse_function_param();
@@ -1201,9 +1206,9 @@ function_param_list parse_function_param_list()
         {
             break;
         }
-
-        buf_push(params, p);
-
+        
+        push_to_stack_or_list(p, use_stack, params_stack, params_stack_len, 10, params_buf);
+        
         if (is_token_kind(TOKEN_COMMA))
         {           
             next_token();
@@ -1214,27 +1219,23 @@ function_param_list parse_function_param_list()
         }
     }
 
+    function_param_list result = { 0 };
+    copy_stack_or_list_to_arena(result.params, result.param_count, sizeof(function_param),
+        use_stack, params_stack, params_stack_len, params_buf);
+
     // sprawdzenie, czy się nie powtarzają
-    for (size_t i = 0; i < buf_len(params); i++)
+    for (size_t i = 0; i < result.param_count; i++)
     {
-        for (size_t j = 0; j < buf_len(params); j++)
+        for (size_t j = 0; j < result.param_count; j++)
         {
             if (i != j)
             {
-                if (params[i].name == params[j].name)
+                if (result.params[i].name == result.params[j].name)
                 {
                     parsing_error("Two or more parameters with the same name in the function declaration");
                 }
             }
         }
-    }
-
-    function_param_list result = { 0 };
-    result.param_count = (int)buf_len(params);
-    if (result.param_count > 0)
-    {
-        result.params = copy_buf_to_arena(arena, params);
-        buf_free(params);
     }
 
     expect_token_kind(TOKEN_RIGHT_PAREN);
@@ -1267,35 +1268,35 @@ aggregate_field parse_aggregate_field(void)
 
 void parse_aggregate_fields(aggregate_decl *decl)
 {
-    aggregate_field *fields = null;
+    // optymalizacja - nie alokujemy tablicy dynamicznej, jeśli jest poniżej 10 pól
+    aggregate_field fields_stack[10] = { 0 };
+    size_t fields_stack_len = 0;
+    bool use_stack = true;
+    aggregate_field *fields_buf = null;
 
     aggregate_field new_field = parse_aggregate_field();
     while (new_field.type)
     {
-        buf_push(fields, new_field);
+        push_to_stack_or_list(new_field, use_stack, fields_stack, fields_stack_len, 10, fields_buf);
         new_field = parse_aggregate_field();
     }
 
+    copy_stack_or_list_to_arena(decl->fields, decl->fields_count, sizeof(aggregate_field),
+        use_stack, fields_stack, fields_stack_len, fields_buf);
+
     // sprawdzenie, czy się nie powtarzają
-    for (size_t i = 0; i < buf_len(fields); i++)
+    for (size_t i = 0; i < decl->fields_count; i++)
     {
-        for (size_t j = 0; j < buf_len(fields); j++)
+        for (size_t j = 0; j < decl->fields_count; j++)
         {
             if (i != j)
             {
-                if (fields[i].name == fields[j].name)
+                if (decl->fields[i].name == decl->fields[j].name)
                 {
                     parsing_error("Two or more fields with the same name in the struct declaration");
                 }
             }
         }
-    }
-
-    decl->fields_count = (int)buf_len(fields);
-    if (decl->fields_count > 0)
-    {
-        decl->fields = copy_buf_to_arena(arena, fields);
-        buf_free(fields);
     }
 }
 
