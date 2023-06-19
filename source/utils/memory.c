@@ -217,3 +217,46 @@ void pop_arena_stack(memory_arena *arena, arena_stack_marker marker)
     }
 }
 
+#define push_to_stack_or_list(elem, use_stack, stack, stack_len, stack_cap, list) \
+    if (use_stack) \
+    { \
+        if (stack_len < stack_cap) \
+        { \
+            stack[stack_len] = elem; \
+            stack_len++; \
+        } \
+        else \
+        { \
+            use_stack = false; \
+            __buf_fit(list, stack_len * 2); \
+            for (size_t i = 0; i < stack_len; i++) \
+            { \
+                buf_push(list, stack[i]); \
+            } \
+            buf_push(list, elem); \
+        } \
+    } \
+    else \
+    { \
+        buf_push(list, elem); \
+    }
+
+#define copy_stack_or_list_to_arena(dest_ptr, dest_count, elem_size, use_stack, stack, stack_len, list) \
+    if (use_stack) \
+    { \
+        dest_count = stack_len; \
+        dest_ptr = push_size(arena, elem_size * dest_count); \
+        for (size_t i = 0; i < stack_len; i++) \
+        { \
+            dest_ptr[i] = stack[i]; \
+        } \
+    } \
+    else \
+    { \
+        dest_count = buf_len(list); \
+        if (dest_count > 0) \
+        { \
+            dest_ptr = copy_buf_to_arena(arena, list); \
+        } \
+        buf_free(list);\
+    }
