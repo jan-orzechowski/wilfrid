@@ -1,3 +1,6 @@
+#define STB_SPRINTF_IMPLEMENTATION 
+#include "../../lib/stb_sprintf.c"
+
 typedef struct buffer_header
 {
     size_t len;
@@ -52,7 +55,8 @@ char *__buf_printf(char *buf, const char *format, ...)
 
     va_start(args, format);
     size_t current_cap = buf_cap(buf) - buf_len(buf);
-    size_t str_length = 1 + vsnprintf(buf_end(buf), current_cap, format, args);
+    
+    size_t str_length = 1 + stbsp_vsnprintf(buf_end(buf), current_cap, format, args);
     va_end(args);
 
     if (str_length > current_cap)
@@ -61,7 +65,7 @@ char *__buf_printf(char *buf, const char *format, ...)
 
         va_start(args, format);
         size_t new_cap = buf_cap(buf) - buf_len(buf);
-        str_length = 1 + vsnprintf(buf_end(buf), new_cap, format, args);
+        str_length = 1 + stbsp_vsnprintf(buf_end(buf), new_cap, format, args);
         assert(str_length <= new_cap);
         va_end(args);
     }

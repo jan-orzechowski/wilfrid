@@ -54,7 +54,7 @@ char *xprintf(const char *format, ...)
 
     va_list args;
     va_start(args, format);
-    int length = vsnprintf(xprintf_buf, xprintf_buf_size - 1, format, args);
+    int length = stbsp_vsnprintf(xprintf_buf, xprintf_buf_size - 1, format, args);
     va_end(args);
 
     char *str = push_size(string_arena, length + 1);
