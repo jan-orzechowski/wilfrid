@@ -71,6 +71,19 @@ float get_random_01(void)
     return ((float)rand() / (float)RAND_MAX);
 }
 
+bool is_alphanumeric(char c)
+{
+    if ((c >= 'a' && c <= 'z')
+        || (c >= '0' && c <= '9')
+        || (c >= 'A' && c <= 'Z'))
+    {
+        return true;
+    }
+    return false;
+}
+
+#define is_digit(d) (((uint32_t)(d) - '0') < 10u)
+
 #include "hashmap.c"
 #include "interning.c"
 #include "errors.c"

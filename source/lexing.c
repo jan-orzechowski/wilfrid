@@ -84,7 +84,7 @@ bool lex_next_token(void)
         {
             uint64_t val = 0;
 
-            while (isdigit(*stream) || *stream == '_')
+            while (is_digit(*stream) || *stream == '_')
             {
                 if (*stream == '_')
                 {
@@ -104,7 +104,7 @@ bool lex_next_token(void)
                 stream++;
                 double float_val = (double)val;
                 size_t decimal_place = 0;
-                while (isdigit(*stream) || *stream == '_')
+                while (is_digit(*stream) || *stream == '_')
                 {
                     if (*stream == '_')
                     {
@@ -142,7 +142,7 @@ bool lex_next_token(void)
         case '_':
         {
             // zaczęliśmy od litery - dalej idziemy po cyfrach, literach i _
-            while (isalnum(*stream) || *stream == '_')
+            while (is_alphanumeric(*stream) || *stream == '_')
             {
                 stream++;
             }
