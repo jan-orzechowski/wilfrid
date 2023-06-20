@@ -29,7 +29,7 @@ buffer_header *__get_buf_header(void *ptr)
 
 void *__buf_grow(const void *buf, size_t new_len, size_t elem_size)
 {
-    size_t new_cap = max(1 + 2 * buf_cap(buf), new_len);
+    size_t new_cap = max(5 + 3 * buf_cap(buf), new_len);
     assert(new_len <= new_cap);
     size_t new_size = offsetof(buffer_header, buf) + new_cap * elem_size;
     buffer_header *new_hdr;
@@ -61,7 +61,7 @@ char *__buf_printf(char *buf, const char *format, ...)
 
     if (str_length > current_cap)
     {
-        __buf_fit(buf, str_length + buf_len(buf));
+        __buf_fit(buf, 1.5f * (str_length + buf_len(buf)));
 
         va_start(args, format);
         size_t new_cap = buf_cap(buf) - buf_len(buf);
