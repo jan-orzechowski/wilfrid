@@ -276,13 +276,13 @@ type *get_pointer_type(type *base_type)
     return type;
 }
 
-type *get_function_type(type **param_types_buf, type *return_type)
+type *get_function_type(type **param_types, size_t param_types_count, type *return_type)
 {
     type *type = get_new_type(TYPE_FUNCTION);
     type->size = POINTER_SIZE;
     type->align = POINTER_ALIGN;
-    type->function.param_types = copy_buf_to_arena(arena, param_types_buf);
-    type->function.param_count = buf_len(param_types_buf);
+    type->function.param_types = param_types;
+    type->function.param_count = param_types_count;
     type->function.return_type = return_type;
     return type;
 }

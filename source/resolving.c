@@ -1121,16 +1121,16 @@ Please provide a type either as a cast or in the variable declaration", e->pos);
     return result;
 }
 
-const char *pretty_print_function_parameters(type *receiver, resolved_expr **args)
+const char *pretty_print_function_parameters(type *receiver, resolved_expr **args, size_t args_count)
 {
-    if (receiver == null && buf_len(args) == 0)
+    if (receiver == null && args_count == 0)
     {
         return "no arguments.";
     }
     
     char *result = null;
     type **types = null;
-    for (size_t i = 0; i < buf_len(args); i++)
+    for (size_t i = 0; i < args_count; i++)
     {
         buf_push(types, args[i]->type);
     }
@@ -1313,13 +1313,21 @@ resolved_expr *resolve_special_case_constructors(expr *e)
     return result;
 }
 
-symbol **find_function_overload(symbol *first_overload_sym, type *receiver_type, resolved_expr **resolved_args, 
+typedef struct find_overloads_result
+{
+    symbol *matching;
+    bool more_than_one_match;
+} find_overloads_result;
+
+find_overloads_result find_function_overload(
+    symbol *first_overload_sym, type *receiver_type,
+    resolved_expr **resolved_args, size_t resolved_args_count,
     bool allow_implicit_casting, bool allow_variadic)
 {
     assert(first_overload_sym);
     assert(false == (allow_implicit_casting && allow_variadic));
     
-    symbol **matching = null;
+    find_overloads_result result = { 0 };
 
     symbol *candidate = first_overload_sym;
     while (candidate)
@@ -1350,20 +1358,20 @@ symbol **find_function_overload(symbol *first_overload_sym, type *receiver_type,
             }
         }
 
-        if (buf_len(resolved_args) == 0)
+        if (resolved_args_count == 0)
         {
             if (candidate_func.param_count == 0)
             {
-                buf_push(matching, candidate);
+                result.matching = candidate;
                 break;
             }
         }
 
-        if (candidate_func.param_count == buf_len(resolved_args)
-            || (candidate_func.has_variadic_arg && buf_len(resolved_args) >= candidate_func.param_count))
+        if (candidate_func.param_count == resolved_args_count
+            || (candidate_func.has_variadic_arg && resolved_args_count >= candidate_func.param_count))
         {
             for (size_t i = 0; i < candidate_func.param_count; i++)
-            {                
+            {
                 resolved_expr *resolved_arg = resolved_args[i];
                 assert(resolved_arg->type);
                 type *expected_arg_type = candidate_func.param_types[i];
@@ -1386,29 +1394,20 @@ symbol **find_function_overload(symbol *first_overload_sym, type *receiver_type,
                 }
             }
 
-            buf_push(matching, candidate);
-
-#if !DEBUG_BUILD
-            // optymalizacja - nie sprawdzamy dalej
-            if (false == allow_variadic && false == allow_implicit_casting)
+            if (result.matching)
             {
-                return matching;
+                result.more_than_one_match = true;
+                break;
             }
-#endif
+            
+            result.matching = candidate;
         }
 
 find_function_overload_next_candidate:
         candidate = candidate->next_overload;
     }
 
-#if DEBUG_BUILD
-    if (false == allow_variadic && false == allow_implicit_casting)
-    {
-        assert(buf_len(matching) == 0 || buf_len(matching) == 1);
-    }
-#endif
-
-    return matching;
+    return result;
 }
 
 resolved_expr *resolve_call_expr(expr *e)
@@ -1448,18 +1447,19 @@ resolved_expr *resolve_call_expr(expr *e)
         return resolved_expr_invalid;
     }
 
-    resolved_expr **resolved_args = null;
+    resolved_expr **resolved_args = push_size(arena, sizeof(void *) * e->call.args_num);
+    size_t resolved_args_count = 0;
     for (size_t i = 0; i < e->call.args_num; i++)
     {
         resolved_expr *resolved_arg_expr = resolve_expr(e->call.args[i]);
         if (false == check_resolved_expr(resolved_arg_expr))
         {
-            buf_free(resolved_args);
             return resolved_expr_invalid;
         }
-        buf_push(resolved_args, resolved_arg_expr);
+        resolved_args[resolved_args_count] = resolved_arg_expr;
+        resolved_args_count++;
     }
-    assert(buf_len(resolved_args) == e->call.args_num);
+    assert(resolved_args_count == e->call.args_num);
 
     type *method_receiver_type = null;
     if (e->call.method_receiver)
@@ -1467,7 +1467,6 @@ resolved_expr *resolve_call_expr(expr *e)
         resolved_expr *receiver_expr = resolve_expr(e->call.method_receiver);
         if (false == check_resolved_expr(receiver_expr))
         {
-            buf_free(resolved_args);
             return resolved_expr_invalid;
         }
         else
@@ -1477,39 +1476,44 @@ resolved_expr *resolve_call_expr(expr *e)
     }
 
     symbol *first_candidate = fn_expr->type->symbol;
-    symbol **matching = find_function_overload(first_candidate, method_receiver_type, resolved_args, false, false);
-    if (buf_len(matching) == 0)
+    find_overloads_result overloads = find_function_overload(first_candidate, method_receiver_type,
+        resolved_args, resolved_args_count, false, false);
+
+    if (overloads.matching == null)
     {
-        matching = find_function_overload(first_candidate, method_receiver_type, resolved_args, true, false);
-        if (buf_len(matching) == 0)
+        overloads = find_function_overload(first_candidate, method_receiver_type,
+            resolved_args, resolved_args_count, true, false);
+
+        if (overloads.matching == null)
         {
-            matching = find_function_overload(first_candidate, method_receiver_type, resolved_args, false, true);
+            overloads = find_function_overload(first_candidate, method_receiver_type,
+                resolved_args, resolved_args_count, false, true);
         }
     }
 
-    if (buf_len(matching) == 0)
+    if (overloads.matching == null)
     {        
         error_in_resolving(xprintf(
             "No overload is matching types of arguments in the function call. Passed %s",
-            pretty_print_function_parameters(method_receiver_type, resolved_args)), e->pos);
-        buf_free(resolved_args);
+            pretty_print_function_parameters(method_receiver_type, 
+                resolved_args, buf_len(resolved_args))), e->pos);
         return resolved_expr_invalid;
     }
 
-    if (buf_len(matching) > 1)
+    if (overloads.more_than_one_match)
     {
         error_in_resolving(xprintf(
             "Ambiguous function call - more than one overload is matching passed arguments. Passed %s",
-            pretty_print_function_parameters(method_receiver_type, resolved_args)), e->pos);
-        buf_free(resolved_args);
+            pretty_print_function_parameters(method_receiver_type, 
+                resolved_args, buf_len(resolved_args))), e->pos);
         return resolved_expr_invalid;
     }
     
-    symbol *resolved_function = matching[0];
+    symbol *resolved_function = overloads.matching;
     e->call.resolved_function = resolved_function;
 
     // casty wstawiamy dopiero wtedy, gdy ustalimy już, które z przeciążeń wezwać
-    assert(resolved_function->type->function.param_count <= buf_len(resolved_args));
+    assert(resolved_function->type->function.param_count <= resolved_args_count);
     for (size_t i = 0; i < resolved_function->type->function.param_count; i++)
     {
         type *expected_arg_type = resolved_function->type->function.param_types[i];
@@ -1522,10 +1526,7 @@ resolved_expr *resolve_call_expr(expr *e)
         {
             insert_cast_expr(e->call.args[i], null, cast);
         }
-    }
-    
-    buf_free(resolved_args);
-    buf_free(matching);
+    }    
 
     result = get_resolved_rvalue_expr(resolved_function->type->function.return_type);
     return result;
@@ -1980,15 +1981,17 @@ type *resolve_function_decl(decl *d)
 
     bool variadic_declared = false;
 
-    type **resolved_args = null;
     function_param_list *args = &d->function.params;
+    type **resolved_args = push_size(arena, sizeof(type *) * args->param_count);
+    size_t resolved_args_count = 0;
     for (size_t i = 0; i < args->param_count; i++)
     {
         function_param *p = &args->params[i];
         if (p->name != variadic_keyword)
         {
             type *t = resolve_typespec(p->type);
-            buf_push(resolved_args, t);
+            resolved_args[resolved_args_count] = t;
+            resolved_args_count++;
         }
         else
         {           
@@ -2017,8 +2020,7 @@ type *resolve_function_decl(decl *d)
         }
     }
 
-    type *result = get_function_type(resolved_args, resolved_return_type);
-    buf_free(resolved_args);
+    type *result = get_function_type(resolved_args, resolved_args_count, resolved_return_type);
 
     result->function.receiver_type = resolved_receiver_type;
     result->function.has_variadic_arg = variadic_declared;
