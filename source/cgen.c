@@ -1198,12 +1198,10 @@ void c_gen(symbol **resolved_declarations, char *output_filename, bool print_to_
         gen_symbol_decl(resolved_declarations[i]);
     }
 
-#ifndef __EMSCRIPTEN__
     if (output_filename)
     {
         write_file(output_filename, gen_buf, buf_len(gen_buf));
     }
-#endif
 
     if (print_to_console)
     {
