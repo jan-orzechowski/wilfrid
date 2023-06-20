@@ -47,6 +47,7 @@ memory_arena *arena;
 typedef struct compiler_options
 {
     char **sources;
+    char *output_filename;
     bool run;
     bool print_c;
     bool print_ast;
@@ -176,7 +177,7 @@ void compile_sources(compiler_options options)
             }
             else
             {
-                c_gen(resolved, "output/output.c", options.print_c);
+                c_gen(resolved, options.output_filename, options.print_c);
             }
         }
     }
@@ -268,6 +269,7 @@ int main(int arg_count, char **args)
 
     compiler_options options = parse_cmd_arguments(arg_count, args);
 
+    options.output_filename = "output/output.c";
 #if DEBUG_BUILD
 #if 1
     options.run = true;
