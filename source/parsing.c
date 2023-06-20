@@ -1223,17 +1223,13 @@ function_param_list parse_function_param_list(void)
     copy_stack_or_list_to_arena(result.params, result.param_count, sizeof(function_param),
         use_stack, params_stack, params_stack_len, params_buf);
 
-    // sprawdzenie, czy się nie powtarzają
-    for (size_t i = 0; i < result.param_count; i++)
+    for (int64_t i = 0; i < result.param_count - 1; i++)
     {
-        for (size_t j = 0; j < result.param_count; j++)
+        for (int64_t j = i + 1; j < result.param_count; j++)
         {
-            if (i != j)
+            if (result.params[i].name == result.params[j].name)
             {
-                if (result.params[i].name == result.params[j].name)
-                {
-                    parsing_error("Two or more parameters with the same name in the function declaration");
-                }
+                parsing_error("Two or more parameters with the same name in the function declaration");
             }
         }
     }
@@ -1284,17 +1280,13 @@ void parse_aggregate_fields(aggregate_decl *decl)
     copy_stack_or_list_to_arena(decl->fields, decl->fields_count, sizeof(aggregate_field),
         use_stack, fields_stack, fields_stack_len, fields_buf);
 
-    // sprawdzenie, czy się nie powtarzają
-    for (size_t i = 0; i < decl->fields_count; i++)
+    for (int64_t i = 0; i < decl->fields_count - 1; i++)
     {
-        for (size_t j = 0; j < decl->fields_count; j++)
+        for (int64_t j = i + 1; j < decl->fields_count; j++)
         {
-            if (i != j)
+            if (decl->fields[i].name == decl->fields[j].name)
             {
-                if (decl->fields[i].name == decl->fields[j].name)
-                {
-                    parsing_error("Two or more fields with the same name in the struct declaration");
-                }
+                parsing_error("Two or more fields with the same name in the struct declaration");
             }
         }
     }
