@@ -1,15 +1,15 @@
 ﻿void allocate_memory(void)
 {
-    arena = allocate_memory_arena(kilobytes(50));
-    string_arena = allocate_memory_arena(kilobytes(500));
+    arena = allocate_memory_arena(megabytes(1));
+    string_arena = allocate_memory_arena(megabytes(1));
     interns = xcalloc(sizeof(hashmap));
-    map_grow(interns, 16);
+    map_grow(interns, 32);
 
-    map_grow(&global_symbols, 16);
+    map_grow(&global_symbols, 32);
     map_chain_grow(&cached_pointer_types, 32);
 
     vm_global_memory = allocate_memory_arena(kilobytes(100));
-    map_grow(&global_identifiers, 16);
+    map_grow(&global_identifiers, 32);
 
     xprintf_buf_size = string_arena->block_size + 1;
     xprintf_buf = xmalloc(xprintf_buf_size);
