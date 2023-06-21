@@ -1139,7 +1139,7 @@ void gen_entry_point(symbol **resolved)
 {
     symbol *main_function = get_entry_point(resolved);
 
-    if (main_function->mangled_name == str_intern("___main___0l___0s___0v"))
+    if (main_function->mangled_name == str_intern("___main___0l___0s"))
     {
         gen_printf(
 "\nint main(int argc, char **argv) {\n\
@@ -1154,7 +1154,7 @@ void gen_entry_point(symbol **resolved)
 }\n");
 
     }
-    else if (main_function->mangled_name == str_intern("___main___0v"))
+    else if (main_function->mangled_name == str_intern("___main"))
     {
         gen_printf(
 "\nint main(int argc, char **argv) {\n\
