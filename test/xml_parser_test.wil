@@ -24,54 +24,28 @@ let example_xml =
 
 fn main()
 {
-/*
-    Printing options:
-*/
-
-    let print_tokens := false
-    let print_nodes := true
-
-/*
-    First, we parse the XML:
-*/
-
     let block_size : ulong = 1024    
     let arena := allocate_memory_arena(block_size)
-    let root := scan_and_parse_xml(example_xml, arena, print_tokens)
+    let root := scan_and_parse_xml(example_xml, arena)
 
-    if (error_message != null)
-    {
-        printf("\nERROR (position: %llu): %s\n", 
-            error_position,
-            error_message)
-        return
-    }
+    assert(error_message == null)
     
-    if (print_nodes)
-    {
-        print_xml_tree(root)
-    }
-
-/*
-    Here we query the parsed XML tree:
-*/
-
     let map_node := find_tag_singular_node(root, "map")
 
     let music_nodes = find_tag_and_attr_value(
         map_node, "property", "name", "music")
 
-    printf("The music track name is %s\n", music_nodes[0].get_attribute_value("value"))
+    assert(music_nodes[0].get_attribute_value("value"))
 
     let backdrop_nodes = find_tag_and_attr_value(
         map_node, "property", "name", "backdrop")
 
-    printf("The backdrop name is %s\n", backdrop_nodes[0].get_attribute_value("value"))
+    assert(backdrop_nodes[0].get_attribute_value("value"))
 
     let layer_node = find_tag_singular_node(map_node, "layer")
     let layer_data_node = find_tag_singular_node(layer_node, "data")
     
-    printf("The map tiles are: %s\n", layer_data_node.inner_text)
+    assert(layer_data_node.inner_text)
 
     let object_group_nodes := 
         find_tag_and_attr_value(root, "objectgroup", "name", "entities")
@@ -81,9 +55,8 @@ fn main()
     let objects :=
         find_tag(object_group_node, "object")
 
-    printf("The number of found objects: %d\n", objects.length())
+    assert(objects.length() == 2)
 
-    printf("Objects:\n")
     for (let i = 0, i < objects.length(), i++)
     {
         let object_node := objects[i]
@@ -95,10 +68,9 @@ fn main()
         
         if (color_property_list.length() > 0)
         {
-            color = color_property_list[0].get_attribute_value("value")       
+            assert(color_property_list[0].get_attribute_value("value"))       
         }
-
-        printf("- id: %s, color: %s\n", id, color)
+        
         delete color_property_list
     }
 
@@ -109,7 +81,7 @@ fn main()
 }
 
 fn scan_and_parse_xml
-    (str: char^, arena: memory_arena^, print_tokens: bool): xml_node^
+    (str: char^, arena: memory_arena^): xml_node^
 {
     let result : xml_node^ = null
 
@@ -127,11 +99,6 @@ fn scan_and_parse_xml
 
     if (scan.token_count > 0)
     {
-        if (print_tokens)
-        {
-            print_all_xml_tokens(scan.first_token)       
-        }
-
         let pars := new xml_parser()
         pars.scan = scan
         pars.current_token = scan.first_token
@@ -859,121 +826,6 @@ fn find_tag_singular_node(root: xml_node^, tag: char^): xml_node^
 }
 
 let indentation = 0
-
-fn print_indent()
-{
-    for (let i = 0, i < indentation, i++)
-    {
-        printf("  ")
-    }
-}
-
-fn print_xml_node(node: xml_node^)
-{
-    if (node == null)
-    {
-        return
-    }
-
-    printf("(%s ", node.tag)
-    
-    let attr := node.first_attribute       
-    while (attr != null)
-    {
-        print_xml_attribute(attr)
-        attr = attr.next
-        if (attr != null)
-        {
-            printf(" ")
-        }
-    }
-
-    indentation++
-
-    if (node.inner_text)
-    {
-        printf("\n")
-        print_indent()
-        printf("(%s)", node.inner_text)
-    }
-
-    let child := node.first_child
-    while (child != null)
-    {
-        printf("\n")
-        print_indent()
-        print_xml_node(child)
-        child = child.next
-        if (child != null)
-        {
-            printf(",")
-        }
-    }
-
-    indentation--
-
-    if (node.first_child != null
-        || node.inner_text)
-    {
-        printf("\n")
-        print_indent()
-    }
-    printf(")")
-}
-
-fn print_xml_attribute(attr: xml_attribute^)
-{
-    if (attr == null)
-    {
-        return
-    }
-
-    printf("%s:%s", attr.name, attr.value)
-}
-
-fn printf_xml_token(token: xml_token^)
-{    
-    if (token == null)
-    {
-        return
-    }
-
-    switch (token.type)
-    {
-        case xml_token_type.LEFT_CHEVRON: { printf("<") } break 
-        case xml_token_type.CLOSING_LEFT_CHEVRON: { printf("</") } break 
-        case xml_token_type.RIGHT_CHEVRON: { printf(">") } break 
-        case xml_token_type.SELF_CLOSING_RIGHT_CHEVRON: { printf("/>") } break 
-        case xml_token_type.LEFT_PROLOG_CHEVRON: { printf("<?") } break 
-        case xml_token_type.RIGHT_PROLOG_CHEVRON: { printf("?>") } break
-        case xml_token_type.TAG: { printf("tag:%s", token.value) } break
-        case xml_token_type.ATTRIBUTE_NAME: { printf("name:%s", token.value) } break
-        case xml_token_type.ATTRIBUTE_VALUE: { printf("value:%s", token.value) } break
-        case xml_token_type.INNER_TEXT: { printf("inner:%s", token.value) } break 
-    }
-}
-
-fn print_xml_tree(root: xml_node^)
-{
-    printf("PARSED TREE:\n")
-    print_xml_node(root)
-    printf("\n\n")
-}
-
-fn print_all_xml_tokens(token: xml_token^)
-{
-    printf("LEXED TOKENS:\n")
-    while (token)
-    {
-        printf_xml_token(token)
-        token = token.next
-        if (token)
-        {
-            printf(", ")
-        }
-    }
-    printf("\n\n")
-}
 
 fn string_compare(a: char^, b: char^) : bool
 {

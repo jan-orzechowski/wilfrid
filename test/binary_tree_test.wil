@@ -41,8 +41,6 @@
     assert(pop_from_queue() == @b)
     assert(pop_from_queue() == @c)
 
-    printf(" // binary tree test // ")
-
     breadth_first_search(@t)
     
     depth_first_traversal(@t)
@@ -56,11 +54,7 @@
 
     let sum: int = get_max_path_sum(@t)
 
-    printf("\noriginal tree:")
-    print_tree(@t)
     invert_binary_tree(@t)
-    printf("\ninverted tree:")
-    print_tree(@t)
 }
 
 struct tree
@@ -116,13 +110,11 @@ fn _depth_first()
         {
             push_node(n.left)
         }       
-        printf("%d ", n.value)
     }
 }
 
 fn _depth_first_rec(n: node^)
-{
-    printf("%d ", n.value)    
+{ 
     if (n.left)
     {
         _depth_first_rec(n.left)
@@ -136,9 +128,6 @@ fn _depth_first_rec(n: node^)
 fn depth_first_traversal(t: tree^)
 {    
     push_node(t.root)
-
-    printf("\ntree depth first traversal: ")
-
     _depth_first_rec(t.root)
 }
 
@@ -182,7 +171,6 @@ fn pop_from_queue(): node^
 fn _breadth_first()
 {
     let n: node^ = pop_from_queue()
-    printf("%d ", n.value)
     if (n)
     {
         if (n.left)
@@ -199,8 +187,6 @@ fn _breadth_first()
 fn breadth_first_search(t: tree^)
 {
     push_to_queue(t.root)
-
-    printf("\ntree breadth first traversal: ")
     while (element_count > 0)
     {
         _breadth_first()
@@ -259,8 +245,6 @@ fn get_tree_depth(t: tree^): int
     current_depth = 0
 
     check_depth(t.root)
-    printf("\ntree depth: %d", max_depth)
-
     return max_depth
 }
 
@@ -300,8 +284,6 @@ fn get_max_path_sum(t: tree^): int
     current_path_sum = 0
 
     check_path_sum(t.root)
-    printf("\ntree max path sum: %d", max_path_sum)
-
     return max_path_sum
 }
 
@@ -321,24 +303,4 @@ fn invert_left_right(n: node^)
 fn invert_binary_tree(t: tree^)
 {
     invert_left_right(t.root)
-}
-
-fn print_node(n: node^)
-{
-    printf("( %d ", n.value)
-    if (n.left)
-    {
-        print_node(n.left)
-    }
-    if (n.right)
-    {
-        print_node(n.right)
-    }
-    printf(")")
-}
-
-fn print_tree(t: tree^)
-{
-    printf("\n")
-    print_node(t.root)
 }

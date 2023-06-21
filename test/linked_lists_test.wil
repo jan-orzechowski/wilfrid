@@ -11,12 +11,6 @@ struct linked_list
     count: int,
 }
 
-struct memory 
-{
-    address: void^,
-    size: int
-}
-
 fn main()
 {
     let list := new linked_list

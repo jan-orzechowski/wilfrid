@@ -5,14 +5,6 @@ struct list_holder
     list: int[]
 }
 
-fn print_list_stats(list: int[])
-{
-    let len := list.length()
-    let cap := list.capacity()
-    
-    printf("\nlist:\nlength: %d,\ncapacity:%d", len, cap)
-}
-
 fn append_twice(list: int[], element: int)
 {
     list.add(element)
@@ -50,23 +42,13 @@ fn main ()
     assert(holder_one.list[3] == 4)
     assert(holder_one.list[4] == 5)
 
-    print_list_stats(holder_one.list)
-    print_list_stats(holder_two.list)
-
     append_twice(holder_one.list, 6)
     append_twice(holder_two.list, 6)
 
-    print_list_stats(some_list_pointer_copy)
-
-    if (some_list.add(4))
-    {
-        printf("\ntest if")
-    }
-
-    for (let x := new int[], x.capacity() < 5, x.add(2))
-    {
-        printf("\ntest for")
-    }
+    assert(holder_one.list[5] == 6)
+    assert(holder_one.list[6] == 6)
+    assert(holder_two.list[7] == 6)
+    assert(holder_two.list[8] == 6)
 
     let auto_list := auto int[]
 
