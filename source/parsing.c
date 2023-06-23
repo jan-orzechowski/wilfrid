@@ -4,7 +4,7 @@ typespec *push_typespec_name(source_pos pos, const char *name);
 
 void parsing_error(const char *error_text)
 {
-    error(error_text, tok.pos, tok.end - tok.start);
+    error(error_text, tok.pos);
     ignore_tokens_until_newline();
 }
 

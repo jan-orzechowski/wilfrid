@@ -347,7 +347,7 @@ bool lex_next_token(void)
             {
                 if (*stream == '\n' || *stream == '\r')
                 {
-                    error("Newlines are not allowed in character literals", tok.pos, 1);
+                    error("Newlines are not allowed in character literals", tok.pos);
                     break;
                 }
 
@@ -376,16 +376,16 @@ bool lex_next_token(void)
             }
             else
             {
-                error("Character literal without matching ' sign", tok.pos, 1);
+                error("Character literal without matching ' sign", tok.pos);
             }
             
             if (end - begin == 0)
             {
-                error("Character literals must contain at least one character", tok.pos, 1);
+                error("Character literals must contain at least one character", tok.pos);
             }
             else if (end - begin > 2 && *begin != '\\')
             {
-                error("Character literals can only be one character long", tok.pos, 1);
+                error("Character literals can only be one character long", tok.pos);
             }
 
             tok.string_val = str_intern_range_with_escaping(begin, end);
@@ -726,7 +726,7 @@ bool lex_next_token(void)
 
     if (unexpected_character)
     {
-        error(xprintf("Unexpected character: %c", *(stream - 1)), tok.pos, 1);
+        error(xprintf("Unexpected character: %c", *(stream - 1)), tok.pos);
         unexpected_character = false;
     }
 

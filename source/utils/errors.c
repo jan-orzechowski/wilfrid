@@ -30,12 +30,11 @@ typedef struct error_message
 {
     const char *text;
     source_pos pos;
-    size_t length;
 } error_message;
 
 error_message *errors;
 
-void error(const char *error_text, source_pos pos, size_t length)
+void error(const char *error_text, source_pos pos)
 {
     if (buf_len(errors) > 0)
     {
@@ -50,8 +49,7 @@ void error(const char *error_text, source_pos pos, size_t length)
     error_message message =
     {
         .text = error_text,
-        .pos = pos,
-        .length = length
+        .pos = pos
     };
     buf_push(errors, message);
 }
@@ -61,8 +59,7 @@ void error_without_pos(const char *error_text)
     error_message message =
     {
         .text = error_text,
-        .pos = { 0 },
-        .length = 0
+        .pos = { 0 }
     };
     buf_push(errors, message);
 }

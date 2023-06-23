@@ -27,7 +27,7 @@ resolved_expr *resolved_expr_invalid;
 
 void error_in_resolving(const char *error_text, source_pos pos)
 {
-    error(error_text, pos, 0);
+    error(error_text, pos);
 }
 
 const char *pretty_print_type_name(type *ty, bool plural);
