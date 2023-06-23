@@ -1595,16 +1595,16 @@ byte *eval_expression(expr *exp)
         break;
         case EXPR_NEW:
         {
-            type *t = exp->new.resolved_type;
+            type *t = exp->new_init.resolved_type;
             assert(t);
 
             size_t size = 0;
             if (t->kind == TYPE_ARRAY && t->array.size == 0)
             {                
-                byte *runtime_size = eval_expression(exp->new.type->array.size_expr);
+                byte *runtime_size = eval_expression(exp->new_init.type->array.size_expr);
                 // to powinno być załatwione jakoś lepiej 
                 // - przez upewnienie się, że rozmiar w sizeof jest zawsze long albo coś
-                if (exp->new.type->array.size_expr->resolved_type->size == 4)
+                if (exp->new_init.type->array.size_expr->resolved_type->size == 4)
                 {
                     size = *(uint32_t *)runtime_size;
                 }
@@ -1615,7 +1615,7 @@ byte *eval_expression(expr *exp)
             }
             else
             {
-                size = get_type_size(exp->new.resolved_type);
+                size = get_type_size(exp->new_init.resolved_type);
             }
             assert(size);
             
@@ -1624,20 +1624,20 @@ byte *eval_expression(expr *exp)
 
             debug_vm_print(exp->pos, "allocation at %p, type %s, size %zu", 
                 (void *)ptr,
-                pretty_print_type_name(exp->new.resolved_type, false),
+                pretty_print_type_name(exp->new_init.resolved_type, false),
                 size);
         }
         break;
         case EXPR_AUTO:
         {
-            assert(exp->auto_new.resolved_type);
-            size_t size = get_type_size(exp->auto_new.resolved_type);
+            assert(exp->auto_init.resolved_type);
+            size_t size = get_type_size(exp->auto_init.resolved_type);
             uintptr_t ptr = (uintptr_t)___calloc_wrapper___(size, true);
             copy_vm_val(result, (byte *)&ptr, sizeof(uintptr_t));
 
             debug_vm_print(exp->pos, "GC allocation at %p, type %s, size %zu",
                 (void *)ptr,
-                pretty_print_type_name(exp->auto_new.resolved_type, false),
+                pretty_print_type_name(exp->auto_init.resolved_type, false),
                 size);
         }
         break;

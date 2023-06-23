@@ -206,14 +206,14 @@ void ast_print_expr(expr *e)
         case EXPR_NEW:
         {
             ast_printf("(new ");
-            ast_print_typespec(e->new.type);
+            ast_print_typespec(e->new_init.type);
             ast_printf(")");
         }
         break;
         case EXPR_AUTO:
         {
             ast_printf("(auto ");
-            ast_print_typespec(e->auto_new.type);
+            ast_print_typespec(e->auto_init.type);
             ast_printf(")");
         }
         break;

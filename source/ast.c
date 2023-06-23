@@ -231,8 +231,8 @@ struct expr
         index_expr index;
         field_expr field;
         compound_literal_expr compound;
-        new_expr new;
-        auto_expr auto_new;
+        new_expr new_init;
+        auto_expr auto_init;
         size_of_expr size_of;
         size_of_type_expr size_of_type;
         cast_expr cast;
@@ -472,7 +472,7 @@ expr *push_new_expr(source_pos pos, typespec *t)
 {
     expr *result = push_struct(arena, expr);
     result->kind = EXPR_NEW;
-    result->new.type = t;
+    result->new_init.type = t;
     result->pos = pos;
     return result;
 }
@@ -481,7 +481,7 @@ expr *push_auto_expr(source_pos pos, typespec *t)
 {
     expr *result = push_struct(arena, expr);
     result->kind = EXPR_AUTO;
-    result->auto_new.type = t;
+    result->auto_init.type = t;
     result->pos = pos;
     return result;
 }

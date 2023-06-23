@@ -894,35 +894,35 @@ void gen_expr(expr *e)
         break;        
         case EXPR_NEW: 
         {
-            assert(e->new.type->kind != TYPESPEC_LIST);
-            if (e->new.type->kind == TYPESPEC_ARRAY)
+            assert(e->new_init.type->kind != TYPESPEC_LIST);
+            if (e->new_init.type->kind == TYPESPEC_ARRAY)
             {
-                assert(e->new.type->array.size_expr);
-                char *type_str = typespec_to_cdecl(e->new.type, null);
+                assert(e->new_init.type->array.size_expr);
+                char *type_str = typespec_to_cdecl(e->new_init.type, null);
                 gen_printf("___alloc___(sizeof(%s) * (", type_str);
-                gen_expr(e->new.type->array.size_expr);
+                gen_expr(e->new_init.type->array.size_expr);
                 gen_printf("))");
             }
             else
             {
-                char *type_str = typespec_to_cdecl(e->new.type, null);
+                char *type_str = typespec_to_cdecl(e->new_init.type, null);
                 gen_printf("___alloc___(sizeof(%s))", type_str);
             }
         }
         break;
         case EXPR_AUTO: 
         {
-            if (e->new.type->kind == TYPESPEC_ARRAY)
+            if (e->auto_init.type->kind == TYPESPEC_ARRAY)
             {
-                assert(e->auto_new.type->array.size_expr);
-                char *type_str = typespec_to_cdecl(e->auto_new.type, null);
+                assert(e->auto_init.type->array.size_expr);
+                char *type_str = typespec_to_cdecl(e->auto_init.type, null);
                 gen_printf("___managed_alloc___(sizeof(%s) * (", type_str);
-                gen_expr(e->auto_new.type->array.size_expr);
+                gen_expr(e->auto_init.type->array.size_expr);
                 gen_printf("))");
             }
             else
             {
-                char *type_str = typespec_to_cdecl(e->auto_new.type, null);
+                char *type_str = typespec_to_cdecl(e->auto_init.type, null);
                 gen_printf("___managed_alloc___(sizeof(%s))", type_str);
             }
         } 
