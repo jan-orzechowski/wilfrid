@@ -540,8 +540,6 @@ void gen_expr_stub(expr *exp)
         && orig_exp->call.method_receiver)
     {
         receiver = orig_exp->call.method_receiver;
-        assert(receiver->resolved_type);
-        assert(receiver->resolved_type->kind == TYPE_LIST);
     }
 
     switch (exp->stub.kind)
