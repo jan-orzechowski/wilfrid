@@ -43,6 +43,21 @@ let same_as_above : thing =
 }
 
 /*
+    Initialization can be nested:
+*/
+
+struct container
+{
+    val: int,
+    thing: thing
+}
+
+let nested_struct : container = 
+{
+    10, { 1, 2, true }    
+}
+
+/*
     Fields without provided initialization values are
     always initialized to zero.
 
