@@ -31,13 +31,6 @@ void *xcalloc(size_t num_bytes)
     return ptr;
 }
 
-void *xmempcy(void *src, size_t size)
-{
-    void *dest = xmalloc(size);
-    memcpy(dest, src, size);
-    return dest;
-}
-
 #define kilobytes(n) (1024 * n)
 #define megabytes(n) (kilobytes(n) * 1024)
 #define gigabytes(n) (megabytes(n) * 1024)
