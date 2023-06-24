@@ -4,6 +4,7 @@
     string_arena = allocate_memory_arena(megabytes(1));
     interns = xcalloc(sizeof(hashmap));
     map_grow(interns, 32);
+    init_constant_strings();
 
     map_grow(&global_symbols, 32);
     map_chain_grow(&cached_pointer_types, 32);
@@ -23,6 +24,7 @@ void clear_memory(void)
     map_free(interns);
     free(interns);
     keywords_initialized = false;
+    constant_strings_initialized = false;
     buf_free(keywords_list);
 
     free_memory_arena(arena);

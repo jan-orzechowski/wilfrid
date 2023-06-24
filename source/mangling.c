@@ -135,7 +135,7 @@ const char *get_function_mangled_name(decl *dec)
     }
    
     // return type odróżnia tylko constructory
-    if (dec->name == str_intern("constructor") && dec->function.return_type)
+    if (dec->name == constructor_str && dec->function.return_type)
     {
         print_mangled_typespec_to_buffer(dec->function.return_type);
     }

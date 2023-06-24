@@ -893,7 +893,7 @@ byte *eval_stub_expression(byte *result, expr *exp);
 byte *eval_printf_call(expr *exp, byte *result)
 {
     assert(exp->kind == EXPR_CALL);
-    assert(exp->call.resolved_function->name == str_intern("printf"));
+    assert(exp->call.resolved_function->name == printf_str);
 
     assert(exp->call.args_num >= 1);
     assert(exp->call.args[0]->kind);
@@ -1234,11 +1234,11 @@ byte *eval_function_call(expr *exp, byte *result)
     
     symbol *function = exp->call.resolved_function;
 
-    if (function->name == str_intern("printf"))
+    if (function->name == printf_str)
     {
         eval_printf_call(exp, result);
     }
-    else if (function->name == str_intern("assert"))
+    else if (function->name == assert_str)
     {
         assert(exp->call.args_num == 1);
         assert(exp->call.args[0]->resolved_type);
@@ -1251,7 +1251,7 @@ byte *eval_function_call(expr *exp, byte *result)
             runtime_error(exp->pos, "ASSERTION FAILED");            
         }
     }
-    else if (function->name == str_intern("gc"))
+    else if (function->name == gc_str)
     {
         assert(exp->call.args_num == 0);
         debug_vm_simple_print("--------------------------- GC CALL\n");
@@ -1278,21 +1278,21 @@ byte *eval_function_call(expr *exp, byte *result)
 
         return result;
     }
-    else if (function->name == str_intern("query_gc_total_memory"))
+    else if (function->name == query_gc_total_memory_str)
     {
         assert(exp->call.args_num == 0);
         size_t val = query_gc_total_memory();
         copy_vm_val(result, (byte *)&val, sizeof(size_t));
         return result;
     }
-    else if (function->name == str_intern("query_gc_total_count"))
+    else if (function->name == query_gc_total_count_str)
     {
         assert(exp->call.args_num == 0);        
         size_t val = query_gc_total_count();
         copy_vm_val(result, (byte *)&val, sizeof(size_t));
         return result;
     }
-    else if (function->name == str_intern("allocate"))
+    else if (function->name == allocate_str)
     {
         assert(exp->call.args_num == 1);
         assert(exp->call.args[0]->resolved_type);

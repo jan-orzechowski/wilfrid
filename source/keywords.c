@@ -72,14 +72,53 @@ void init_keywords(void)
         default_keyword = intern_keyword("default");
         variadic_keyword = intern_keyword("variadic");
         extern_keyword = intern_keyword("extern");
-    }
-    first_keyword = struct_keyword;
-    last_keyword = extern_keyword;
-    keywords_initialized = true;
+    
+        first_keyword = struct_keyword;
+        last_keyword = extern_keyword;
+
+        keywords_initialized = true;
+    }    
 }
 
 bool is_name_keyword(const char *name)
 {
     bool result = (name >= first_keyword && name <= last_keyword);
     return result;
+}
+
+const char *constructor_str;
+const char *main_str;
+const char *mangled_main_void_str;
+const char *mangled_main_args_str;
+const char *add_str;
+const char *length_str;
+const char *capacity_str;
+const char *printf_str;
+const char *allocate_str;
+const char *assert_str;
+const char *gc_str;
+const char *query_gc_total_memory_str;
+const char *query_gc_total_count_str;
+
+bool constant_strings_initialized;
+void init_constant_strings(void)
+{
+    if (false == constant_strings_initialized)
+    {
+        constructor_str = str_intern("constructor");
+        main_str = str_intern("main");
+        mangled_main_void_str = str_intern("___main");
+        mangled_main_args_str = str_intern("___main___0l___0s");
+        add_str = str_intern("add");
+        length_str = str_intern("length");
+        capacity_str = str_intern("capacity");
+        printf_str = str_intern("printf");
+        allocate_str = str_intern("allocate");
+        assert_str = str_intern("assert");
+        gc_str = str_intern("gc");
+        query_gc_total_memory_str = str_intern("query_gc_total_memory");
+        query_gc_total_count_str = str_intern("query_gc_total_count");
+    
+        constant_strings_initialized = true;
+    }
 }

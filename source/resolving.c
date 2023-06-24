@@ -1170,7 +1170,7 @@ resolved_expr *resolve_special_case_methods(expr *e)
             stub_expr_kind stub_kind = STUB_EXPR_NONE;
             type *resolved_type = null;
 
-            if (e->call.function_expr->name == str_intern("capacity"))
+            if (e->call.function_expr->name == capacity_str)
             {
                 if (e->call.args_num != 0)
                 {
@@ -1181,7 +1181,7 @@ resolved_expr *resolve_special_case_methods(expr *e)
                 stub_kind = STUB_EXPR_LIST_CAPACITY;
                 resolved_type = type_int;
             }            
-            else if (e->call.function_expr->name == str_intern("length"))
+            else if (e->call.function_expr->name == length_str)
             {
                 if (e->call.args_num != 0)
                 {
@@ -1192,7 +1192,7 @@ resolved_expr *resolve_special_case_methods(expr *e)
                 stub_kind = STUB_EXPR_LIST_LENGTH;
                 resolved_type = type_int;
             }
-            else if (e->call.function_expr->name == str_intern("add"))
+            else if (e->call.function_expr->name == add_str)
             {
                 if (e->call.args_num != 1)
                 {
@@ -1260,7 +1260,7 @@ resolved_expr *resolve_special_case_constructors(expr *e)
     type *return_type = fn_expr->type;
     
     symbol *matching = null;
-    symbol *candidate = get_symbol(str_intern("constructor"));
+    symbol *candidate = get_symbol(constructor_str);
     while (candidate)
     {
         if (candidate->state == SYMBOL_UNRESOLVED)
@@ -2488,8 +2488,6 @@ void complete_symbol(symbol *sym)
 symbol *get_entry_point(symbol **symbols)
 {
     symbol *main_function = null;
-    const char *main_str = str_intern("main");
-
     for (symbol **it = symbols;
         it != buf_end(symbols);
         it++)
@@ -2515,8 +2513,8 @@ symbol *get_entry_point(symbol **symbols)
         return null;
     }
 
-    if (false == (main_function->mangled_name == str_intern("___main___0l___0s")
-        || main_function->mangled_name == str_intern("___main")))
+    if (false == (main_function->mangled_name == mangled_main_args_str
+        || main_function->mangled_name == mangled_main_void_str))
     {
         error_in_resolving(
             "Main function has an incorrect declaration. Allowed declarations are 'fn main()' and 'fn main(args: string[])'", 
