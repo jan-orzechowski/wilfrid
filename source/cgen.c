@@ -336,7 +336,6 @@ void gen_simple_stmt(stmt *stmt)
                             stmt->decl_stmt.decl->variable.type,
                             stmt->decl_stmt.decl->name);
                         gen_printf(decl_str);
-                        debug_breakpoint;
                     }                  
 
                     if (stmt->decl_stmt.decl->variable.expr)
@@ -346,8 +345,6 @@ void gen_simple_stmt(stmt *stmt)
                     }
                     else
                     {
-                        // tutaj można by dać warning
-                        debug_breakpoint;
                         gen_printf(" = {0}");
                     }
                 }

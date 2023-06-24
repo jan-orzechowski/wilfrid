@@ -39,8 +39,6 @@ void __fatal(const char *format, ...)
 
     va_end(args);
 
-    debug_breakpoint;
-
     exit(1);
 }
 

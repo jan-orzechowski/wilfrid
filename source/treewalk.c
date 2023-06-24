@@ -392,10 +392,6 @@ byte *get_vm_variable(const char *name)
             }
         }
     }
-    else
-    {
-        debug_breakpoint;
-    }
 
     if (result == null)
     {
@@ -1178,7 +1174,6 @@ byte *eval_printf_call(expr *exp, byte *result)
 
 #if DEBUG_BUILD
         debug_vm_simple_print("--------------------------- PRINTF CALL: format: %s, output: %s\n", orig_format, output);
-        debug_breakpoint;
 #else
         printf("%s", output);
 #endif
@@ -2260,11 +2255,6 @@ void eval_statement(stmt *st, byte *opt_ret_value)
 
             debug_vm_print(st->pos, "SWITCH - condition evaluated as: %s", debug_print_vm_value(cond_var, cond_type));
 
-            if (cond_var_value == 1)
-            {
-                debug_breakpoint;
-            }
-
             int64_t case_index_to_eval = -1;
             for (size_t i = 0; i < st->switch_stmt.cases_num; i++)
             {
@@ -2471,6 +2461,4 @@ void run_interpreter(symbol **resolved_decls)
 #endif
 
     ___clean_memory___();
-
-    debug_breakpoint;
 }

@@ -1080,8 +1080,6 @@ stmt *parse_statement(void)
             s->kind = STMT_DECL;
             s->pos = pos;
             s->decl_stmt.decl = d;
-
-            debug_breakpoint;
         }
         else
         {

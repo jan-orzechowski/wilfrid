@@ -102,7 +102,7 @@ void buf_copy_test(void)
     {
         if (new_array[i] != i)
         {
-            debug_breakpoint;
+            fatal("buf copy test error");
         }
     }
 

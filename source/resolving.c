@@ -1009,10 +1009,6 @@ Please provide a type either as a cast or in the variable declaration", e->pos);
                 error_in_resolving("Compound literal has a different type than expected", e->pos);
                 return resolved_expr_invalid;
             }
-            else
-            {
-                debug_breakpoint;
-            }
         }
     }
     else
@@ -2062,12 +2058,11 @@ void resolve_symbol(symbol *s)
         case SYMBOL_VARIABLE:
         {
             s->type = resolve_variable_decl(s->decl);
-            debug_breakpoint;
         }
         break;
-        case SYMBOL_TYPE: // to obejmuje też enums...
+        case SYMBOL_TYPE:
         {       
-            // nie musimy nic robić - unions i structs są resolved od razu
+            // nie musimy nic robić - unions, enums i structs są resolved od razu
         }
         break;
         case SYMBOL_FUNCTION:
