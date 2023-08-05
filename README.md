@@ -1,4 +1,7 @@
-Wilfrid is a general-purpose, procedural, low-level, statically-typed programming language.
+# Wilfrid
+
+Wilfrid is a general-purpose, procedural, low-level, statically-typed programming language. 
+
 It's named after [Wilfrid S. Sellars](https://plato.stanford.edu/entries/sellars/).
 
 Some of the language features are:
@@ -11,7 +14,7 @@ Some of the language features are:
 * built-in dynamic arrays
 * full interoperability with C
 
-Wilfrid can be compiled to C or run in the interpreter. You can check the language's interactive demo [here](https://janorzechowski.com/wilfrid). Code examples featured on this site can be also found [here](/examples)
+Wilfrid can be compiled to C or run in the interpreter. You can check the **language's interactive demo [here](https://janorzechowski.com/wilfrid)**. Code examples featured on this site can be also found [here](/examples).
 
 Wilfrid is currently in the early alpha stage.
 
